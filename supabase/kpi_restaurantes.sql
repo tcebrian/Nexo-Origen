@@ -1,0 +1,13 @@
+-- =============================================================================
+-- kpi_restaurantes: VISTA de lectura (no tabla)
+-- =============================================================================
+-- La app Nexo Origen solo hace SELECT sobre esta vista.
+-- No ejecutes ALTER TABLE ni RLS aquí — las vistas no admiten RLS directo.
+--
+-- Columnas esperadas por la app (lib/supabase/kpi-restaurantes.ts):
+--   restaurante_id, restaurante, ciudad, marca,
+--   total_resenas, media_total, resenas_negativas, resenas_positivas,
+--   ultima_resena, estado
+--
+-- Permiso mínimo para el dashboard con anon key:
+GRANT SELECT ON public.kpi_restaurantes TO anon, authenticated;
