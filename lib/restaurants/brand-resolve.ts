@@ -8,6 +8,7 @@ const MARCA_RULES: { pattern: RegExp; brand: BrandId }[] = [
   { pattern: /ribs|^rb$/, brand: "ribs" },
   { pattern: /sibuya|^sy$/, brand: "sibuya" },
   { pattern: /volap|taberna|^tv$/, brand: "tv" },
+  { pattern: /vault/, brand: "vault" },
 ];
 
 /** Convierte nombre de marca de Supabase al id visual de la app. */

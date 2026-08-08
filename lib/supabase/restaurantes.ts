@@ -8,6 +8,8 @@ export type RestauranteRow = {
   ciudad: string;
   marca_id: number | null;
   marca: string;
+  mediaGoogle: number | null;
+  totalResenasGoogle: number | null;
 };
 
 function toNumber(value: unknown): number {
@@ -29,12 +31,23 @@ function normalizeRestaurante(
     (marcaId != null ? marcas.get(marcaId) : null) ??
     "";
 
+  const mediaGoogleRaw = row.media_google;
+  const totalResenasGoogleRaw = row.total_resenas_google;
+
   return {
     id: toNumber(id),
     nombre: String(nombre),
     ciudad: String(row.ciudad ?? row.city ?? row.ubicacion ?? ""),
     marca_id: marcaId,
     marca,
+    mediaGoogle:
+      mediaGoogleRaw != null && Number.isFinite(Number(mediaGoogleRaw))
+        ? Number(mediaGoogleRaw)
+        : null,
+    totalResenasGoogle:
+      totalResenasGoogleRaw != null && Number.isFinite(Number(totalResenasGoogleRaw))
+        ? Number(totalResenasGoogleRaw)
+        : null,
   };
 }
 
@@ -71,6 +84,8 @@ export function mergeRestauranteIntoKpi(
     restaurante: meta.nombre || row.restaurante,
     ciudad: meta.ciudad || row.ciudad,
     marca: meta.marca || row.marca,
+    media_google: meta.mediaGoogle,
+    total_resenas_google: meta.totalResenasGoogle,
   };
 }
 

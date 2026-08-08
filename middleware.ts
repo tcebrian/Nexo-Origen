@@ -11,14 +11,25 @@ import { createClient } from "@/lib/supabase/middleware";
 import { hasSupabaseConfig } from "@/lib/supabase/env";
 
 export async function middleware(request: NextRequest) {
-  if (!hasSupabaseConfig()) {
-    return NextResponse.next();
-  }
-
   const { pathname } = request.nextUrl;
   const isDashboardRoute =
     pathname === "/dashboard" || pathname.startsWith("/dashboard/");
   const isApiRoute = isProtectedApiPath(pathname);
+
+  if (!hasSupabaseConfig()) {
+    // Sin credenciales de Supabase no se puede verificar sesión ni rol:
+    // las rutas protegidas deben bloquearse, no dejarse pasar sin autenticar.
+    if (isDashboardRoute) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("error", "config");
+      return NextResponse.redirect(loginUrl);
+    }
+    if (isApiRoute) {
+      return NextResponse.json({ error: "Servicio no configurado" }, { status: 503 });
+    }
+    return NextResponse.next();
+  }
 
   const { supabase, response } = createClient(request);
   const {

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { fetchAssignedRestaurants } from "@/lib/auth/assigned-restaurant";
+import { fetchAssignedRestaurants, resolveRestaurantsByIds } from "@/lib/auth/assigned-restaurant";
 import { fetchPerfilForAuth } from "@/lib/auth/perfiles";
 import { isPerfilAuthorized, normalizeRole } from "@/lib/auth/permissions";
 import { fetchUserScope } from "@/lib/auth/scopes";
@@ -24,10 +24,16 @@ export async function getAuthSession(): Promise<AuthSession | null> {
   }
 
   const scope = await fetchUserScope(user.id, perfilResult.perfil!);
+  const rol = normalizeRole(perfilResult.perfil!.rol);
+
+  // Perfil de un solo restaurante (restaurante_user, o empresa/marca admin con un único local):
+  // usa la misma vista compacta de "restaurante único".
   const assignedRestaurants =
-    normalizeRole(perfilResult.perfil!.rol) === "restaurante_user"
+    rol === "restaurante_user"
       ? await fetchAssignedRestaurants(user.id)
-      : [];
+      : scope.restauranteIds?.length === 1
+        ? await resolveRestaurantsByIds(scope.restauranteIds)
+        : [];
 
   return {
     userId: user.id,

@@ -7,7 +7,6 @@ import {
 } from "@/lib/dates/period";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-const SAVED_PERIOD_KEY = "nexo-origen-saved-period";
 const SESSION_PERIOD_KEY = "nexo-origen-session-period";
 
 export type DateRange = {
@@ -16,18 +15,9 @@ export type DateRange = {
   source: "calendar" | "saved" | "preset";
 };
 
-export type SavedPeriod = {
-  start: Date;
-  end: Date;
-};
-
 type DateRangeContextValue = {
   range: DateRange;
-  savedPeriod: SavedPeriod | null;
   setRange: (start: Date, end: Date, source?: DateRange["source"]) => void;
-  savePeriod: (start: Date, end: Date) => void;
-  applySavedPeriod: () => void;
-  clearSavedPeriod: () => void;
   resetToToday: () => void;
 };
 
@@ -63,29 +53,19 @@ function getTodayRange(): DateRange {
   return buildRange(today, today, "preset");
 }
 
-/** Rango inicial: últimas 2 semanas (las reseñas rara vez son solo de hoy). */
+/** Rango inicial: semana natural actual (lunes a domingo). */
 function getDefaultRange(): DateRange {
-  const end = normalizeDate(new Date());
-  const start = normalizeDate(new Date());
-  start.setDate(start.getDate() - 13);
+  const today = normalizeDate(new Date());
+  const day = today.getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+  const diffToMonday = day === 0 ? 6 : day - 1;
+
+  const start = normalizeDate(new Date(today));
+  start.setDate(start.getDate() - diffToMonday);
+
+  const end = normalizeDate(new Date(today));
+  end.setDate(end.getDate() + (6 - diffToMonday));
+
   return buildRange(start, end, "preset");
-}
-
-function parseStoredPeriod(value: string | null): SavedPeriod | null {
-  if (!value) return null;
-
-  try {
-    const parsed = JSON.parse(value) as { start?: string; end?: string };
-    if (!parsed.start || !parsed.end) return null;
-
-    const start = parseDateKeyStart(parsed.start);
-    const end = parseDateKeyStart(parsed.end);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-
-    return buildRange(start, end);
-  } catch {
-    return null;
-  }
 }
 
 function parseSessionRange(value: string | null): DateRange | null {
@@ -128,7 +108,6 @@ function persistSessionRange(range: DateRange) {
 
 export function DateRangeProvider({ children }: { children: React.ReactNode }) {
   const [range, setRangeState] = useState<DateRange>(getDefaultRange);
-  const [savedPeriod, setSavedPeriod] = useState<SavedPeriod | null>(null);
   useEffect(() => {
     const sessionRange = parseSessionRange(sessionStorage.getItem(SESSION_PERIOD_KEY));
     if (sessionRange) {
@@ -138,42 +117,15 @@ export function DateRangeProvider({ children }: { children: React.ReactNode }) {
       setRangeState(initial);
       persistSessionRange(initial);
     }
-
-    setSavedPeriod(parseStoredPeriod(localStorage.getItem(SAVED_PERIOD_KEY)));
   }, []);
 
   const value = useMemo(
     () => ({
       range,
-      savedPeriod,
       setRange: (start: Date, end: Date, source: DateRange["source"] = "calendar") => {
         const next = buildRange(start, end, source);
         setRangeState(next);
         persistSessionRange(next);
-      },
-      savePeriod: (start: Date, end: Date) => {
-        const period = buildRange(start, end);
-        localStorage.setItem(
-          SAVED_PERIOD_KEY,
-          JSON.stringify({
-            start: formatDateInput(period.start),
-            end: formatDateInput(period.end),
-          })
-        );
-        setSavedPeriod({ start: period.start, end: period.end });
-        const next = { ...period, source: "saved" as const };
-        setRangeState(next);
-        persistSessionRange(next);
-      },
-      applySavedPeriod: () => {
-        if (!savedPeriod) return;
-        const next = buildRange(savedPeriod.start, savedPeriod.end, "saved");
-        setRangeState(next);
-        persistSessionRange(next);
-      },
-      clearSavedPeriod: () => {
-        localStorage.removeItem(SAVED_PERIOD_KEY);
-        setSavedPeriod(null);
       },
       resetToToday: () => {
         const today = getTodayRange();
@@ -181,7 +133,7 @@ export function DateRangeProvider({ children }: { children: React.ReactNode }) {
         persistSessionRange(today);
       },
     }),
-    [range, savedPeriod]
+    [range]
   );
 
   return <DateRangeContext.Provider value={value}>{children}</DateRangeContext.Provider>;

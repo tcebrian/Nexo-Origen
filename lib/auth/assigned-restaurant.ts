@@ -22,9 +22,8 @@ async function fetchUsuarioRestauranteIds(userId: string): Promise<number[]> {
     .filter((id) => Number.isFinite(id));
 }
 
-/** Restaurantes asignados al usuario (tabla usuario_restaurantes + catálogo KPI). */
-export async function fetchAssignedRestaurants(userId: string): Promise<AssignedRestaurant[]> {
-  const ids = await fetchUsuarioRestauranteIds(userId);
+/** Resuelve una lista de ids de restaurante contra el catálogo KPI. */
+export async function resolveRestaurantsByIds(ids: number[]): Promise<AssignedRestaurant[]> {
   if (ids.length === 0) return [];
 
   const catalog = await fetchAllKpiRows();
@@ -44,4 +43,10 @@ export async function fetchAssignedRestaurants(userId: string): Promise<Assigned
       } satisfies AssignedRestaurant;
     })
     .filter((entry): entry is AssignedRestaurant => entry != null);
+}
+
+/** Restaurantes asignados al usuario (tabla usuario_restaurantes + catálogo KPI). */
+export async function fetchAssignedRestaurants(userId: string): Promise<AssignedRestaurant[]> {
+  const ids = await fetchUsuarioRestauranteIds(userId);
+  return resolveRestaurantsByIds(ids);
 }

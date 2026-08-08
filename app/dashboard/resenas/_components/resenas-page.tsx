@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatDateRangeLabel, getSelectedRange, useDateRange } from "../../_components/date-range-context";
-import { tenant } from "../../tenant";
+import { useAuth } from "../../_components/auth-context";
 import { exportReviewsToExcel } from "@/lib/reviews/export-excel";
 import { filterReviews, getReviewStats, sortReviewsByPriority } from "@/lib/reviews/filters";
 import type { ReviewFilters } from "@/lib/reviews/types";
@@ -32,6 +32,7 @@ type SummaryFilter = "all" | "positives" | "negatives" | "unreviewed";
 export function ResenasPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { empresaNombre } = useAuth();
   const { range: activeRange } = useDateRange();
   const range = useMemo(() => getSelectedRange(activeRange), [activeRange]);
   const periodLabel = formatDateRangeLabel(activeRange);
@@ -143,7 +144,7 @@ export function ResenasPage() {
       await exportReviewsToExcel({
         reviews: filteredReviews,
         stats,
-        tenantName: tenant.name,
+        tenantName: empresaNombre,
         periodLabel,
       });
     } finally {

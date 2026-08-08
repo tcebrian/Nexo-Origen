@@ -5,8 +5,6 @@ import {
   SHARED_BRAND_LOGO_SIZES,
   type BrandLogoSize,
 } from "@/lib/restaurants/brand-visuals";
-import { tenant } from "../tenant";
-
 type AllBrandsMarkProps = {
   size?: BrandLogoSize;
   className?: string;
@@ -25,7 +23,7 @@ const monogramSizeMap: Record<BrandLogoSize, string> = {
 export function AllBrandsMark({
   size = "md",
   className = "",
-  alt = tenant.name,
+  alt = "Nexo Origen",
 }: AllBrandsMarkProps) {
   const visual = ALL_BRANDS_VISUAL;
   const logoClass = SHARED_BRAND_LOGO_SIZES[size];

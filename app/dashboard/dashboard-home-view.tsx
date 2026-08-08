@@ -14,7 +14,6 @@ import { KpiCard } from "./_components/kpi";
 import { PageErrorState } from "./_components/page-error-state";
 import { glass } from "./_components/styles";
 import { skeletonBlock } from "./_components/ui/nexo-styles";
-import { tenant } from "./tenant";
 import { CommentExcerpt } from "./_components/comment-excerpt";
 import { MediaImpactDisplay } from "./_components/media-impact-display";
 import { StaggerItem, StaggerList } from "./_components/motion/stagger";
@@ -29,15 +28,18 @@ const marcaHex: Record<string, string> = {
   Popeyes: "#F97316",
   "Santa Gloria": "#10B981",
   "Tim Hortons": "#3B82F6",
+  Vault: "#F8E914",
   Otros: "#6B7280",
 };
 import { useAuth } from "./_components/auth-context";
 import { RestaurantUserHomeView } from "./_components/restaurant-user-home-view";
 
 export function DashboardHomeView() {
-  const { isRestaurantUser } = useAuth();
+  const { primaryRestaurant } = useAuth();
 
-  if (isRestaurantUser) {
+  // Perfiles con un único restaurante (restaurante_user, o un cliente con un solo
+  // local) usan la vista compacta de restaurante en vez del panel de red.
+  if (primaryRestaurant) {
     return <RestaurantUserHomeView />;
   }
 
@@ -45,7 +47,7 @@ export function DashboardHomeView() {
 }
 
 function NetworkDashboardHomeView() {
-  const { displayName } = useAuth();
+  const { displayName, empresaNombre } = useAuth();
   const { range: activeRange } = useDateRange();
   const range = useMemo(() => getSelectedRange(activeRange), [activeRange]);
   const days = useMemo(
@@ -120,7 +122,7 @@ function NetworkDashboardHomeView() {
       value: String(data.totalRestaurantes),
       animateValue: data.totalRestaurantes,
       decimals: 0,
-      change: `${data.totalRestaurantes} locales en ${tenant.name}`,
+      change: `${data.totalRestaurantes} locales en ${empresaNombre}`,
       icon: "store" as const,
       positive: null,
     },
@@ -134,17 +136,17 @@ function NetworkDashboardHomeView() {
           Actualizando datos…
         </div>
       )}
-      <div className="mb-8 flex items-end justify-between pt-2">
+      <div className="mb-6 flex flex-col gap-4 pt-2 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-3xl font-light tracking-tight">
-            Buenos días, {displayName} <span className="text-2xl">👋</span>
+          <h2 className="text-xl font-light tracking-tight sm:text-2xl lg:text-3xl">
+            Buenos días, {displayName} <span className="text-lg sm:text-xl lg:text-2xl">👋</span>
           </h2>
           <p className="mt-2 text-sm text-gray-400">
-            Resumen de {tenant.name} · {formatDateRangeLabel(activeRange)}
+            Resumen de {empresaNombre} · {formatDateRangeLabel(activeRange)}
           </p>
         </div>
 
-        <div className="text-right text-sm text-gray-500">
+        <div className="text-sm text-gray-500 sm:text-right">
           <p>Periodo analizado</p>
           <p className="mt-2 text-white">
             <span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-400" />
@@ -153,7 +155,7 @@ function NetworkDashboardHomeView() {
         </div>
       </div>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {kpis.map((kpi) => (
           <KpiCard
             key={kpi.title}

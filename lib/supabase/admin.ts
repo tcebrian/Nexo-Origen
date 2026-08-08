@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 let adminClient: SupabaseClient | null = null;
 
@@ -24,7 +24,7 @@ export function getSupabaseAdmin(): SupabaseClient | null {
 /** En servidor usa service role si existe; en cliente la anon key. */
 export function getSupabaseDataClient(): SupabaseClient {
   if (typeof window !== "undefined") {
-    return supabase;
+    return getSupabase();
   }
 
   const admin = getSupabaseAdmin();
@@ -38,5 +38,5 @@ export function getSupabaseDataClient(): SupabaseClient {
     });
   }
 
-  return supabase;
+  return getSupabase();
 }

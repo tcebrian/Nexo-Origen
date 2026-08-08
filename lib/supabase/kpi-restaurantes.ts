@@ -18,6 +18,9 @@ export type KpiRestaurantRow = {
   resenas_positivas: number;
   ultima_resena: string | null;
   estado: string;
+  /** Media pública de Google Maps (columna `restaurantes.media_google`, vía enrichKpiRows). */
+  media_google: number | null;
+  total_resenas_google: number | null;
 };
 
 export type PeriodQuery = {
@@ -42,6 +45,8 @@ export function normalizeKpiRow(row: Record<string, unknown>): KpiRestaurantRow 
     resenas_positivas: toNumber(row.resenas_positivas),
     ultima_resena: row.ultima_resena ? String(row.ultima_resena) : null,
     estado: String(row.estado ?? ""),
+    media_google: null,
+    total_resenas_google: null,
   };
 }
 

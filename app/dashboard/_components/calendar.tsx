@@ -8,7 +8,6 @@ type CalendarProps = {
   viewDate: Date;
   rangeStart: Date | null;
   rangeEnd: Date | null;
-  savedPeriod?: { start: Date; end: Date } | null;
   onViewChange: (date: Date) => void;
   onSelect: (date: Date) => void;
 };
@@ -34,7 +33,6 @@ export function Calendar({
   viewDate,
   rangeStart,
   rangeEnd,
-  savedPeriod,
   onViewChange,
   onSelect,
 }: CalendarProps) {
@@ -83,7 +81,6 @@ export function Calendar({
           const isEnd = rangeEnd ? isSameDay(date, rangeEnd) : false;
           const inRange = hasCompleteRange && isDateInRange(date, rangeStart, rangeEnd);
           const isToday = isSameDay(date, today);
-          const inSavedPeriod = savedPeriod ? isDateInRange(date, savedPeriod.start, savedPeriod.end) : false;
 
           return (
             <button
@@ -101,9 +98,6 @@ export function Calendar({
               }`}
             >
               {date.getDate()}
-              {inSavedPeriod && !isStart && !isEnd && !inRange && (
-                <span className="absolute bottom-1 h-1 w-1 rounded-full bg-amber-400" />
-              )}
             </button>
           );
         })}

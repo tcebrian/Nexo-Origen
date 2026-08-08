@@ -5,7 +5,7 @@ import { fetchAllKpiRows } from "@/lib/supabase/kpi-restaurantes";
 import { fetchMarcas } from "@/lib/supabase/marcas";
 import { fetchRestaurantesCatalog } from "@/lib/supabase/restaurantes";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 import { redirect } from "next/navigation";
 
@@ -20,6 +20,7 @@ export default async function TestSupabasePage() {
   const hasAnonKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   const hasServiceRole = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+  const supabase = getSupabase();
   const dataClient = getSupabaseAdmin() ?? supabase;
 
   const [

@@ -60,26 +60,26 @@ export function KpiCard({
   decimals?: number;
 }) {
   return (
-    <div className={`p-5 ${glass}`}>
+    <div className={`p-3.5 sm:p-5 ${glass}`}>
       <div className="flex items-center justify-between">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/10">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-violet-400/20 bg-violet-500/10 sm:h-11 sm:w-11">
           <KpiIcon type={icon} />
         </div>
       </div>
 
-      <div className="mt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-500">{title}</p>
+      <div className="mt-3 sm:mt-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-500 sm:text-[11px]">{title}</p>
         {animateValue !== undefined ? (
           <AnimatedNumber
             value={animateValue}
             decimals={decimals}
-            className="mt-2 block font-mono text-3xl font-light tabular-nums text-white"
+            className="mt-1.5 block font-mono text-xl font-light tabular-nums text-white sm:mt-2 sm:text-3xl"
           />
         ) : (
-          <p className="mt-2 font-mono text-3xl font-light tabular-nums text-white">{value}</p>
+          <p className="mt-1.5 font-mono text-xl font-light tabular-nums text-white sm:mt-2 sm:text-3xl">{value}</p>
         )}
         <p
-          className={`mt-2 text-xs ${
+          className={`mt-1.5 text-[11px] sm:mt-2 sm:text-xs ${
             positive === true
               ? "text-emerald-400"
               : positive === false

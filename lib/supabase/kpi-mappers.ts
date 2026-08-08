@@ -34,6 +34,7 @@ export function brandBucket(marca: string): string {
   if (m.includes("popeyes")) return "Popeyes";
   if (m.includes("santa")) return "Santa Gloria";
   if (m.includes("tim")) return "Tim Hortons";
+  if (m.includes("vault")) return "Vault";
   return "Otros";
 }
 
@@ -114,6 +115,8 @@ export function metricsToOperational(
     resenas_positivas: metrics.resenasPositivas,
     ultima_resena: metrics.ultimaResena,
     estado: metrics.statusLabel,
+    media_google: null,
+    total_resenas_google: null,
   };
   return catalogRowToOperational(catalog, metrics, extras);
 }

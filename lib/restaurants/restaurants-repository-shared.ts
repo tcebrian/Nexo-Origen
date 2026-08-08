@@ -168,6 +168,8 @@ export function createRestaurantsRepository(loadPeriod: PeriodLoader): Restauran
         const detail: RestaurantDetail = {
           ...operational,
           lastUpdatedAt: period.fetchedAt,
+          googleMedia: baseRow.media_google,
+          googleReviewsTotal: baseRow.total_resenas_google,
           healthStatus: health.status,
           healthStatusLabel: health.label,
           primaryAction: buildPrimaryAction({

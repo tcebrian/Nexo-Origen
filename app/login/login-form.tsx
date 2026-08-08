@@ -21,6 +21,9 @@ export function LoginForm() {
     if (searchParams.get("error") === "forbidden") {
       return "No tienes permiso para acceder a esa sección.";
     }
+    if (searchParams.get("error") === "config") {
+      return "El servicio no está disponible ahora mismo. Inténtalo más tarde.";
+    }
     if (searchParams.get("logout") === "1") {
       return null;
     }
@@ -29,18 +32,23 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-
     async function prepareLogin() {
-      if (searchParams.get("logout") === "1") {
-        await supabase.auth.signOut();
-        await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-        setHasSession(false);
-        return;
-      }
+      try {
+        const supabase = createClient();
 
-      const { data } = await supabase.auth.getUser();
-      setHasSession(Boolean(data.user));
+        if (searchParams.get("logout") === "1") {
+          await supabase.auth.signOut();
+          await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+          setHasSession(false);
+          return;
+        }
+
+        const { data } = await supabase.auth.getUser();
+        setHasSession(Boolean(data.user));
+      } catch (err) {
+        console.error("[LoginForm] No se pudo inicializar Supabase", err);
+        setError("El servicio de autenticación no está disponible. Inténtalo más tarde.");
+      }
     }
 
     void prepareLogin();
@@ -88,7 +96,7 @@ export function LoginForm() {
   }
 
   return (
-    <form className="mt-9 space-y-5" onSubmit={handleSubmit}>
+    <form className="mt-5 space-y-3.5 sm:mt-9 sm:space-y-5" onSubmit={handleSubmit}>
       {hasSession ? (
         <div className="rounded-xl border border-purple-300/25 bg-purple-500/10 px-4 py-3 text-center text-sm text-purple-50">
           <p>Ya tienes una sesión activa.</p>
@@ -118,7 +126,7 @@ export function LoginForm() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="ejemplo@empresa.com"
-          className="w-full rounded-xl border border-white/15 bg-black/25 px-5 py-4 text-white outline-none backdrop-blur-xl transition placeholder:text-gray-400/60 focus:border-purple-300/80 focus:ring-2 focus:ring-purple-500/25"
+          className="w-full rounded-xl border border-white/15 bg-black/25 px-5 py-3 text-white outline-none backdrop-blur-xl transition placeholder:text-gray-400/60 focus:border-purple-300/80 focus:ring-2 focus:ring-purple-500/25 sm:py-4"
         />
       </div>
 
@@ -133,7 +141,7 @@ export function LoginForm() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           placeholder="••••••••"
-          className="w-full rounded-xl border border-white/15 bg-black/25 px-5 py-4 text-white outline-none backdrop-blur-xl transition placeholder:text-gray-400/60 focus:border-purple-300/80 focus:ring-2 focus:ring-purple-500/25"
+          className="w-full rounded-xl border border-white/15 bg-black/25 px-5 py-3 text-white outline-none backdrop-blur-xl transition placeholder:text-gray-400/60 focus:border-purple-300/80 focus:ring-2 focus:ring-purple-500/25 sm:py-4"
         />
 
         <div className="mt-3 text-right">
@@ -147,7 +155,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.14] bg-white/[0.08] py-4 text-[15px] font-medium text-white transition hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.14] bg-white/[0.08] py-3 text-[15px] font-medium text-white transition hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-60 sm:py-4"
         >
           {loading ? "Iniciando sesión..." : "Iniciar sesión"}
         </button>

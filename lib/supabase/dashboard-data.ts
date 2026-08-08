@@ -36,6 +36,7 @@ const BRAND_BUCKET_COLORS: Record<string, string> = {
   Popeyes: "bg-orange-500",
   "Santa Gloria": "bg-emerald-500",
   "Tim Hortons": "bg-blue-500",
+  Vault: "bg-yellow-400",
   Otros: "bg-gray-500",
 };
 
@@ -196,7 +197,7 @@ function buildDistribucionMarca(rows: KpiRestaurantRow[]): DistribucionMarcaItem
   }
 
   const sum = Array.from(totals.values()).reduce((acc, n) => acc + n, 0) || 1;
-  const order = ["Burger King", "Popeyes", "Santa Gloria", "Tim Hortons", "Otros"];
+  const order = ["Burger King", "Popeyes", "Santa Gloria", "Tim Hortons", "Vault", "Otros"];
 
   return order
     .filter((name) => totals.has(name))

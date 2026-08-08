@@ -1,5 +1,5 @@
 import { brands } from "@/app/dashboard/restaurantes/data";
-import { tenant } from "../../tenant";
+import { useAuth } from "../../_components/auth-context";
 import { KpiCard } from "../../_components/kpi";
 import { getBrandSnapshot } from "@/lib/restaurants/brand-stats";
 import type { RestaurantOperational } from "@/lib/restaurants/types";
@@ -11,9 +11,10 @@ type RestaurantesBrandKpisProps = {
 };
 
 export function RestaurantesBrandKpis({ brand, operationalList }: RestaurantesBrandKpisProps) {
+  const { empresaNombre } = useAuth();
   const snapshot = getBrandSnapshot(operationalList, brand);
   const brandName =
-    brand === "todas" ? tenant.name : (brands.find((b) => b.id === brand)?.name ?? brand);
+    brand === "todas" ? empresaNombre : (brands.find((b) => b.id === brand)?.name ?? brand);
 
   const kpis = [
     {

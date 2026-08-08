@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["puppeteer", "playwright", "sharp"],
   images: {
     formats: ["image/avif", "image/webp"],
+    qualities: [75, 90],
     remotePatterns: [
       {
         protocol: "https",

@@ -22,8 +22,13 @@ const monogramSizeMap: Record<BrandLogoSize, string> = {
   rail: "h-11 w-11 text-[11px]",
 };
 
+const FALLBACK_VISUAL = {
+  monogram: "?",
+  accent: "#6B7280",
+} as const;
+
 export function BrandMark({ brand, size = "md", className = "" }: BrandMarkProps) {
-  const visual = BRAND_VISUALS[brand];
+  const visual = BRAND_VISUALS[brand] ?? FALLBACK_VISUAL;
   const logoClass = SHARED_BRAND_LOGO_SIZES[size];
 
   if (visual.logo) {

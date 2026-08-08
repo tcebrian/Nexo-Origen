@@ -373,6 +373,8 @@ function aggregateFromResenas(
         resenas_positivas: 0,
         ultima_resena: null,
         estado: "",
+        media_google: null,
+        total_resenas_google: null,
       }
     );
 

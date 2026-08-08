@@ -191,7 +191,320 @@ export function RestaurantUserHomeView() {
 
   return (
     <div className="pb-8">
-      <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      {/* Móvil: cabecera compacta + tarjeta hero + franja de estado */}
+      <div className="lg:hidden">
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[14px] text-gray-300">
+            Hola, <span className="font-medium text-white">{displayName.split(" ")[0]}</span> 👋
+          </p>
+          <button
+            type="button"
+            onClick={openPanel}
+            className="inline-flex items-center gap-1.5 text-[12px] text-gray-500 transition hover:text-gray-300"
+          >
+            <IconCalendar />
+            {periodLabel}
+          </button>
+        </div>
+
+        <div className={`relative mb-4 overflow-hidden p-5 ${glass}`}>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-violet-500/15 blur-3xl"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-fuchsia-500/10 blur-3xl"
+          />
+
+          <div className="relative flex items-center gap-3">
+            <BrandMark brand={detail.brand} size="sm" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[15px] font-semibold text-white">{detail.name}</p>
+              <p className="truncate text-[12px] text-gray-500">{detail.location}</p>
+            </div>
+            <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium ${health.bg} ${health.text} ${health.border}`}>
+              {detail.statusLabel}
+            </span>
+          </div>
+
+          <div className="relative mt-5 grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-500">Media de Google</p>
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <p className="font-mono text-[32px] font-semibold leading-none tabular-nums text-white">
+                  {detail.googleMedia != null ? detail.googleMedia.toFixed(1) : "—"}
+                </p>
+                <span className="text-amber-400">★</span>
+              </div>
+              <p className="mt-1 text-[11px] text-gray-500">
+                {detail.googleReviewsTotal != null
+                  ? `${detail.googleReviewsTotal.toLocaleString("es-ES")} reseñas`
+                  : "Sin datos de Google"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-500">Media del periodo</p>
+              <div className="mt-1.5 flex items-baseline gap-1.5">
+                <p className="font-mono text-[32px] font-semibold leading-none tabular-nums text-white">
+                  {stats.periodMedia.toFixed(2)}
+                </p>
+                <span className="text-violet-400">★</span>
+              </div>
+              <p className="mt-1 text-[11px] text-gray-500">Objetivo {detail.targetMedia.toFixed(1)}</p>
+            </div>
+          </div>
+
+          <div className="relative mt-4 flex items-center justify-between gap-3 border-t border-white/[0.06] pt-4">
+            <p className="text-[12px] text-gray-400">
+              <span className="font-medium text-white">{stats.periodReviews}</span> reseñas en este periodo
+              analizado
+            </p>
+            <p
+              className={`shrink-0 text-[12px] font-medium ${
+                stats.mediaTrend === "up"
+                  ? "text-emerald-400"
+                  : stats.mediaTrend === "down"
+                    ? "text-red-400"
+                    : "text-gray-500"
+              }`}
+            >
+              {stats.mediaChange === "0.00" ? "Sin cambio" : `${stats.mediaChange} vs. anterior`}
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-5 flex gap-3">
+          <div className={`flex flex-1 items-center gap-3 px-4 py-3.5 ${glass}`}>
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${health.bg}`}>
+              <span className={`h-2.5 w-2.5 rounded-full ${health.dot}`} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.1em] text-gray-500">Estado</p>
+              <p className={`truncate text-[14px] font-semibold ${health.text}`}>{detail.statusLabel}</p>
+            </div>
+          </div>
+
+          <Link
+            href={detail.alertsHref}
+            className={`flex flex-1 items-center gap-3 px-4 py-3.5 transition hover:border-red-400/20 ${glass}`}
+          >
+            <span
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                detail.activeAlerts > 0 ? "bg-red-500/15" : "bg-white/[0.04]"
+              }`}
+            >
+              <svg
+                className={`h-4 w-4 ${detail.activeAlerts > 0 ? "text-red-300" : "text-gray-500"}`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+              >
+                <path d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M9.5 17a2.5 2.5 0 005 0" strokeLinecap="round" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.1em] text-gray-500">Alertas</p>
+              <p className="truncate text-[14px] font-semibold text-white">
+                {detail.activeAlerts} activa{detail.activeAlerts === 1 ? "" : "s"}
+              </p>
+            </div>
+          </Link>
+        </div>
+
+        {/* Evolución — ceñida al periodo filtrado arriba, no a un mes fijo con huecos vacíos */}
+        <div className={`mb-5 overflow-hidden p-5 ${glass}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-[14px] font-medium text-white">Evolución de tu media</h3>
+              <p className="mt-0.5 text-[11px] text-gray-500">{periodLabel}</p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="font-mono text-[22px] font-semibold leading-none tabular-nums text-white">
+                {stats.periodMedia.toFixed(2)}
+              </p>
+              <p
+                className={`mt-1 text-[11px] font-medium ${
+                  stats.mediaTrend === "up"
+                    ? "text-emerald-400"
+                    : stats.mediaTrend === "down"
+                      ? "text-red-400"
+                      : "text-gray-500"
+                }`}
+              >
+                {stats.mediaChange === "0.00" ? "Sin cambio" : stats.mediaChange}
+              </p>
+            </div>
+          </div>
+
+          <div className="relative mt-4 h-[190px]">
+            {detail.chartValues.length > 1 ? (
+              <LineChart
+                values={detail.chartValues}
+                labels={detail.chartLabels}
+                goalLine={detail.targetMedia}
+                height={190}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center rounded-xl border border-white/[0.06] bg-black/20 px-4 text-center text-[12px] text-gray-500">
+                Necesitamos más reseñas en este periodo para dibujar la evolución
+              </div>
+            )}
+          </div>
+        </div>
+
+        {detail.primaryAction ? (
+          <div className={`relative mb-5 overflow-hidden border-violet-400/20 bg-gradient-to-br from-violet-500/[0.14] to-transparent p-5 ${glass}`}>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-300/80">
+              Acción recomendada
+            </p>
+            <p className="mt-2 text-[14px] leading-relaxed text-gray-100">{detail.primaryAction}</p>
+            <Link
+              href={detail.alertsHref}
+              className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-violet-300"
+            >
+              Ver acciones sugeridas →
+            </Link>
+          </div>
+        ) : null}
+
+        <div className={`mb-5 p-5 ${glass}`}>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-500">Nexo Prevent</p>
+          <p className="mt-0.5 text-[13px] font-medium text-white">Tu escudo reputacional</p>
+          <div className="mt-4 flex justify-center">
+            <PreventGauge value={shieldPercent} label={preventLabel} inactive={!hasShield} />
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-white/[0.06] bg-black/20 px-3.5 py-3 text-center">
+              <p className="font-mono text-[20px] font-semibold tabular-nums text-white">
+                +{detail.recommendedPositiveReviews}
+              </p>
+              <p className="mt-0.5 text-[10px] text-gray-500">positivas necesarias</p>
+            </div>
+            <div className="rounded-xl border border-white/[0.06] bg-black/20 px-3.5 py-3 text-center">
+              <p className="font-mono text-[20px] font-semibold tabular-nums text-white">{detail.negativeBuffer}</p>
+              <p className="mt-0.5 text-[10px] text-gray-500">negativas absorbibles</p>
+            </div>
+          </div>
+          <p className="mt-4 rounded-xl border border-white/[0.06] bg-black/20 px-3.5 py-2.5 text-[12px] leading-relaxed text-gray-300">
+            {detail.preventRecommendation}
+          </p>
+        </div>
+
+        {detail.detectedIssues.length > 0 ? (
+          <div className={`mb-5 p-5 ${glass}`}>
+            <h3 className="text-[14px] font-medium text-white">Principales motivos</h3>
+            <p className="mt-0.5 text-[11px] text-gray-500">En reseñas negativas del periodo</p>
+            <div className="mt-4 space-y-3.5">
+              {detail.detectedIssues.slice(0, 4).map((issue, index) => {
+                const colors = ["bg-red-400", "bg-orange-400", "bg-amber-400", "bg-violet-400"];
+                return (
+                  <div key={issue.id}>
+                    <div className="mb-1.5 flex items-center justify-between gap-3 text-[12px]">
+                      <span className="truncate text-gray-300">{issue.label}</span>
+                      <span className="shrink-0 tabular-nums text-gray-500">{issue.intensity}%</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                      <div
+                        className={`h-full rounded-full ${colors[index % colors.length]}`}
+                        style={{ width: `${issue.intensity}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {alertEvents.length > 0 ? (
+          <div className="mb-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-[14px] font-medium text-white">Alertas activas</h3>
+              <Link href={detail.alertsHref} className="text-[12px] text-violet-300">
+                Ver todas
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {alertEvents.slice(0, 3).map((event) => (
+                <div key={event.id} className={`border-red-400/15 p-4 ${glass}`}>
+                  <p className="text-[12px] font-medium text-red-200">
+                    {event.type === "alert" ? "Alerta crítica" : "Seguimiento"}
+                  </p>
+                  <CommentExcerpt
+                    text={event.description}
+                    reviewHref={event.reviewId ? `/dashboard/resenas/${event.reviewId}` : undefined}
+                    maxLength={90}
+                    className="mt-1.5 text-[12px] leading-relaxed text-gray-400"
+                    quote={false}
+                    readMoreLabel=" Leer más →"
+                  />
+                  <p className="mt-1.5 text-[11px] text-gray-500">
+                    {event.occurredAt.toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-[14px] font-medium text-white">Reseñas recientes</h3>
+            <Link href={detail.reviewsHref} className="text-[12px] text-violet-300">
+              Ver todas
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {detail.recentReviews.length > 0 ? (
+              detail.recentReviews.slice(0, 5).map((review) => (
+                <div key={review.id} className={`p-4 ${glass}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-medium text-gray-100">{review.author}</p>
+                      <p className="mt-0.5 text-[11px] text-gray-500">
+                        {review.date.toLocaleDateString("es-ES", { day: "numeric", month: "short" })} · {review.rating}★
+                      </p>
+                    </div>
+                    <SentimentIcon sentiment={review.sentiment} />
+                  </div>
+                  <CommentExcerpt
+                    text={review.text}
+                    reviewHref={`/dashboard/resenas/${review.id}`}
+                    maxLength={90}
+                    className="mt-2 text-[12px] leading-relaxed text-gray-400"
+                    quote
+                    readMoreLabel=" Leer más →"
+                  />
+                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
+                    <button
+                      type="button"
+                      disabled
+                      aria-disabled="true"
+                      className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-[11px] font-medium text-gray-400 opacity-70"
+                    >
+                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                        <path d="M9 10l-5 4 5 4M4 14h11a5 5 0 0 0 0-10h-1" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      Responder
+                    </button>
+                    <span className="rounded-full border border-purple-400/25 bg-purple-500/10 px-2 py-0.5 text-[9px] text-purple-200">
+                      Próximamente
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-[13px] text-gray-500">Sin reseñas recientes</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <header className="mb-6 hidden lg:flex lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-[28px] font-semibold tracking-tight text-white lg:text-[32px]">
             Buenos días, {displayName.split(" ")[0]} <span className="text-[26px]">👋</span>
@@ -220,7 +533,7 @@ export function RestaurantUserHomeView() {
         </div>
       </header>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="hidden gap-4 lg:grid lg:grid-cols-2 xl:grid-cols-4">
         <div className={`p-5 ${glass}`}>
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">Media actual</p>
           <div className="mt-3 flex items-end justify-between gap-3">
@@ -264,7 +577,7 @@ export function RestaurantUserHomeView() {
         </div>
       </section>
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-12">
+      <div className="mt-5 hidden gap-5 lg:grid xl:grid-cols-12">
         <div className="space-y-5 xl:col-span-8">
           <section className={`overflow-hidden border-violet-400/15 bg-gradient-to-br from-violet-500/[0.1] via-transparent to-transparent p-6 ${glass}`}>
             <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">

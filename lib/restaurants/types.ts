@@ -115,6 +115,9 @@ export type RestaurantPeriodBreakdown = {
 
 export type RestaurantDetail = RestaurantOperational & {
   lastUpdatedAt: Date;
+  /** Media pública de Google Maps (null si el scraper aún no la ha cargado). */
+  googleMedia: number | null;
+  googleReviewsTotal: number | null;
   healthStatus: HealthStatus;
   healthStatusLabel: "Protegido" | "Vigilancia" | "Riesgo";
   primaryAction: string;

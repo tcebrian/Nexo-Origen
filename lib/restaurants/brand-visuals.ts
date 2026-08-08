@@ -130,6 +130,18 @@ export const BRAND_VISUALS: Record<BrandId, BrandVisual> = {
     gradient: "from-rose-50 to-white",
     ring: "ring-rose-200",
   },
+  vault: {
+    monogram: "VA",
+    logo: "/brands/vault.svg",
+    logoIntrinsic: { width: 710, height: 203 },
+    logoScale: 0.92,
+    accent: "#F8E914",
+    tileBg: "#FFFEF0",
+    tileBorder: "#FEF08A",
+    glow: "rgba(248,233,20,0.16)",
+    gradient: "from-yellow-50 to-white",
+    ring: "ring-yellow-200",
+  },
 };
 
 export const ALL_BRANDS_VISUAL: BrandVisual = {

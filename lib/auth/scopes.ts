@@ -43,19 +43,24 @@ async function fetchEmpresaNombre(
   return typeof data.nombre === "string" ? data.nombre : null;
 }
 
+/**
+ * `marcas` no tiene columna `empresa_id` — se deriva desde `restaurantes`
+ * (que sí tiene `empresa_id` y `marca_id`).
+ */
 async function fetchMarcaIdsByEmpresa(
   client: SupabaseClient,
   empresaId: string
 ): Promise<number[]> {
   const { data, error } = await client
-    .from(SUPABASE_TABLES.marcas)
-    .select("id")
+    .from(SUPABASE_TABLES.restaurantes)
+    .select("marca_id")
     .eq("empresa_id", empresaId);
 
   if (error) return [];
-  return (data ?? [])
-    .map((row) => Number((row as { id: unknown }).id))
+  const marcaIds = (data ?? [])
+    .map((row) => Number((row as { marca_id: unknown }).marca_id))
     .filter((id) => Number.isFinite(id));
+  return Array.from(new Set(marcaIds));
 }
 
 async function fetchRestauranteIdsByMarcaIds(
