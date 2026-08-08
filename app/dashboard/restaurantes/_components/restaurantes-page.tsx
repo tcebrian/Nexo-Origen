@@ -11,6 +11,7 @@ import type { RestaurantFilters } from "@/lib/restaurants/types";
 import { tenant } from "../../tenant";
 import { useRestaurants } from "../_hooks/use-restaurants";
 import { RestaurantesBrandRail } from "./restaurantes-brand-rail";
+import { RestaurantesCard } from "./restaurantes-card";
 import { RestaurantesStatusSummary } from "./restaurantes-status-summary";
 import { RestaurantesTable } from "./restaurantes-table";
 import { RestaurantesToolbar } from "./restaurantes-toolbar";
@@ -150,7 +151,16 @@ export function RestaurantesPage() {
                 </p>
               </div>
             ) : (
-              <RestaurantesTable restaurants={filtered} />
+              <>
+                <div className="space-y-3 lg:hidden">
+                  {filtered.map((restaurant) => (
+                    <RestaurantesCard key={restaurant.id} restaurant={restaurant} />
+                  ))}
+                </div>
+                <div className="hidden lg:block">
+                  <RestaurantesTable restaurants={filtered} />
+                </div>
+              </>
             )}
           </section>
         </>

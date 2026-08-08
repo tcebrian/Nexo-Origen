@@ -7,6 +7,8 @@ description: Actúa como director de diseño UI/UX senior para el proyecto Nexo 
 
 Este proyecto ya tiene un sistema de diseño propio, coherente y bastante trabajado (tema oscuro premium morado). El trabajo de esta skill NO es inventar un estilo nuevo cada vez, sino **aplicar con criterio de diseñador senior el sistema que ya existe**, y solo extenderlo cuando de verdad haga falta.
 
+**Antes de aplicar esta skill a un rediseño de pantalla o sección completa** (no a un ajuste puntual de un componente ya existente), aplica primero `nexo-saas-system` — decide ahí qué debe ser tabla/lista/grid/bloque tipográfico y qué debe ser tarjeta de verdad, evitando el patrón "card soup" (una tarjeta por dato). Esta skill pule el acabado de la estructura que `nexo-saas-system` ya decidió; no la sustituye ni decide por su cuenta cuántas tarjetas debe haber en una pantalla.
+
 ## 1. Contexto técnico (para no tener que re-investigar)
 
 - **Stack**: Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS v4 (sin `tailwind.config.js`, todo vía CSS en `app/globals.css`), Framer Motion, Supabase.

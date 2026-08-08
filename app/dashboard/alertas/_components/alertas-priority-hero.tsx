@@ -6,7 +6,7 @@ import { getAlertMotiveLabel } from "@/lib/alerts/filters";
 import { formatImpactSummary, impactToneClass } from "@/lib/reviews/impact-display";
 import { getReviewHrefFromAlertId } from "@/lib/text/excerpt";
 import type { RestaurantAlert } from "@/lib/alerts/types";
-import { RestaurantBrandLine } from "../../_components/restaurant-brand-line";
+import { BrandMark } from "../../_components/brand-mark";
 import { btnPrimary, incidentCard, insightBlock, metricPill, priorityBadge, textKicker } from "./ui/alertas-styles";
 
 type AlertasPriorityHeroProps = {
@@ -38,12 +38,12 @@ export function AlertasPriorityHero({ alert, onSelect }: AlertasPriorityHeroProp
 
         <div className="mt-5 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1">
-            <RestaurantBrandLine
-              brand={alert.brand}
-              name={alert.restaurant}
-              logoSize="md"
-              nameClassName="text-[22px] font-semibold tracking-[-0.02em] text-[var(--nexo-text)] sm:text-[26px]"
-            />
+            <div className="flex min-w-0 items-center gap-3">
+              <BrandMark brand={alert.brand} size="md" />
+              <p className="min-w-0 flex-1 text-[22px] font-semibold tracking-[-0.02em] text-[var(--nexo-text)] sm:text-[26px]">
+                {alert.restaurant}
+              </p>
+            </div>
 
             <div className={`${insightBlock} mt-5 max-w-2xl`}>
               <p className={textKicker}>Qué dijo el cliente</p>

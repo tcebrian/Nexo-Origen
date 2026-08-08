@@ -22,6 +22,8 @@ export const filterLabel =
 export const cardBase = `flex h-full flex-col ${card} transition duration-200 hover:shadow-[var(--nexo-shadow-md)]`;
 
 export const cardNeutral = "border-[var(--nexo-border)]";
+export const cardOnTarget =
+  "border-[var(--nexo-success-border)] bg-gradient-to-b from-[var(--nexo-success-muted)] to-[var(--nexo-card)]";
 export const cardWatch =
   "border-[var(--nexo-watch-border)] bg-gradient-to-b from-[var(--nexo-watch-muted)] to-[var(--nexo-card)]";
 export const cardCritical =
