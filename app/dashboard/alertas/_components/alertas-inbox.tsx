@@ -7,6 +7,7 @@ import type { RestaurantAlert } from "@/lib/alerts/types";
 import { StaggerItem, StaggerList } from "../../_components/motion/stagger";
 import { RestaurantBrandLine } from "../../_components/restaurant-brand-line";
 import { metricPill, radarRow, radarRowActive, radarRowHover, sectionPad, textKicker, textSectionTitle } from "./ui/alertas-styles";
+import { listSurface } from "../../_components/ui/nexo-styles";
 
 type AlertasInboxProps = {
   alerts: RestaurantAlert[];
@@ -25,7 +26,7 @@ export function AlertasInbox({ alerts, selectedId, onSelect }: AlertasInboxProps
         <span className="text-[12px] tabular-nums text-[var(--nexo-text-tertiary)]">{alerts.length} incidencias</span>
       </div>
 
-      <div className="mt-5 divide-y divide-[var(--nexo-border)] rounded-xl border border-[var(--nexo-border)] bg-[var(--nexo-inset)]">
+      <div className={`mt-5 ${listSurface}`}>
         {alerts.length === 0 ? (
           <div className="px-6 py-14 text-center">
             <p className="text-[15px] font-medium text-[var(--nexo-text)]">Todo bajo control</p>

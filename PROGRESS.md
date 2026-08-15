@@ -1,6 +1,6 @@
 # Estado del proyecto — Nexo Origen
 
-**Última actualización:** 2026-08-09. Léelo entero antes de seguir trabajando —
+**Última actualización:** 2026-08-15. Léelo entero antes de seguir trabajando —
 sustituye a "contexto perdido" al cambiar de conversación o de ordenador.
 
 ## ⚠️ Importante antes de nada
@@ -33,6 +33,49 @@ sustituye a "contexto perdido" al cambiar de conversación o de ordenador.
   completa (decide estructura primero, `nexo-design` pule después). Fundamentada con
   cifras reales del propio código (151 superficies tipo tarjeta en el dashboard, etc.),
   no con opiniones.
+
+## Qué se hizo en la sesión del 2026-08-15 (ordenador nuevo, sin Node.js ni `.env.local`)
+
+Este ordenador no tenía Node.js instalado (ni el proyecto tenía `node_modules`) — se
+instaló Node.js LTS (v24.19.0) vía `winget`, y `npm install` (limpio, tras borrar un
+primer intento que quedó a medias por un `EPERM` de red — `node_modules` está en
+`.gitignore`, se pudo borrar sin riesgo). **`.env.local` sigue sin copiarse a este
+ordenador** — la app no arranca en local todavía, pendiente de traerlo del ordenador
+original o de donde esté guardado (ver más abajo).
+
+Retomada Fase 0 donde se dejó:
+
+1. **`<KpiStrip>`** (`app/dashboard/_components/kpi-strip.tsx`, nuevo) — reemplaza el
+   patrón de "4 tarjetas independientes para una fila de KPIs relacionados" señalado
+   como card soup en `nexo-saas-system` (ejemplos reales: `RestaurantesStatusSummary`,
+   `AlertasSummary`, `ResenasSummary`, `PreventNetworkSummary`, `TalentoSummaryBar`, cada
+   una con su propio `SummaryCard`/`Card` local casi idéntico). Es **una sola superficie**
+   con divisores internos en vez de N tarjetas con borde+sombra propios: apilada con
+   divisor horizontal en móvil, fila con divisor vertical en escritorio (corte `lg`, el
+   único de la app). Igual que se hizo con `<PageHeader>` en la sesión anterior, **se ha
+   construido pero no se ha conectado a ninguna página todavía** — la integración pasa
+   sección por sección en las Fases 2–8 (Dashboard, Restaurantes, Reseñas, Alertas, Nexo
+   Prevent, Talento), no de golpe en Fase 0.
+2. **Token `listSurface`** en `app/dashboard/_components/ui/nexo-styles.ts` — extrae el
+   patrón `divide-y` que ya existía escrito a mano en `alertas-inbox.tsx` (única sección
+   que ya lo usaba) como export reutilizable. `alertas-inbox.tsx` ya se ha migrado a
+   usarlo (mismas clases exactas, cero cambio visual, verificado por build).
+3. **Regla de radios confirmada y aplicada** en las dos piezas nuevas de este punto:
+   `rounded-[var(--nexo-radius)]` (12px) para superficies compactas/listas,
+   `rounded-[var(--nexo-radius-lg)]` (16px) para superficies tipo tarjeta más prominentes
+   — documentado en un comentario junto a `listSurface`, en vez de seguir usando
+   `rounded-xl`/`rounded-2xl` sueltos en código nuevo. **No se ha tocado código
+   existente** (fuera de `alertas-inbox.tsx`, que ya usaba exactamente ese radio) — la
+   limpieza del resto del código con radios sueltos queda para cuando se toque cada
+   sección en sus fases correspondientes, igual que el resto de deuda visual.
+4. **Verificado**: `npm run typecheck` limpio (0 errores), `npm run lint` con las mismas
+   35 warnings preexistentes de siempre (0 nuevas), `npm run build` limpio. **No
+   verificado visualmente en navegador** — bloqueado por la falta de `.env.local` en este
+   ordenador (sin credenciales de Supabase la app no sirve datos reales). Como
+   `<KpiStrip>` no está conectado a ninguna página todavía, no hay nada nuevo que
+   verificar visualmente por ahora; sí quedaría pendiente confirmar visualmente
+   `alertas-inbox.tsx` en cuanto haya forma de arrancar la app, aunque el cambio es
+   clase-por-clase idéntico al original.
 
 ## Qué se hizo en la sesión de rediseño estructural (2026-08-09)
 
@@ -158,10 +201,14 @@ completo en el historial de git (`git log`, `git show 53960cf`) — no se repite
 
 ## Próximos pasos inmediatos
 
-1. **Retomar Fase 0** donde se dejó: construir `<KpiStrip>`, extraer el patrón
-   `divide-y` como token reutilizable, confirmar la regla de radios.
-2. Verificar `<PageHeader>` visualmente (crear una página de prueba temporal sin auth,
-   como se ha hecho antes con `RestaurantesCard`, o esperar a Fase 2 para verlo ya
-   integrado en Inicio).
+1. **Copiar `.env.local` a este ordenador** (credenciales reales de Supabase) — sin él
+   no se puede arrancar la app en local ni verificar nada visualmente aquí.
+2. **Fase 0 ya tiene sus 3 piezas construidas** (`<PageHeader>`, `<KpiStrip>`,
+   `listSurface` + regla de radios) — falta darla por cerrada de verdad: verificar
+   `<PageHeader>` visualmente (crear una página de prueba temporal sin auth, como se
+   hizo con `RestaurantesCard`, o esperar a Fase 2) y confirmar `alertas-inbox.tsx`
+   visualmente tras el cambio a `listSurface`.
 3. Seguir con Fase 1 (App Shell — solo verificación) y Fase 2 (Dashboard) una vez Fase
-   0 esté cerrada y aprobada.
+   0 esté cerrada y aprobada — es en Fase 2+ donde `<KpiStrip>` empieza a sustituir a
+   `RestaurantesStatusSummary`/`AlertasSummary`/`ResenasSummary`/`PreventNetworkSummary`/
+   `TalentoSummaryBar`, sección por sección.

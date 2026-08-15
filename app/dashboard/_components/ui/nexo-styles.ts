@@ -70,3 +70,18 @@ export const excerptText = "text-[14px] leading-relaxed text-gray-300";
 
 export const excerptLink =
   "ml-1 inline font-medium text-violet-300 underline-offset-2 transition hover:text-violet-200 hover:underline";
+
+/**
+ * Lista de una sola superficie con divisores internos — patrón ya real en
+ * alertas-inbox.tsx, formalizado aquí para no repetirlo a mano en cada
+ * sección nueva. Si los items van envueltos en un componente intermedio
+ * (p. ej. StaggerList), reaplica `divide-y divide-[var(--nexo-border)]` en
+ * ese wrapper, igual que ya hace alertas-inbox.tsx.
+ *
+ * Usa `rounded-[var(--nexo-radius)]` (12px) en vez de `rounded-xl`: regla de
+ * radios de Fase 0 — superficies compactas/listas usan `--nexo-radius`,
+ * superficies tipo tarjeta más prominentes usan `--nexo-radius-lg` (16px),
+ * en vez de las clases sueltas `rounded-lg`/`rounded-xl`/`rounded-2xl`.
+ */
+export const listSurface =
+  "divide-y divide-[var(--nexo-border)] rounded-[var(--nexo-radius)] border border-[var(--nexo-border)] bg-[var(--nexo-inset)]";
