@@ -21,7 +21,7 @@ export function ReviewDetailPage({ reviewId }: { reviewId: string }) {
     end: range.end,
   });
 
-  const { mergeReviews, runAnalysis, isAnalyzing, getStep } = useReviewAi();
+  const { mergeReviews } = useReviewAi();
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
 
   const allReviews = useMemo(
@@ -115,9 +115,6 @@ export function ReviewDetailPage({ reviewId }: { reviewId: string }) {
           <ResenasReviewDetail
             review={review}
             loadingAnalisis={loadingAnalisis}
-            isAnalyzing={isAnalyzing(review.id)}
-            analysisStep={getStep(review.id)}
-            onAnalyze={runAnalysis}
             onMarkReviewed={(id) => setReviewedIds((prev) => new Set(prev).add(id))}
             onCreateAlert={() => undefined}
           />

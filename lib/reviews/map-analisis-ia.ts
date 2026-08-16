@@ -50,6 +50,7 @@ export function mapAnalisisToReviewAi(
     risk: analisis.riesgo?.trim() || IA_NO_DATA,
     sentiment: analisis.sentimiento?.trim() || IA_NO_DATA,
     employeeMentioned: analisis.empleado_mencionado?.trim() || null,
+    analyzedAt: analisis.created_at ? new Date(analisis.created_at) : null,
     pending: false,
   };
 }

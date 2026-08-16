@@ -1,53 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
-import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
-import { formatImpactSummary, impactToneClass } from "@/lib/reviews/impact-display";
+import { useEffect, useState } from "react";
 import { formatReviewDate } from "@/lib/reviews/format";
-import type { Review, ReviewPriority } from "@/lib/reviews/types";
+import type { Review } from "@/lib/reviews/types";
 import { RestaurantBrandLine } from "../../_components/restaurant-brand-line";
 import { ReviewAiSection } from "./review-ai-section";
-import {
-  btnOutline,
-  panelChrome,
-  sectionPad,
-  surfaceDetail,
-  textKicker,
-} from "./ui/resenas-styles";
-import { GoogleBadge, SentimentBadge, StarRating, avatarTone } from "./ui/review-primitives";
+import { btnOutline, panelChrome, sectionPad, surfaceDetail, textKicker } from "./ui/resenas-styles";
+import { GoogleBadge, MetaBlock, SentimentBadge, StarRating, avatarTone } from "./ui/review-primitives";
 import { IconSparkle } from "./ui/icons";
 
 type ResenasReviewDetailProps = {
   review: Review | null;
   loadingAnalisis?: boolean;
-  isAnalyzing: boolean;
-  analysisStep: number;
-  onAnalyze: (review: Review) => void;
   onMarkReviewed: (id: string) => void;
   onCreateAlert: (review: Review) => void;
   onClose?: () => void;
 };
-
-function priorityStyles(priority: ReviewPriority) {
-  switch (priority) {
-    case "Alta":
-      return "border-[var(--nexo-critical-border)] bg-[var(--nexo-critical-muted)] text-[var(--nexo-critical)]";
-    case "Media":
-      return "border-[var(--nexo-watch-border)] bg-[var(--nexo-watch-muted)] text-[var(--nexo-watch)]";
-    default:
-      return "border-[var(--nexo-success-border)] bg-[var(--nexo-success-muted)] text-[var(--nexo-success)]";
-  }
-}
-
-function MetaBlock({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="rounded-xl border border-[var(--nexo-border)] bg-[var(--nexo-inset)] px-4 py-3.5">
-      <p className={textKicker}>{label}</p>
-      <div className="mt-2">{children}</div>
-    </div>
-  );
-}
 
 function EmptyState() {
   return (
@@ -68,26 +37,15 @@ function EmptyState() {
 export function ResenasReviewDetail({
   review,
   loadingAnalisis = false,
-  isAnalyzing,
-  analysisStep,
-  onAnalyze,
   onMarkReviewed,
   onCreateAlert,
   onClose,
 }: ResenasReviewDetailProps) {
-  const [aiOpen, setAiOpen] = useState(false);
   const [alertCreated, setAlertCreated] = useState(false);
 
   useEffect(() => {
-    setAiOpen(false);
     setAlertCreated(false);
   }, [review?.id]);
-
-  useEffect(() => {
-    if (review && !review.iaPending && review.ai) {
-      setAiOpen(true);
-    }
-  }, [review?.id, review?.iaPending, review?.ai]);
 
   if (!review) {
     return (
@@ -95,27 +53,6 @@ export function ResenasReviewDetail({
         <EmptyState />
       </div>
     );
-  }
-
-  const motiveLabel = review.motiveLabel;
-  const riskDisplay = review.riskLevel;
-  const recommendedAction = review.iaPending ? IA_NO_DATA : (review.ai?.recommendedAction ?? review.recommendedAction);
-  const impactLabel = review.impactLabel ?? review.ai?.impactLabel ?? IA_NO_DATA;
-  const impactSnapshot = review.ai
-    ? {
-        mediaBefore: review.ai.previousMedia,
-        mediaAfter: review.ai.currentMedia,
-        impact: review.ai.impact,
-      }
-    : {
-        mediaBefore: review.mediaBefore,
-        mediaAfter: review.mediaAfter,
-        impact: review.mediaImpact,
-      };
-  const impact = formatImpactSummary(impactSnapshot, 2);
-
-  function handleOpenAi() {
-    setAiOpen(true);
   }
 
   function handleCreateAlert() {
@@ -201,31 +138,6 @@ export function ResenasReviewDetail({
         </div>
 
         <div className={`border-t border-[var(--nexo-border)] ${sectionPad} py-6`}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <MetaBlock label="Motivo detectado">
-              <span className="inline-flex rounded-lg border border-[var(--nexo-border)] bg-[var(--nexo-card)] px-2.5 py-1 text-[13px] text-[var(--nexo-text)]">
-                {motiveLabel}
-              </span>
-            </MetaBlock>
-            <MetaBlock label="Impacto en la media del local">
-              <p className={`font-mono text-[15px] ${impactToneClass(impact.tone)}`}>{impact.delta}</p>
-              <p className="mt-1 font-mono text-[13px] text-[var(--nexo-text)]">{impact.range}</p>
-              <p className="mt-1 text-[12px] leading-relaxed text-[var(--nexo-text-secondary)]">
-                {impactLabel}
-              </p>
-            </MetaBlock>
-            <MetaBlock label="Riesgo">
-              <span className={`inline-flex rounded-lg border px-2.5 py-1 text-[12px] font-medium ${priorityStyles(review.ai?.priority ?? review.priority)}`}>
-                {riskDisplay}
-              </span>
-            </MetaBlock>
-            <MetaBlock label="Acción recomendada">
-              <p className="text-[13px] leading-relaxed text-[var(--nexo-text-secondary)]">{recommendedAction}</p>
-            </MetaBlock>
-          </div>
-        </div>
-
-        <div className={`border-t border-[var(--nexo-border)] ${sectionPad} py-6`}>
           <div className="flex flex-wrap gap-2">
             <Link href={`/dashboard/restaurantes/${review.restaurantSlug}`} className={btnOutline}>
               Ver restaurante
@@ -254,42 +166,17 @@ export function ResenasReviewDetail({
         </div>
 
         <div className={`border-t border-[var(--nexo-border)] ${sectionPad} py-6`}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <IconSparkle className="h-4 w-4 text-[var(--nexo-accent)]" />
-              <p className="text-[13px] font-medium text-[var(--nexo-text)]">Análisis Nexo</p>
-            </div>
-            {!aiOpen && (
-              <button
-                type="button"
-                onClick={handleOpenAi}
-                className="text-[12px] font-medium text-[var(--nexo-accent)] transition hover:text-[var(--nexo-accent-hover)]"
-              >
-                Ver análisis →
-              </button>
-            )}
+          <div className="mb-4 flex items-center gap-2">
+            <IconSparkle className="h-4 w-4 text-[var(--nexo-accent)]" />
+            <p className="text-[13px] font-medium text-[var(--nexo-text)]">Análisis Nexo IA</p>
           </div>
 
-          {!aiOpen ? (
-            <div className="mt-5 rounded-2xl border border-dashed border-[var(--nexo-accent-border)] bg-[var(--nexo-accent-muted)] px-5 py-6">
-              <p className="text-[13px] text-[var(--nexo-text-secondary)]">
-                {loadingAnalisis
-                  ? "Cargando análisis desde Supabase…"
-                  : review.iaPending
-                    ? IA_NO_DATA
-                    : "Resumen, motivo, impacto y recomendación desde Supabase."}
-              </p>
+          {loadingAnalisis ? (
+            <div className="rounded-2xl border border-dashed border-[var(--nexo-accent-border)] bg-[var(--nexo-accent-muted)] px-5 py-6">
+              <p className="text-[13px] text-[var(--nexo-text-secondary)]">Cargando análisis desde Supabase…</p>
             </div>
           ) : (
-            <div className="mt-5">
-              <ReviewAiSection
-                review={review}
-                isAnalyzing={isAnalyzing}
-                analysisStep={analysisStep}
-                onAnalyze={() => onAnalyze(review)}
-                onRegenerate={() => onAnalyze(review)}
-              />
-            </div>
+            <ReviewAiSection review={review} />
           )}
         </div>
       </div>

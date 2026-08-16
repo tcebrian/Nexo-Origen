@@ -39,6 +39,8 @@ export type ReviewAiAnalysis = {
   risk: string;
   sentiment: string;
   employeeMentioned: string | null;
+  /** Fecha en la que Make generó este análisis (analisis_ia.created_at). */
+  analyzedAt: Date | null;
   pending: boolean;
 };
 

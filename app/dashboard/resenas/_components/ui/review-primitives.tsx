@@ -1,8 +1,19 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { Review } from "@/lib/reviews/types";
+import { textKicker } from "./resenas-styles";
+
+/** Caja de campo individual: etiqueta + contenido — patrón de detalle de reseña. */
+export function MetaBlock({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="rounded-xl border border-[var(--nexo-border)] bg-[var(--nexo-inset)] px-4 py-3.5">
+      <p className={textKicker}>{label}</p>
+      <div className="mt-2">{children}</div>
+    </div>
+  );
+}
 
 const avatarGradients = [
   "from-violet-200 to-violet-400 text-violet-900",
