@@ -6,28 +6,17 @@ import { formatDateRangeLabel, getSelectedRange, useDateRange } from "../../_com
 import { useAuth } from "../../_components/auth-context";
 import { exportReviewsToExcel } from "@/lib/reviews/export-excel";
 import { filterReviews, getReviewStats, sortReviewsByPriority } from "@/lib/reviews/filters";
-import type { ReviewFilters } from "@/lib/reviews/types";
 import { useRestaurants } from "@/app/dashboard/restaurantes/_hooks/use-restaurants";
 import { useReviewAi } from "../_hooks/use-review-ai";
 import { useReviews } from "../_hooks/use-reviews";
 import { PageErrorState } from "../../_components/page-error-state";
+import { DEFAULT_REVIEW_FILTERS, useReviewFilters, type SummaryFilter } from "./review-filters-context";
 import { ResenasInboxHeader } from "./resenas-inbox-header";
 import { ResenasInboxList } from "./resenas-inbox-list";
 import { ResenasSummary } from "./resenas-summary";
 import { ambientLayer, inboxGrid, inboxShell } from "./ui/resenas-styles";
 
 const TENANT_ID = "grupo-hambar";
-
-const DEFAULT_FILTERS: ReviewFilters = {
-  brand: "todas",
-  restaurant: "todos",
-  stars: "todas",
-  negativesOnly: false,
-  unreviewedOnly: false,
-  query: "",
-};
-
-type SummaryFilter = "all" | "positives" | "negatives" | "unreviewed";
 
 export function ResenasPage() {
   const router = useRouter();
@@ -62,17 +51,18 @@ export function ResenasPage() {
   const { mergeReviews } = useReviewAi();
   const mergedReviews = useMemo(() => mergeReviews(baseReviews), [baseReviews, mergeReviews]);
 
-  const [filters, setFilters] = useState<ReviewFilters>(DEFAULT_FILTERS);
-  const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>("all");
+  const { filters, setFilters, summaryFilter, setSummaryFilter, getListScrollTop, setListScrollTop } =
+    useReviewFilters();
   const [exporting, setExporting] = useState(false);
   const didInitParams = useRef(false);
+  const listScrollRef = useRef<HTMLDivElement>(null);
 
   const allReviews = mergedReviews;
 
   const scopedReviews = useMemo(
     () =>
       filterReviews(allReviews, {
-        ...DEFAULT_FILTERS,
+        ...DEFAULT_REVIEW_FILTERS,
         brand: filters.brand,
         restaurant: filters.restaurant,
       }),
@@ -112,28 +102,25 @@ export function ResenasPage() {
     if (localSlug) {
       const match = allReviews.find((review) => review.restaurantSlug === localSlug);
       if (match) {
-        setFilters((prev) => ({
-          ...prev,
-          brand: match.brand,
-          restaurant: match.restaurantSlug,
-        }));
+        setFilters({ brand: match.brand, restaurant: match.restaurantSlug });
       }
     }
 
     didInitParams.current = true;
-  }, [loading, searchParams, allReviews, router]);
+  }, [loading, searchParams, allReviews, router, setFilters]);
 
   useEffect(() => {
     didInitParams.current = false;
   }, [range.start, range.end]);
 
-  function handleFiltersChange(patch: Partial<ReviewFilters>) {
-    setFilters((prev) => ({ ...prev, ...patch }));
-    setSummaryFilter("all");
-  }
+  useEffect(() => {
+    if (!loading && listScrollRef.current) {
+      listScrollRef.current.scrollTop = getListScrollTop();
+    }
+  }, [loading, getListScrollTop]);
 
   function handleSummaryFilter(filter: SummaryFilter) {
-    setSummaryFilter((prev) => (prev === filter ? "all" : filter));
+    setSummaryFilter(summaryFilter === filter ? "all" : filter);
   }
 
   async function handleExport() {
@@ -166,7 +153,7 @@ export function ResenasPage() {
     <div className="pb-10">
       <ResenasInboxHeader
         filters={filters}
-        onFiltersChange={handleFiltersChange}
+        onFiltersChange={setFilters}
         restaurantList={restaurantList}
         exporting={exporting}
         onExport={handleExport}
@@ -186,7 +173,11 @@ export function ResenasPage() {
           <div className="absolute -left-16 top-1/3 h-48 w-48 rounded-full bg-violet-600/10 blur-3xl" />
         </div>
 
-        <div className="relative min-h-[520px] overflow-y-auto">
+        <div
+          ref={listScrollRef}
+          onScroll={(e) => setListScrollTop(e.currentTarget.scrollTop)}
+          className="relative min-h-[520px] overflow-y-auto"
+        >
           {loading ? (
             <div className="space-y-3 p-6">
               {Array.from({ length: 5 }).map((_, i) => (
