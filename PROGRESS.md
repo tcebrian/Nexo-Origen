@@ -68,64 +68,14 @@ Retomada Fase 0 donde se dejó:
    existente** (fuera de `alertas-inbox.tsx`, que ya usaba exactamente ese radio) — la
    limpieza del resto del código con radios sueltos queda para cuando se toque cada
    sección en sus fases correspondientes, igual que el resto de deuda visual.
-4. **Verificado, incluida verificación visual**: `npm run typecheck` limpio (0 errores),
-   `npm run lint` con las mismas 35 warnings preexistentes de siempre (0 nuevas),
-   `npm run build` limpio. `.env.local` recreado en este ordenador (URL y `anon key`
-   sacadas por API de Supabase — MCP conectado a `tcebrian's Project`/
-   `tsbkcaxbgzfnpqmihabb` — la `service_role` no se puede leer por API, la pegó el
-   usuario a mano). Verificación visual hecha con una página temporal sin auth
-   (`app/preview/fase-0/page.tsx`, **creada y borrada en la misma sesión**, patrón ya
-   usado antes con `RestaurantesCard` — cualquier ruta fuera de `/dashboard`/`/api`
-   esquiva el middleware de auth) montando `<PageHeader>`, `<KpiStrip>` (con estado
-   activo/clic y skeleton de carga) y `AlertasInbox` con datos de ejemplo, comprobada a
-   375px y 1280px por DOM/JS (`getComputedStyle`: `flex-direction` cambia
-   column/row en el corte `lg`, el divisor pasa de `border-bottom` a `border-right`
-   excluyendo siempre el último item, colores y radios correctos) sin errores de
-   consola ni de servidor.
-
-## Qué se hizo en la sesión del 2026-08-15 (continuación: Fase 1 y Fase 2)
-
-Misma sesión que la anterior, continuando el plan de 9 fases tras cerrar Fase 0.
-
-**Fase 1 (App Shell) — verificada, sin cambios.** `dashboard-shell.tsx` ya cumplía la
-estructura definida (sidebar 250px en escritorio, barra superior 49px + barra inferior
-en móvil con hasta 4 iconos + "Más"). No se detectó nada que corregir.
-
-**Fase 2 (Dashboard/Inicio) — `<PageHeader>` y `<KpiStrip>` conectados de verdad por
-primera vez:**
-
-1. **`dashboard-home-view.tsx`** (`NetworkDashboardHomeView`, la vista de red que ven
-   super_admin/empresa_admin/marca_admin con más de un restaurante): la cabecera de
-   saludo a mano → `<PageHeader>` (título = saludo, subtítulo = resumen, acción = pastilla
-   de periodo). Las 4 tarjetas `KpiCard` sueltas (Media global / Reseñas este mes /
-   Reseñas negativas / Restaurantes) → `<KpiStrip>`, con `tone` por KPI (antes el color
-   solo lo llevaba el texto de ayuda pequeño, ahora lo lleva la cifra grande — igual que
-   ya hacían `RestaurantesStatusSummary`/`AlertasSummary`/etc., más consistente entre
-   secciones) e icono en `topRight`. **No se tocó `kpi.tsx`/`KpiCard`** — ese componente
-   lo sigue usando `restaurantes-brand-kpis.tsx` (Fase 3, fuera de alcance hoy); los
-   iconos se reimplementaron localmente en `dashboard-home-view.tsx` en vez de tocar un
-   componente compartido usado fuera de esta fase.
-2. **`restaurant-user-home-view.tsx`** (`RestaurantUserHomeView`, la vista compacta para
-   perfiles de un solo restaurante, también servida en `/dashboard`): **solo la cabecera
-   de escritorio** (la de `hidden lg:flex`, la móvil es un hero card distinto y no se ha
-   tocado) migrada a `<PageHeader>` igual que la de arriba. **La rejilla de 4 tarjetas KPI
-   de esta vista (Media actual/Estado/Reseñas del periodo/Alertas activas) NO se migró a
-   `<KpiStrip>`** — a diferencia de las de Inicio, cada una tiene contenido heterogéneo
-   (barra de progreso, sparkline, badge de estado) que no encaja en el `label/value/hint`
-   genérico de `KpiStrip` sin forzarlo; queda pendiente para cuando se rediseñe esta vista
-   con más calma, no es un simple mapeo de props.
-3. **Verificado**: `typecheck`/`lint` (35 warnings preexistentes, 0 nuevas)/`build`
-   limpios. Verificación visual con dos páginas temporales sin auth más (mismo patrón que
-   Fase 0, creadas y borradas en la sesión): confirmado por DOM/JS que `<AnimatedNumber>`
-   anidado dentro del `value` de `KpiStrip` hereda color/fuente/tamaño correctamente sin
-   necesitar `className` propio, que los tonos por KPI pintan el color correcto
-   (`--nexo-success`/`-critical`/`-text`), y que ambas cabeceras cambian de columna a fila
-   en el corte `lg` sin desbordar en 375px ni 1280px. Dos artefactos del entorno de
-   pruebas (no bugs reales, confirmados por `document.hidden === true` en la pestaña de
-   test): `<AnimatedNumber>` se queda en 0 porque Chrome pausa `requestAnimationFrame` en
-   pestañas ocultas, y el logo de `BrandMark` (`loading="lazy"`) no decodifica porque el
-   lazy-loading nativo tampoco corre en pestañas ocultas — en la app real, con la pestaña
-   visible, ambos funcionan con normalidad.
+4. **Verificado**: `npm run typecheck` limpio (0 errores), `npm run lint` con las mismas
+   35 warnings preexistentes de siempre (0 nuevas), `npm run build` limpio. **No
+   verificado visualmente en navegador** — bloqueado por la falta de `.env.local` en este
+   ordenador (sin credenciales de Supabase la app no sirve datos reales). Como
+   `<KpiStrip>` no está conectado a ninguna página todavía, no hay nada nuevo que
+   verificar visualmente por ahora; sí quedaría pendiente confirmar visualmente
+   `alertas-inbox.tsx` en cuanto haya forma de arrancar la app, aunque el cambio es
+   clase-por-clase idéntico al original.
 
 ## Qué se hizo en la sesión de rediseño estructural (2026-08-09)
 
@@ -251,20 +201,14 @@ completo en el historial de git (`git log`, `git show 53960cf`) — no se repite
 
 ## Próximos pasos inmediatos
 
-1. **Fase 0, 1 y 2 cerradas** (ver sesión 2026-08-15 arriba). `.env.local` completo en
-   este ordenador, `<PageHeader>`/`<KpiStrip>` construidos y ya conectados de verdad en
-   Inicio (ambas variantes: red y de un solo restaurante).
-2. Seguir con **Fase 3 (Restaurantes)**: candidato claro es migrar
-   `restaurantes-brand-kpis.tsx` (usa `KpiCard`, mismo patrón de card soup) a
-   `<KpiStrip>` — ahí sí habría que decidir qué hacer con `kpi.tsx`/`KpiCard` (dejarlo
-   para otros usos futuros o retirarlo si esa migración lo deja sin uso).
-3. **Pendiente aparte, no bloqueante**: la rejilla de 4 KPI de
-   `restaurant-user-home-view.tsx` (Media actual/Estado/Reseñas del periodo/Alertas
-   activas) no se migró a `<KpiStrip>` — contenido demasiado heterogéneo (barra de
-   progreso, sparkline, badge) para el `label/value/hint` genérico. Revisar con más
-   calma si se rediseña esa vista a fondo.
-4. Servidor de pruebas: ojo, `.claude/launch.json` para `preview_start` está ahora en
-   `C:\Users\Usuario\Desktop\tomas nexo origen\.claude\launch.json` (un nivel por
-   encima del repo, porque el directorio de trabajo de esta sesión era ese nivel), con
-   `npm --prefix Nexo-Origen run dev` — no en `Nexo-Origen\.claude\launch.json` (ese
-   sigue existiendo pero no es el que se usa desde ese directorio de trabajo).
+1. **Copiar `.env.local` a este ordenador** (credenciales reales de Supabase) — sin él
+   no se puede arrancar la app en local ni verificar nada visualmente aquí.
+2. **Fase 0 ya tiene sus 3 piezas construidas** (`<PageHeader>`, `<KpiStrip>`,
+   `listSurface` + regla de radios) — falta darla por cerrada de verdad: verificar
+   `<PageHeader>` visualmente (crear una página de prueba temporal sin auth, como se
+   hizo con `RestaurantesCard`, o esperar a Fase 2) y confirmar `alertas-inbox.tsx`
+   visualmente tras el cambio a `listSurface`.
+3. Seguir con Fase 1 (App Shell — solo verificación) y Fase 2 (Dashboard) una vez Fase
+   0 esté cerrada y aprobada — es en Fase 2+ donde `<KpiStrip>` empieza a sustituir a
+   `RestaurantesStatusSummary`/`AlertasSummary`/`ResenasSummary`/`PreventNetworkSummary`/
+   `TalentoSummaryBar`, sección por sección.
