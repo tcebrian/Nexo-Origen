@@ -15,6 +15,7 @@ import { BrandMark } from "./brand-mark";
 import { CommentExcerpt } from "./comment-excerpt";
 import { PageErrorState } from "./page-error-state";
 import { RestaurantWeeklyTrendCard } from "./restaurant-weekly-trend-card";
+import { PageHeader } from "./page-header";
 import { glass } from "./styles";
 import { skeletonBlock } from "./ui/nexo-styles";
 import { useRestaurantDetail } from "../restaurantes/_hooks/use-restaurant-detail";
@@ -504,34 +505,31 @@ export function RestaurantUserHomeView() {
         </div>
       </div>
 
-      <header className="mb-6 hidden lg:flex lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="text-[28px] font-semibold tracking-tight text-white lg:text-[32px]">
-            Buenos días, {displayName.split(" ")[0]} <span className="text-[26px]">👋</span>
-          </h1>
-          <p className="mt-2 text-[14px] text-gray-400">
-            Resumen de tu restaurante · {formatSelectedDateShort(range.end)}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5">
-            <BrandMark brand={detail.brand} size="xs" />
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-medium text-gray-100">{detail.name}</p>
-              <p className="truncate text-[11px] text-gray-500">{detail.location}</p>
+      <div className="hidden lg:block">
+        <PageHeader
+          title={`Buenos días, ${displayName.split(" ")[0]} 👋`}
+          subtitle={`Resumen de tu restaurante · ${formatSelectedDateShort(range.end)}`}
+          action={
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5">
+                <BrandMark brand={detail.brand} size="xs" />
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-medium text-gray-100">{detail.name}</p>
+                  <p className="truncate text-[11px] text-gray-500">{detail.location}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={openPanel}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 text-[12px] text-gray-300 transition hover:border-violet-400/20 hover:text-white"
+              >
+                <IconCalendar />
+                {periodLabel}
+              </button>
             </div>
-          </div>
-          <button
-            type="button"
-            onClick={openPanel}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 text-[12px] text-gray-300 transition hover:border-violet-400/20 hover:text-white"
-          >
-            <IconCalendar />
-            {periodLabel}
-          </button>
-        </div>
-      </header>
+          }
+        />
+      </div>
 
       <section className="hidden gap-4 lg:grid lg:grid-cols-2 xl:grid-cols-4">
         <div className={`p-5 ${glass}`}>

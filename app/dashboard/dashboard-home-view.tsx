@@ -10,7 +10,9 @@ import {
   useDateRange,
 } from "./_components/date-range-context";
 import { DonutChart, HorizontalBarChart, LineChart } from "./_components/charts";
-import { KpiCard } from "./_components/kpi";
+import { KpiStrip, type KpiStripItem } from "./_components/kpi-strip";
+import { PageHeader } from "./_components/page-header";
+import { AnimatedNumber } from "./_components/motion/animated-number";
 import { PageErrorState } from "./_components/page-error-state";
 import { glass } from "./_components/styles";
 import { skeletonBlock } from "./_components/ui/nexo-styles";
@@ -33,6 +35,43 @@ const marcaHex: Record<string, string> = {
 };
 import { useAuth } from "./_components/auth-context";
 import { RestaurantUserHomeView } from "./_components/restaurant-user-home-view";
+
+function HomeKpiIcon({ type }: { type: "star" | "chat" | "warning" | "store" }) {
+  const className = "h-4 w-4";
+
+  if (type === "star") {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2l2.09 6.26L20.5 9.27l-5 3.64L16.82 20 12 16.77 7.18 20l1.32-7.09-5-3.64 6.41-.99L12 2z" />
+      </svg>
+    );
+  }
+
+  if (type === "chat") {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+      </svg>
+    );
+  }
+
+  if (type === "warning") {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+}
 
 export function DashboardHomeView() {
   const { primaryRestaurant } = useAuth();
@@ -63,11 +102,7 @@ function NetworkDashboardHomeView() {
     return (
       <div className="space-y-5 pt-2">
         <div className={`h-24 ${skeletonBlock}`} />
-        <div className="grid grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className={`h-32 ${skeletonBlock}`} />
-          ))}
-        </div>
+        <div className={`h-28 ${skeletonBlock}`} />
         <div className={`h-80 ${skeletonBlock}`} />
       </div>
     );
@@ -89,42 +124,38 @@ function NetworkDashboardHomeView() {
     label: item.marca,
   }));
 
-  const kpis = [
+  const kpiItems: KpiStripItem[] = [
     {
-      title: "MEDIA GLOBAL",
-      value: data.mediaGlobal.toFixed(2),
-      animateValue: data.mediaGlobal,
-      decimals: 2,
-      change: "Media ponderada de la red",
-      icon: "star" as const,
-      positive: data.mediaGlobal >= 4.4 ? true : data.mediaGlobal > 0 ? false : null,
+      key: "media",
+      label: "Media global",
+      value: <AnimatedNumber value={data.mediaGlobal} decimals={2} />,
+      hint: "Media ponderada de la red",
+      tone: data.mediaGlobal >= 4.4 ? "success" : data.mediaGlobal > 0 ? "critical" : "neutral",
+      topRight: <HomeKpiIcon type="star" />,
     },
     {
-      title: "RESEÑAS ESTE MES",
-      value: data.totalResenas.toLocaleString("es-ES"),
-      animateValue: data.totalResenas,
-      decimals: 0,
-      change: "Total acumulado en la red",
-      icon: "chat" as const,
-      positive: null,
+      key: "resenas",
+      label: "Reseñas este mes",
+      value: <AnimatedNumber value={data.totalResenas} decimals={0} />,
+      hint: "Total acumulado en la red",
+      tone: "neutral",
+      topRight: <HomeKpiIcon type="chat" />,
     },
     {
-      title: "RESEÑAS NEGATIVAS",
-      value: String(data.totalNegativas),
-      animateValue: data.totalNegativas,
-      decimals: 0,
-      change: "Suma de reseñas negativas",
-      icon: "warning" as const,
-      positive: data.totalNegativas === 0 ? true : false,
+      key: "negativas",
+      label: "Reseñas negativas",
+      value: <AnimatedNumber value={data.totalNegativas} decimals={0} />,
+      hint: "Suma de reseñas negativas",
+      tone: data.totalNegativas === 0 ? "success" : "critical",
+      topRight: <HomeKpiIcon type="warning" />,
     },
     {
-      title: "RESTAURANTES",
-      value: String(data.totalRestaurantes),
-      animateValue: data.totalRestaurantes,
-      decimals: 0,
-      change: `${data.totalRestaurantes} locales en ${empresaNombre}`,
-      icon: "store" as const,
-      positive: null,
+      key: "restaurantes",
+      label: "Restaurantes",
+      value: <AnimatedNumber value={data.totalRestaurantes} decimals={0} />,
+      hint: `${data.totalRestaurantes} locales en ${empresaNombre}`,
+      tone: "neutral",
+      topRight: <HomeKpiIcon type="store" />,
     },
   ];
 
@@ -136,35 +167,20 @@ function NetworkDashboardHomeView() {
           Actualizando datos…
         </div>
       )}
-      <div className="mb-6 flex flex-col gap-4 pt-2 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-xl font-light tracking-tight sm:text-2xl lg:text-3xl">
-            Buenos días, {displayName} <span className="text-lg sm:text-xl lg:text-2xl">👋</span>
-          </h2>
-          <p className="mt-2 text-sm text-gray-400">
-            Resumen de {empresaNombre} · {formatDateRangeLabel(activeRange)}
-          </p>
-        </div>
+      <PageHeader
+        title={`Buenos días, ${displayName} 👋`}
+        subtitle={`Resumen de ${empresaNombre} · ${formatDateRangeLabel(activeRange)}`}
+        action={
+          <div className="flex items-center gap-2 rounded-[var(--nexo-radius)] border border-[var(--nexo-border)] bg-[var(--nexo-inset)] px-3.5 py-2 text-[12px] text-[var(--nexo-text-secondary)]">
+            <span className="h-2 w-2 rounded-full bg-[var(--nexo-success)]" />
+            <span>
+              {days} días · hasta {formatSelectedDateShort(range.end)}
+            </span>
+          </div>
+        }
+      />
 
-        <div className="text-sm text-gray-500 sm:text-right">
-          <p>Periodo analizado</p>
-          <p className="mt-2 text-white">
-            <span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-400" />
-            {days} días · hasta {formatSelectedDateShort(range.end)}
-          </p>
-        </div>
-      </div>
-
-      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        {kpis.map((kpi) => (
-          <KpiCard
-            key={kpi.title}
-            {...kpi}
-            animateValue={kpi.animateValue}
-            decimals={kpi.decimals}
-          />
-        ))}
-      </section>
+      <KpiStrip items={kpiItems} />
 
       <section className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-12">
         <div className={`p-5 xl:col-span-8 ${glass}`}>
