@@ -1,6 +1,6 @@
 # Estado del proyecto — Nexo Origen
 
-**Última actualización:** 2026-08-15. Léelo entero antes de seguir trabajando —
+**Última actualización:** 2026-08-17. Léelo entero antes de seguir trabajando —
 sustituye a "contexto perdido" al cambiar de conversación o de ordenador.
 
 ## ⚠️ Importante antes de nada
@@ -33,6 +33,56 @@ sustituye a "contexto perdido" al cambiar de conversación o de ordenador.
   completa (decide estructura primero, `nexo-design` pule después). Fundamentada con
   cifras reales del propio código (151 superficies tipo tarjeta en el dashboard, etc.),
   no con opiniones.
+
+## Qué se hizo en la sesión del 2026-08-16/17 (mismo ordenador que la del 2026-08-15)
+
+Tres piezas, todas ya commiteadas y pusheadas (`c8ea6aa`, luego revert `dd5c277` de un
+intento de Fase 2, luego `c3db909`):
+
+1. **Intento de Fase 2 (Dashboard) revertido a petición explícita del usuario.** Se
+   conectó `<PageHeader>`/`<KpiStrip>` a `dashboard-home-view.tsx` y a la cabecera de
+   escritorio de `restaurant-user-home-view.tsx` (commit `3076176`), pero el usuario no
+   pudo verificarlo cómodamente y pidió deshacerlo con `git revert` (commit `dd5c277`,
+   pusheado). **Estado real ahora: exactamente como quedó al cerrar la Fase 0** —
+   `<PageHeader>`/`<KpiStrip>` siguen existiendo como componentes pero sin usarse en
+   ninguna página. Fase 2 sigue pendiente de verdad, no dar por hecho que está hecha.
+2. **Reestructurado el análisis IA en el detalle de una reseña** (commit `c8ea6aa`,
+   `app/dashboard/resenas/_components/resenas-review-detail.tsx` y
+   `review-ai-section.tsx`, `lib/reviews/types.ts` y `map-analisis-ia.ts`). Antes:
+   motivo/riesgo/recomendación se repetían fuera y dentro de un bloque colapsable
+   ("Ver análisis →"). Ahora: los 7 apartados reales de `analisis_ia` (resumen,
+   motivos, sentimiento + empleado mencionado, impacto, riesgo, recomendación, y
+   **fecha de análisis** — `created_at`, no se mostraba en ningún sitio antes) se ven
+   una sola vez, en orden, sin clic previo. Se retiraron props muertas
+   (`isAnalyzing`/`analysisStep`/`onAnalyze`/`onRegenerate`, vestigios de una versión
+   con generación bajo demanda que nunca existió de verdad — el análisis lo genera
+   Make fuera de la app). `MetaBlock` pasó a ser un primitivo compartido en
+   `review-primitives.tsx`.
+3. **Memoria de filtros y scroll en Reseñas** (commit `c3db909`,
+   `app/dashboard/resenas/layout.tsx` + `review-filters-context.tsx`, nuevos). Pedido
+   del usuario: filtrar en Reseñas, entrar en una reseña y volver no debía perder el
+   filtro ni la posición de scroll de la lista — pero sí debía perderse al cambiar de
+   sección o recargar. Los filtros y el scroll de la lista pasaron de estado local de
+   `resenas-page.tsx` a un contexto de sección.
+   - **Causa raíz real, no obvia**: el primer intento (solo el contexto) no funcionó
+     en la app real aunque sí en una prueba aislada. El motivo era
+     `app/dashboard/_components/motion/page-enter.tsx` — el wrapper de animación de
+     entrada usado en **todo** el dashboard usaba `key={pathname}` (ruta completa), lo
+     que remonta todo lo de dentro en cualquier cambio de ruta, incluso dentro de la
+     misma sección — así que cualquier estado en un `layout.tsx` de sección se perdía
+     iguialmente, sin que Next.js lo hubiera desmontado por sí solo. Arreglado
+     cambiando la key a nivel de sección (`/dashboard/resenas`, no
+     `/dashboard/resenas/[id]`).
+   - **Efecto colateral esperado, en todo el dashboard**: la animación de entrada ya
+     no se repite al entrar/salir del detalle de una reseña **ni de la ficha de un
+     restaurante** (`/dashboard/restaurantes/[slug]`, mismo patrón de sub-ruta) — solo
+     al cambiar de sección de verdad. Es una mejora intencionada, no un bug, pero
+     avisar si en algún momento se nota "flat"/sin transición donde antes sí la había.
+   - Verificado con navegación real (clics, no solo lectura de código) sobre una
+     réplica exacta de la estructura real (mismo `PageEnter`, mismo
+     `ReviewFiltersProvider`) en una página de preview temporal ya borrada: filtro y
+     scroll se mantienen al volver del detalle; se resetean al ir a otra sección y
+     volver.
 
 ## Qué se hizo en la sesión del 2026-08-15 (ordenador nuevo, sin Node.js ni `.env.local`)
 
@@ -201,14 +251,22 @@ completo en el historial de git (`git log`, `git show 53960cf`) — no se repite
 
 ## Próximos pasos inmediatos
 
-1. **Copiar `.env.local` a este ordenador** (credenciales reales de Supabase) — sin él
-   no se puede arrancar la app en local ni verificar nada visualmente aquí.
-2. **Fase 0 ya tiene sus 3 piezas construidas** (`<PageHeader>`, `<KpiStrip>`,
-   `listSurface` + regla de radios) — falta darla por cerrada de verdad: verificar
-   `<PageHeader>` visualmente (crear una página de prueba temporal sin auth, como se
-   hizo con `RestaurantesCard`, o esperar a Fase 2) y confirmar `alertas-inbox.tsx`
-   visualmente tras el cambio a `listSurface`.
-3. Seguir con Fase 1 (App Shell — solo verificación) y Fase 2 (Dashboard) una vez Fase
-   0 esté cerrada y aprobada — es en Fase 2+ donde `<KpiStrip>` empieza a sustituir a
-   `RestaurantesStatusSummary`/`AlertasSummary`/`ResenasSummary`/`PreventNetworkSummary`/
-   `TalentoSummaryBar`, sección por sección.
+1. **`.env.local` ya está completo en este ordenador** (URL/anon key sacadas por API de
+   Supabase, service_role pegada a mano por el usuario) — la app arranca en local sin
+   problema con `npm run dev`.
+2. **Fase 0 sigue con sus 3 piezas construidas pero SIN USAR**: `<PageHeader>` y
+   `<KpiStrip>` existen (`app/dashboard/_components/`) pero ninguna página los llama
+   todavía. El intento de conectarlos en Inicio (Fase 2) se revirtió a petición del
+   usuario (ver sesión 2026-08-16/17 arriba) — **no asumir que Fase 2 está hecha**.
+3. Antes de reintentar Fase 2 (o cualquier fase que conecte estas piezas a una
+   página real), acordar con el usuario cómo va a verificarlo — a lo largo de esta
+   sesión costó bastante encontrar una forma cómoda (el panel de navegador del chat no
+   siempre se muestra en su interfaz, y él no puede loguearse fácilmente para
+   compartir su sesión conmigo). La vía que sí funcionó siempre: páginas de preview
+   temporales sin auth bajo `app/preview/**` (auto-borradas al terminar) para que yo
+   verifique, y `npm run dev` en su propia terminal/navegador para que lo vea él con
+   datos reales.
+4. Si se toca cualquier flujo de navegación lista↔detalle en otra sección (Restaurantes,
+   etc.), tener en cuenta el cambio de `page-enter.tsx` de esta sesión (key por sección,
+   no por ruta completa) — ya no reinicia estado de un `layout.tsx` de sección al
+   navegar dentro de ella, a diferencia de antes.
