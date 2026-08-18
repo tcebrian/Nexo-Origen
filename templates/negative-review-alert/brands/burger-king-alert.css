@@ -263,16 +263,21 @@
 .bka-body {
   display: grid;
   grid-template-columns: 48% 1fr;
-  align-items: start;
   gap: 20px;
   min-height: 0;
+  align-items: start;
 }
 
 .bka-review-col {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  position: relative;
   min-width: 0;
+  /* Altura fija (no depende de la columna de insights ni del alto de la
+     reseña): ancla "Impacto en la media" (position:absolute, bottom:0 más
+     abajo) a un punto fijo casi pegado a donde sangra la hamburguesa, sin
+     taparla. La hamburguesa está anclada en posición fija dentro del canvas
+     (bottom:-46px), así que su borde superior siempre cae en el mismo punto
+     — este valor está calculado contra ese punto fijo. */
+  height: 653px;
 }
 
 .bka-review {
@@ -680,11 +685,13 @@
 }
 
 .bka-mini--under-quote {
-  position: relative;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 3;
-  align-self: start;
   margin-left: 0;
-  padding: 0 35px;
+  padding: 20px 35px;
 }
 
 /* Con comentarios muy largos (tanto que ni compactando el padding basta
