@@ -311,7 +311,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
             <section className="bka-insights">
               {analysisRows.length > 0 ? (
                 <>
-                  <p className="bka-ribbon">ANÁLISIS NEXO ORIGEN</p>
+                  <p className="bka-ribbon">ANÁLISIS NEXO</p>
                   <ul className={`bka-analysis ${analysisSizeClass(analysisTotalLength)}`}>
                     {analysisRows.map((row) => (
                       <li key={row.key}>
@@ -326,7 +326,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                 </>
               ) : null}
 
-              <p className={`bka-ribbon ${analysisRows.length > 0 ? "bka-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO ORIGEN</p>
+              <p className={`bka-ribbon ${analysisRows.length > 0 ? "bka-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
               <div className="bka-diagnostics">
                 <div className="bka-diagnostics__item">
                   <span className="bka-diagnostics__icon bka-diagnostics__icon--neutral">
