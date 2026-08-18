@@ -326,7 +326,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                 </>
               ) : null}
 
-              <p className={`bka-ribbon ${analysisRows.length > 0 ? "bka-ribbon--mt" : ""}`}>DIAGNÓSTICO IA</p>
+              <p className={`bka-ribbon ${analysisRows.length > 0 ? "bka-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO ORIGEN</p>
               <div className="bka-diagnostics">
                 <div className="bka-diagnostics__item">
                   <span className="bka-diagnostics__icon bka-diagnostics__icon--neutral">
