@@ -14,7 +14,6 @@ import {
   BkIconMagnifier,
   BkIconMinus,
   BkIconMood,
-  BkIconPerson,
   BkIconPin,
   BkIconShield,
 } from "./burger-king-alert-icons";
@@ -138,7 +137,6 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
     const target = data.target_rating ?? 4.4;
     const delta = data.rating_impact;
     const incidents = data.detected_reasons.filter((r) => !isEmptyValue(r)).slice(0, 3);
-    const employee = cleanValue(data.employee_mentioned);
     const sentiment = cleanValue(data.sentiment);
     const risk = cleanValue(data.risk_level);
     const lifetimeMedia = data.lifetime_rating ?? data.current_rating;
@@ -325,13 +323,6 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                   </span>
                   <p className="bka-diagnostics__label">Riesgo</p>
                   <p className="bka-diagnostics__value">{risk ?? "Sin datos"}</p>
-                </div>
-                <div className="bka-diagnostics__item">
-                  <span className="bka-diagnostics__icon bka-diagnostics__icon--neutral">
-                    <BkIconPerson />
-                  </span>
-                  <p className="bka-diagnostics__label">Empleado mencionado</p>
-                  <p className="bka-diagnostics__value">{employee ?? "Ninguno"}</p>
                 </div>
               </div>
             </section>

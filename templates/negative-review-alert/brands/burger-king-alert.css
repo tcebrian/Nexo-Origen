@@ -431,7 +431,7 @@
 
 .bka-diagnostics {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 17.5px;
   flex-shrink: 0;
 }
