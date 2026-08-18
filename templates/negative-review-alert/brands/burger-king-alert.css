@@ -81,6 +81,18 @@
   padding: 30px 150px 26px 40px;
 }
 
+.bka-sheet > .bka-header {
+  grid-row: 1;
+}
+
+.bka-sheet > .bka-body {
+  grid-row: 2;
+}
+
+.bka-sheet > .bka-footer {
+  grid-row: 4;
+}
+
 /* ---------- header editorial ---------- */
 
 .bka-header {

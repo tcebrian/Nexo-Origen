@@ -136,7 +136,6 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
     const location = data.restaurant_address || data.restaurant_location;
     const target = data.target_rating ?? 4.4;
     const delta = data.rating_impact;
-    const incidents = data.detected_reasons.filter((r) => !isEmptyValue(r)).slice(0, 3);
     const sentiment = cleanValue(data.sentiment);
     const risk = cleanValue(data.risk_level);
     const tone = mediaTone(data.current_rating, target);
@@ -324,25 +323,6 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                 </div>
               </div>
             </section>
-          </div>
-
-          {/* Fila inferior: incidencias / impacto en la media / contexto del periodo */}
-          <div className="bka-row3">
-            {incidents.length > 0 ? (
-              <section className="bka-mini">
-                <p className="bka-mini__band">INCIDENCIAS DETECTADAS</p>
-                <ul className="bka-incidents">
-                  {incidents.map((incident) => (
-                    <li key={incident}>
-                      <span className="bka-incidents__icon">
-                        <BkIconMagnifier />
-                      </span>
-                      <span>{incident}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
           </div>
 
           {/* Conclusión */}
