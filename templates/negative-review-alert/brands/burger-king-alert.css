@@ -690,7 +690,7 @@
   bottom: 3px;
   z-index: 3;
   margin-left: 0;
-  padding: 22px 38px;
+  padding: 18px 38px;
 }
 
 /* Con comentarios muy largos (tanto que ni compactando el padding basta
@@ -776,7 +776,7 @@
 .bka-mini--under-quote .bka-mini__band {
   font-size: 17.5px;
   padding: 6px 21px;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .bka-mini--under-quote .bka-impact__col {
@@ -831,6 +831,21 @@
   top: 10px;
   bottom: 10px;
   width: 2px;
+}
+
+.bka-impact__stars {
+  display: flex;
+  margin-top: 3px;
+}
+
+.bka-impact__stars .nra-stars {
+  display: flex;
+  gap: 1.5px;
+}
+
+.bka-impact__stars svg {
+  width: 9px;
+  height: 9px;
 }
 
 .bka-mini__band {

@@ -303,12 +303,18 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                 <div className="bka-impact__col">
                   <p className="bka-impact__label">Media anterior</p>
                   <p className="bka-impact__value">{data.previous_rating.toFixed(2)}</p>
+                  <span className="bka-impact__stars">
+                    <StarRating stars={data.previous_rating} size="md" />
+                  </span>
                 </div>
                 <div className="bka-impact__col">
                   <p className="bka-impact__label">Media actual</p>
                   <p className={`bka-impact__value bka-impact__value--tone-${tone}`}>
                     {data.current_rating.toFixed(2)}
                   </p>
+                  <span className="bka-impact__stars">
+                    <StarRating stars={data.current_rating} size="md" />
+                  </span>
                 </div>
                 <div className="bka-impact__col">
                   <p className="bka-impact__label">Variación</p>
