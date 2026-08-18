@@ -293,7 +293,24 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
 
             {/* Columna de inteligencia artificial */}
             <section className="bka-insights">
-              <p className="bka-ribbon">DIAGNÓSTICO IA</p>
+              {analysisRows.length > 0 ? (
+                <>
+                  <p className="bka-ribbon">ANÁLISIS IA</p>
+                  <ul className="bka-analysis">
+                    {analysisRows.map((row) => (
+                      <li key={row.key}>
+                        <span className="bka-analysis__icon">{row.icon}</span>
+                        <div className="bka-analysis__copy">
+                          <p className="bka-analysis__label">{row.label}</p>
+                          <p className="bka-analysis__value">{row.value}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+
+              <p className={`bka-ribbon ${analysisRows.length > 0 ? "bka-ribbon--mt" : ""}`}>DIAGNÓSTICO IA</p>
               <div className="bka-diagnostics">
                 <div className="bka-diagnostics__item">
                   <span className="bka-diagnostics__icon bka-diagnostics__icon--neutral">
@@ -317,23 +334,6 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                   <p className="bka-diagnostics__value">{employee ?? "Ninguno"}</p>
                 </div>
               </div>
-
-              {analysisRows.length > 0 ? (
-                <>
-                  <p className="bka-ribbon bka-ribbon--mt">ANÁLISIS IA</p>
-                  <ul className="bka-analysis">
-                    {analysisRows.map((row) => (
-                      <li key={row.key}>
-                        <span className="bka-analysis__icon">{row.icon}</span>
-                        <div className="bka-analysis__copy">
-                          <p className="bka-analysis__label">{row.label}</p>
-                          <p className="bka-analysis__value">{row.value}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : null}
             </section>
           </div>
 

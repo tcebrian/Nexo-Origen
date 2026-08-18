@@ -432,7 +432,7 @@
 .bka-diagnostics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 17.5px;
   flex-shrink: 0;
 }
 
@@ -440,7 +440,7 @@
   border-radius: 14px;
   background: var(--bk-card);
   border: 1px solid var(--bk-line);
-  padding: 12px 8px;
+  padding: 21px 14px;
   text-align: center;
   box-shadow: 0 6px 14px rgba(33, 26, 19, 0.05);
 }
@@ -449,11 +449,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 66px;
+  height: 66px;
   border-radius: 999px;
   background: var(--bk-cream);
-  margin-bottom: 6px;
+  margin-bottom: 10px;
+}
+
+.bka-diagnostics__icon svg {
+  width: 40px;
+  height: 40px;
 }
 
 .bka-diagnostics__icon--high {
@@ -477,7 +482,7 @@
 
 .bka-diagnostics__label {
   margin: 0;
-  font-size: 10px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--bk-ink-soft);
   text-transform: uppercase;
@@ -485,9 +490,9 @@
 }
 
 .bka-diagnostics__value {
-  margin: 3px 0 0;
-  font-size: 12.5px;
-  font-weight: 800;
+  margin: 5px 0 0;
+  font-size: 19px;
+  font-weight: 700;
   color: var(--bk-ink);
   overflow-wrap: anywhere;
 }
