@@ -73,6 +73,11 @@ function cleanValue(value: string | null | undefined): string | null {
   return isEmptyValue(value) ? null : (value as string).trim();
 }
 
+/** "BK Utebo" / "BK ZIZUR MAYOR" -> "Utebo" / "ZIZUR MAYOR" (quita el prefijo de marca). */
+function stripBrandPrefix(name: string): string {
+  return name.replace(/^\s*bk\s+/i, "").trim();
+}
+
 type RiskTone = "high" | "medium" | "low" | "neutral";
 
 function riskTone(risk: string | null): RiskTone {
@@ -147,6 +152,8 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
     ].filter((row) => row.value);
 
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
+    const brandLabel = (cleanValue(data.brand_name) ?? "Burger King").toUpperCase();
+    const locationLabel = stripBrandPrefix(data.restaurant_name) || data.restaurant_name;
 
     return (
       <div ref={ref} className="bka-canvas" style={{ width: design.width, height: design.height }}>
@@ -203,8 +210,9 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
             <div className="bka-header__restaurant">
               <p className="bka-header__restaurant-name">
                 <BkIconPin />
-                {data.restaurant_name}
+                {brandLabel}
               </p>
+              <p className="bka-header__restaurant-location">{locationLabel}</p>
               <p className="bka-header__restaurant-address">{location}</p>
             </div>
           </header>
