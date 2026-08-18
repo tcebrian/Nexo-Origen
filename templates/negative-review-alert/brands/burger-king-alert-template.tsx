@@ -55,12 +55,15 @@ function analysisSizeClass(totalLength: number): string {
  * Cuando el comentario es muy largo, la tarjeta de reseña crece y "Impacto en
  * la media" baja hasta la zona donde sangra la hamburguesa. A partir de ahí
  * se desplaza hacia la derecha y se reduce, para no quedar tapada por ella.
+ * El mismo nivel se usa para recortar el fondo de la tarjeta (clip-path) por
+ * donde el bloque se ha desplazado, así el fondo no sigue siendo un
+ * rectángulo hasta abajo y la hamburguesa puede asomar con naturalidad.
  */
-function impactShiftClass(commentLength: number): string {
+function commentShiftTier(commentLength: number): "" | "sm" | "md" | "lg" {
   if (commentLength <= 650) return "";
-  if (commentLength <= 900) return "bka-mini--shift-sm";
-  if (commentLength <= 1300) return "bka-mini--shift-md";
-  return "bka-mini--shift-lg";
+  if (commentLength <= 900) return "sm";
+  if (commentLength <= 1300) return "md";
+  return "lg";
 }
 
 /**
@@ -168,6 +171,8 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
     ].filter((row) => row.value);
     const analysisTotalLength = analysisRows.reduce((sum, row) => sum + row.value.length, 0);
 
+    const shiftTier = commentShiftTier(fullComment.length);
+
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
     const brandLabel = (cleanValue(data.brand_name) ?? "Burger King").toUpperCase();
     const locationLabel = stripBrandPrefix(data.restaurant_name) || data.restaurant_name;
@@ -253,7 +258,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
 
           <div className="bka-body">
             {/* Tarjeta grande de la reseña — protagonista */}
-            <section className="bka-review">
+            <section className={`bka-review ${shiftTier ? `bka-review--notch-${shiftTier}` : ""}`}>
               <div className="bka-review__head">
                 <span className="bka-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
                 <div className="bka-review__meta">
@@ -286,7 +291,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                 </span>
               </div>
 
-              <section className={`bka-mini bka-mini--under-quote ${impactShiftClass(fullComment.length)}`}>
+              <section className={`bka-mini bka-mini--under-quote ${shiftTier ? `bka-mini--shift-${shiftTier}` : ""}`}>
                 <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
                 <div className="bka-impact">
                   <div className="bka-impact__col">
