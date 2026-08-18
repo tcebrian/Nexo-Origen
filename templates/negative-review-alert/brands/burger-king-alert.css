@@ -536,8 +536,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
+  width: 58px;
+  height: 58px;
   border-radius: 999px;
   background: var(--bk-cream);
   color: var(--bk-red);
@@ -546,8 +546,8 @@
 }
 
 .bka-analysis__icon svg {
-  width: 26px;
-  height: 26px;
+  width: 33px;
+  height: 33px;
 }
 
 .bka-analysis__copy {
