@@ -33,9 +33,13 @@ function absUrl(base: string | undefined, path: string): string {
   return `${base.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-/** Tamaño del comentario adaptado a su longitud real — cuanto más largo, más se reduce la letra. */
+/**
+ * Tamaño del comentario adaptado a su longitud real. Los comentarios cortos
+ * o de longitud normal usan siempre el mismo tamaño base (el de la reseña
+ * normal/larga) — la letra solo se reduce a partir de aquí, cuanto más largo
+ * es el comentario.
+ */
 function quoteSizeClass(length: number): string {
-  if (length <= 200) return "bka-quote__text--xl";
   if (length <= 400) return "bka-quote__text--lg";
   if (length <= 650) return "bka-quote__text--md";
   if (length <= 900) return "bka-quote__text--sm";
