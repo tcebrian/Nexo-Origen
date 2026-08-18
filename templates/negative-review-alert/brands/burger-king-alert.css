@@ -820,11 +820,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  margin: 0 40px 0 40px;
+  gap: 24px;
+  margin: 0 200px 0 310px;
   border-radius: 16px;
   background: linear-gradient(155deg, #2a2320 0%, var(--bk-ink) 100%);
-  padding: 26px 30px;
+  padding: 52px 30px;
   color: #f3ecdc;
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3);
 }
@@ -833,12 +833,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
+  width: 80px;
+  height: 80px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   color: #f3ecdc;
   flex-shrink: 0;
+}
+
+.bka-footer__icon svg {
+  width: 44px;
+  height: 44px;
 }
 
 .bka-footer__body {
@@ -846,8 +851,8 @@
 }
 
 .bka-footer__label {
-  margin: 0 0 3px;
-  font-size: 10.5px;
+  margin: 0 0 5px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.08em;
   color: var(--bk-orange);
@@ -855,7 +860,7 @@
 
 .bka-footer__text {
   margin: 0;
-  font-size: 14px;
+  font-size: 19px;
   line-height: 1.4;
   color: #f8f4ea;
   display: -webkit-box;
