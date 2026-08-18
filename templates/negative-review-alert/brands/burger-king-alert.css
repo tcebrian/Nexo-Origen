@@ -566,8 +566,13 @@
 
 .bka-row3 {
   display: flex;
+  justify-content: flex-start;
   gap: 16px;
   min-height: 0;
+}
+
+.bka-row3 .bka-mini {
+  flex: 0 1 45%;
 }
 
 .bka-mini {
