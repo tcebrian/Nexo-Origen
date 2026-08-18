@@ -40,6 +40,7 @@ export function parseAlertFromSearchParams(
   const review_stars = parseStars(get("review_stars"), fallback.review_stars);
 
   return {
+    brand: get("brand") ?? fallback.brand,
     brand_name: get("brand_name") ?? fallback.brand_name,
     brand_logo_url: get("brand_logo_url") ?? fallback.brand_logo_url,
     restaurant_name: get("restaurant_name") ?? fallback.restaurant_name,
@@ -70,6 +71,10 @@ export function parseAlertFromSearchParams(
         ? parseNumber(get("lifetime_rating"), fallback.lifetime_rating ?? 0)
         : fallback.lifetime_rating,
     target_rating: parseNumber(get("target_rating"), fallback.target_rating ?? 4.4),
+    main_motive: get("main_motive") ?? fallback.main_motive,
+    detected_impact: get("detected_impact") ?? fallback.detected_impact,
+    employee_mentioned: get("employee_mentioned") ?? fallback.employee_mentioned,
+    period_label: get("period_label") ?? fallback.period_label,
   };
 }
 
@@ -82,6 +87,7 @@ export function normalizeAlertPayload(
   const review_stars = parseStars(String(input.review_stars ?? fallback.review_stars), fallback.review_stars);
 
   return {
+    brand: input.brand ?? fallback.brand,
     brand_name: input.brand_name ?? fallback.brand_name,
     brand_logo_url: input.brand_logo_url ?? fallback.brand_logo_url,
     restaurant_name: input.restaurant_name ?? fallback.restaurant_name,
@@ -109,6 +115,10 @@ export function normalizeAlertPayload(
     review_count: input.review_count ?? fallback.review_count,
     lifetime_rating: input.lifetime_rating ?? fallback.lifetime_rating,
     target_rating: input.target_rating ?? fallback.target_rating,
+    main_motive: input.main_motive ?? fallback.main_motive,
+    detected_impact: input.detected_impact ?? fallback.detected_impact,
+    employee_mentioned: input.employee_mentioned ?? fallback.employee_mentioned,
+    period_label: input.period_label ?? fallback.period_label,
   };
 }
 

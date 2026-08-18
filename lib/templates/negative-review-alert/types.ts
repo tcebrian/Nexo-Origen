@@ -1,6 +1,8 @@
 export type AlertAspectRatio = "4:3" | "9:16";
 
 export type NegativeReviewAlertData = {
+  /** Código de marca (ej. "bk") — decide qué plantilla visual se usa. Opcional: si falta, se usa la genérica. */
+  brand?: string;
   brand_name: string;
   brand_logo_url: string;
   restaurant_name: string;
@@ -36,6 +38,20 @@ export type NegativeReviewAlertData = {
   lifetime_rating?: number | null;
   /** Objetivo de media (por defecto 4.4). */
   target_rating?: number;
+  /** analisis_ia.motivo — motivo principal detectado por la IA (texto libre, no la lista de chips). */
+  main_motive?: string | null;
+  /** analisis_ia.impacto — descripción textual del impacto (distinta del delta numérico). */
+  detected_impact?: string | null;
+  /** analisis_ia.empleado_mencionado. */
+  employee_mentioned?: string | null;
+  /** Periodo del informe desde el que se generó esta alerta (para el bloque de contexto). */
+  period_label?: string | null;
+  /** Contexto semanal (semana natural lunes–domingo de la reseña vs. la semana anterior). */
+  weekly_period_label?: string | null;
+  weekly_reviews_before?: number | null;
+  weekly_reviews_after?: number | null;
+  weekly_media_before?: number | null;
+  weekly_media_after?: number | null;
 };
 
 export const NEGATIVE_REVIEW_ALERT_FIELDS: (keyof NegativeReviewAlertData)[] = [

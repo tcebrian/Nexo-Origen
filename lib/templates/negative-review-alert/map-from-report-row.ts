@@ -102,6 +102,7 @@ export function mapReportRowToAlertData(row: NegativeReviewReportRow): NegativeR
   const detectedReasons = row.detectedReasons.filter((reason) => reason !== IA_NO_DATA);
 
   return {
+    brand: row.brand,
     brand_name: row.brandLabel,
     brand_logo_url: resolveBrandLogo(row.brand),
     restaurant_name: resolveRestaurantTitle(row),
@@ -122,6 +123,9 @@ export function mapReportRowToAlertData(row: NegativeReviewReportRow): NegativeR
     recommendation: row.recommendation,
     ai_summary: row.aiSummary,
     analisis_pending: row.analisisPending,
+    main_motive: row.motive,
+    detected_impact: row.impactText,
+    employee_mentioned: row.employeeMentioned,
     nexo_logo_url: NEXO_ORIGEN_LOGO_SRC,
     report_date,
     aspect_ratio: "4:3",

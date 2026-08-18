@@ -1,7 +1,127 @@
 # Estado del proyecto — Nexo Origen
 
-**Última actualización:** 2026-08-17. Léelo entero antes de seguir trabajando —
+**Última actualización:** 2026-08-18. Léelo entero antes de seguir trabajando —
 sustituye a "contexto perdido" al cambiar de conversación o de ordenador.
+
+## 🆕 Sesión 2026-08-18 — Plantilla PNG de reseña negativa por marca (Burger King)
+
+Petición del usuario: en Informes, al pulsar "Generar imagen" en una reseña negativa,
+quiere un diseño **único por marca** (no la plantilla genérica actual), empezando por
+Burger King, calcando una dirección de arte muy concreta que el usuario fue afinando
+en varias iteraciones ("paso a paso"). **Todo commiteado y pusheado**, verificado con
+typecheck/lint/build limpios en cada paso — pero **sin verificación visual mía
+directa**: el navegador de pruebas no pudo hacer capturas durante casi toda la sesión
+("Screenshot timed out... Browser pane is not displayed"), así que todo se verificó por
+(1) medición del DOM (overflow, solapamientos, posiciones) y (2) el propio usuario
+mirando `localhost:3000/preview/negative-review-alert` y dando feedback iterativo. Una
+vez, hacia el final, el usuario compartió el PNG real que él mismo descargó — eso
+permitió encontrar y arreglar 2 bugs reales que la medición del DOM no había detectado
+(ver más abajo). **Recomendación fuerte para la próxima sesión: en cuanto se pueda,
+pedir al usuario un PNG fresco (botón "PNG navegador" en la página de preview) para
+confirmar el estado visual actual antes de seguir iterando a ciegas.**
+
+### Arquitectura nueva (dónde está cada cosa)
+
+- `templates/negative-review-alert/brands/burger-king-alert-template.tsx` — componente
+  React de la plantilla BK (nuevo).
+- `templates/negative-review-alert/brands/burger-king-alert.css` — su CSS dedicado
+  (nuevo, independiente del `negative-review-alert.css` genérico).
+- `templates/negative-review-alert/brands/burger-king-alert-icons.tsx` — iconos propios
+  en `currentColor` (nuevo; los iconos compartidos de `icons.tsx` tienen colores morado
+  Nexo hardcodeados en el SVG, no sirven para una plantilla de marca BK).
+- `public/design/burger-king/` — `bk-burger.png`, `bk-drink.png`, `bk-fries.png` (fotos
+  reales que pasó el usuario, con fondo transparente), `bk-logo.png` (logo BK que pasó
+  el usuario, sustituye al `brand_logo_url` genérico **solo dentro de esta plantilla**,
+  sin tocar el logo que usa el resto de la app).
+- **Selector de plantilla por marca**: `getNegativeReviewTemplate(brand)` en
+  `lib/reports/negative-reviews/templates/index.ts` — devuelve `BurgerKingAlertTemplate`
+  si `brand === "bk"`, si no la plantilla genérica. **Este selector existía ya antes de
+  esta sesión pero no lo usaba nadie** (siempre devolvía la genérica) — ahora sí está
+  conectado de verdad en:
+  - `app/dashboard/informes/_components/informes-negative-reviews-image-modal.tsx` —
+    **el modal real que se abre al pulsar "Generar imagen" en Informes** (usa
+    `html-to-image` en el navegador, sin Playwright, sin necesitar login especial).
+  - `app/templates/negative-review-alert/page.tsx` — la página que captura Playwright
+    en el flujo servidor (`/api/generate-negative-review-image`, usado por el botón
+    "PNG API" del preview). **Playwright no tiene el binario de Chromium instalado en
+    este ordenador** (`chrome-headless-shell.exe` no existe) — ese botón falla aquí con
+    un error claro (no es un bug de código); si hace falta, `npx playwright install
+    chromium` lo arregla. El botón "PNG navegador" (html-to-image, sin Playwright) es
+    el que sí funciona siempre y el que se ha usado para verificar toda la sesión.
+  - `lib/templates/negative-review-alert/render-html.ts` — también actualizado por
+    consistencia, pero es **código muerto** (nadie lo importa, confirmado por grep) —
+    no afecta a nada real, no hace falta mantenerlo si estorba en el futuro.
+- **Datos nuevos añadidos** (reales, de Supabase, no inventados):
+  - `NegativeReviewAlertData.main_motive` ← `analisis_ia.motivo` (ya se calculaba como
+    `NegativeReviewReportRow.motive`, solo faltaba propagarlo hasta la plantilla).
+  - `NegativeReviewAlertData.detected_impact` ← `analisis_ia.impacto` (ya existía como
+    `NegativeReviewReportRow.impactText`, solo faltaba propagarlo).
+  - `NegativeReviewAlertData.employee_mentioned` ← `analisis_ia.empleado_mencionado`
+    (esto sí era nuevo de verdad: no existía en `NegativeReviewReportRow`, se añadió el
+    campo `employeeMentioned` en `lib/reports/negative-reviews/types.ts` +
+    `build-rows.ts`).
+  - `NegativeReviewReportRow.restauranteId` (nuevo) — necesario para la consulta de
+    contexto semanal (ver abajo).
+- **Contexto semanal — construido pero NO conectado todavía a la plantilla visual**:
+  `lib/reports/negative-reviews/weekly-context.ts` (`computeWeeklyContext`) compara la
+  semana natural (lunes–domingo) de la reseña con la semana anterior para el mismo
+  restaurante (consulta nueva a Supabase, reutiliza `fetchResenasForPeriodServer`).
+  Endpoint: `GET /api/informes/weekly-context?restauranteId=X&reviewDate=ISO`. **La
+  plantilla actual usa un "Contexto del periodo" más simple** (periodo/núm.
+  reseñas/objetivo/diferencia, sin el desglose semanal antes/después) porque el
+  briefing final del usuario para el rediseño completo no pedía ese desglose — el
+  cálculo semanal queda listo por si se retoma en el futuro, no se ha borrado.
+
+### Bugs reales encontrados (no obvios, solo visibles con el PNG real)
+
+1. **Fondo gris apagado en vez de crema cálido** — una capa de "grano de papel" (SVG
+   `feTurbulence` con `mix-blend-mode: multiply`) oscurecía todo el lienzo por un
+   cálculo de opacidad/color mal ajustado. **Solución: se quitó por completo** (clase
+   `.bka-texture` y su `<div>` en el componente) — mejor sin textura que con una rota.
+   Si en el futuro se quiere textura de papel, probar con un enfoque distinto (imagen
+   real de textura muy tenue, no SVG generado a ciegas) y verificar con un PNG real
+   antes de darlo por bueno.
+2. **Hueco vacío enorme encima del comentario de la reseña** — `.bka-body` era una fila
+   de grid `1fr` que forzaba a `.bka-review`/`.bka-insights` a estirarse a toda la
+   altura disponible, y `.bka-quote` tenía `flex:1; justify-content:center`, así que el
+   texto quedaba centrado con mucho aire vacío alrededor. **Solución**: las filas del
+   `.bka-sheet` pasaron a `auto auto 1fr auto` (header/body/**row3**/footer) — ahora es
+   la fila de paneles inferiores (Incidencias/Impacto/Contexto) la que absorbe el
+   espacio sobrante (con su contenido centrado verticalmente), no la reseña. Verificado
+   por DOM que el hueco muerto bajo el pie de página se redujo de ~227px a ~26px
+   (exactamente el padding inferior del lienzo, no un hueco real).
+
+### Iteraciones de tamaño (pedidas explícitamente, "paso a paso")
+
+"RESEÑA NEGATIVA" del header y el logo de Nexo Origen se agrandaron varias veces a
+petición del usuario (cada vez verificado sin overflow real por DOM): título ~19px→24
+→42→50px, "NEGATIVA" ~32px→46→82→100px (con sombra de texto en 3 capas para dar
+volumen, no plano), logo Nexo ~30px→44→78→95px de icono. "RESEÑA" además se hizo más
+fina (font-weight 800→600) manteniendo "NEGATIVA" en negrita — si se sigue agrandando
+en el futuro, recordar que las columnas del grid del header (`grid-template-columns`)
+se han ido ajustando a mano cada vez para que quepa sin romper el nombre del
+restaurante (que ahora tiene `text-overflow: ellipsis` de seguridad, no se rompe si el
+hueco se aprieta).
+
+### Qué falta / próximos pasos sugeridos
+
+1. **Pedir un PNG fresco al usuario cuanto antes** para confirmar visualmente el estado
+   tras los últimos cambios (logo nuevo, fondo arreglado, hueco arreglado) — todo lo de
+   esta sesión se verificó por DOM + descripción, con solo 1 confirmación visual real a
+   mitad de sesión.
+2. Revisar si el resto de paneles (Diagnóstico IA, Análisis IA, fila de 3 paneles)
+   también se ven bien ahora que `.bka-body` ya no se estira artificialmente — no se
+   pudo re-confirmar con un PNG real tras el último arreglo del hueco vacío.
+3. Decidir si se quiere retomar el contexto semanal (`weekly-context.ts`, ya construido
+   y verificado con typecheck) en la plantilla, o dejarlo tal cual está la versión
+   simplificada.
+4. Extender el mismo patrón (plantilla propia + selector por `brand`) a otras marcas
+   cuando se pida — de momento solo Burger King tiene diseño propio, el resto sigue
+   usando la plantilla genérica morada.
+5. Si se retoma Fase 0/1/2 del rediseño estructural general (ver sesiones anteriores
+   abajo), seguía exactamente donde se dejó el 17/08 — esta sesión del 18/08 fue un
+   desvío para atender la petición explícita de la plantilla PNG, no ha tocado nada de
+   `PageHeader`/`KpiStrip`/Fase 0.
 
 ## ⚠️ Importante antes de nada
 

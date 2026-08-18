@@ -9,6 +9,7 @@ import {
   NEGATIVE_REVIEW_RENDER_WIDTH,
 } from "@/lib/reports/negative-reviews/export-image";
 import {
+  SAMPLE_BK_FULL,
   SAMPLE_EXTRA_LONG_COMMENT,
   SAMPLE_MEDIUM_COMMENT,
   SAMPLE_NEGATIVE_REVIEW_ALERT,
@@ -16,10 +17,12 @@ import {
   SAMPLE_ZIZUR_MAYOR,
 } from "@/lib/templates/negative-review-alert/sample-data";
 import { NegativeReviewAlertTemplate } from "@/templates/negative-review-alert";
+import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brands/burger-king-alert-template";
 
 const REFERENCE_PATH = "/design/negative-review-alert-reference.png";
 
 const SAMPLE_VARIANTS = {
+  bkFull: { label: "Burger King (diseño completo)", data: SAMPLE_BK_FULL },
   zizur: { label: "BK Zizur Mayor (real)", data: SAMPLE_ZIZUR_MAYOR },
   reference: { label: "Referencia (largo)", data: SAMPLE_NEGATIVE_REVIEW_ALERT },
   short: { label: "Comentario corto", data: SAMPLE_SHORT_COMMENT },
@@ -37,8 +40,9 @@ export default function NegativeReviewAlertPreviewPage() {
   const [overlayOpacity, setOverlayOpacity] = useState(50);
   const [referenceOk, setReferenceOk] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [sampleKey, setSampleKey] = useState<SampleKey>("reference");
+  const [sampleKey, setSampleKey] = useState<SampleKey>("bkFull");
   const sample = SAMPLE_VARIANTS[sampleKey];
+  const isBk = sample.data.brand === "bk";
   const renderWidth = NEGATIVE_REVIEW_RENDER_WIDTH;
   const renderHeight = NEGATIVE_REVIEW_RENDER_HEIGHT;
 
@@ -230,7 +234,11 @@ export default function NegativeReviewAlertPreviewPage() {
                 className="relative"
                 style={{ width: renderWidth, height: renderHeight }}
               >
-                <NegativeReviewAlertTemplate ref={captureRef} data={sample.data} />
+                {isBk ? (
+                  <BurgerKingAlertTemplate ref={captureRef} data={sample.data} />
+                ) : (
+                  <NegativeReviewAlertTemplate ref={captureRef} data={sample.data} />
+                )}
                 {compareMode && mounted && referenceOk ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img

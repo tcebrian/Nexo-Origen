@@ -1,4 +1,5 @@
 import { NegativeReviewAlertTemplate } from "@/templates/negative-review-alert";
+import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brands/burger-king-alert-template";
 import { parseAlertFromSearchParams } from "@/lib/templates/negative-review-alert/parse-payload";
 import { SAMPLE_NEGATIVE_REVIEW_ALERT } from "@/lib/templates/negative-review-alert/sample-data";
 
@@ -21,6 +22,7 @@ export default async function NegativeReviewAlertTemplatePage({ searchParams }: 
   }
 
   const data = parseAlertFromSearchParams(urlParams, SAMPLE_NEGATIVE_REVIEW_ALERT);
+  const AlertTemplate = data.brand === "bk" ? BurgerKingAlertTemplate : NegativeReviewAlertTemplate;
 
   return (
     <main
@@ -30,11 +32,11 @@ export default async function NegativeReviewAlertTemplatePage({ searchParams }: 
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#e8e4dd",
+        background: data.brand === "bk" ? "#f3ecdc" : "#e8e4dd",
         padding: 24,
       }}
     >
-      <NegativeReviewAlertTemplate data={data} />
+      <AlertTemplate data={data} />
     </main>
   );
 }

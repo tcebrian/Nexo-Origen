@@ -7,14 +7,17 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { resolveDesignCanvasSize } from "@/lib/templates/negative-review-alert/dimensions";
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
 import { NegativeReviewAlertTemplate } from "@/templates/negative-review-alert";
+import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brands/burger-king-alert-template";
 
-let cachedCss: string | null = null;
+const cssCache = new Map<string, string>();
 
-function getTemplateCss(): string {
-  if (cachedCss) return cachedCss;
-  const cssPath = path.join(process.cwd(), "templates/negative-review-alert/negative-review-alert.css");
-  cachedCss = readFileSync(cssPath, "utf8");
-  return cachedCss;
+function getTemplateCss(relativePath: string): string {
+  const cached = cssCache.get(relativePath);
+  if (cached) return cached;
+  const cssPath = path.join(process.cwd(), relativePath);
+  const css = readFileSync(cssPath, "utf8");
+  cssCache.set(relativePath, css);
+  return css;
 }
 
 export function renderNegativeReviewAlertHtml(
@@ -22,9 +25,12 @@ export function renderNegativeReviewAlertHtml(
   assetBaseUrl?: string
 ): string {
   const design = resolveDesignCanvasSize(data.aspect_ratio);
-  const markup = renderToStaticMarkup(
-    createElement(NegativeReviewAlertTemplate, { data, assetBaseUrl })
-  );
+  const isBk = data.brand === "bk";
+  const Template = isBk ? BurgerKingAlertTemplate : NegativeReviewAlertTemplate;
+  const cssPath = isBk
+    ? "templates/negative-review-alert/brands/burger-king-alert.css"
+    : "templates/negative-review-alert/negative-review-alert.css";
+  const markup = renderToStaticMarkup(createElement(Template, { data, assetBaseUrl }));
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -38,9 +44,9 @@ export function renderNegativeReviewAlertHtml(
       rel="stylesheet"
     />
     <title>Alerta reseña negativa · ${data.restaurant_name}</title>
-    <style>${getTemplateCss()}</style>
+    <style>${getTemplateCss(cssPath)}</style>
   </head>
-  <body style="margin:0;background:#e8ebf2;width:${design.width}px;height:${design.height}px;overflow:hidden;">
+  <body style="margin:0;background:${isBk ? "#f3ecdc" : "#e8ebf2"};width:${design.width}px;height:${design.height}px;overflow:hidden;">
     ${markup}
   </body>
 </html>`;

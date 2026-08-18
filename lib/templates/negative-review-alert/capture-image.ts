@@ -10,8 +10,10 @@ export type CaptureImageOptions = {
 
 const CAPTURE_SCALE_FACTOR = 3;
 
+const CANVAS_SELECTOR = ".nra-canvas, .bka-canvas";
+
 async function waitForRender(page: import("playwright").Page): Promise<void> {
-  await page.waitForSelector(".nra-canvas");
+  await page.waitForSelector(CANVAS_SELECTOR);
   await page.evaluate(async () => {
     await document.fonts.ready;
     const images = Array.from(document.images);
@@ -67,7 +69,7 @@ export async function captureNegativeReviewAlertViaUrl(
     });
     await page.goto(templateUrl, { waitUntil: "networkidle" });
     await waitForRender(page);
-    const canvasHandle = await page.$(".nra-canvas");
+    const canvasHandle = await page.$(CANVAS_SELECTOR);
     const screenshot = canvasHandle
       ? await canvasHandle.screenshot({ type: "png" })
       : await page.screenshot({

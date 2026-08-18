@@ -13,6 +13,7 @@ import {
 import { mapReportRowToAlertTemplateProps } from "@/lib/reports/negative-reviews/templates";
 import type { NegativeReviewReportRow } from "@/lib/reports/negative-reviews/types";
 import { NegativeReviewAlertTemplate } from "@/templates/negative-review-alert";
+import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brands/burger-king-alert-template";
 import { btnGhost, btnPrimary, card, shell } from "./ui/informes-styles";
 
 type InformesNegativeReviewsImageModalProps = {
@@ -39,6 +40,7 @@ export function InformesNegativeReviewsImageModal({
     () => (row ? mapReportRowToAlertTemplateProps(row, assetBaseUrl) : null),
     [assetBaseUrl, row]
   );
+  const isBk = row?.brand === "bk";
 
   const generatePreview = useCallback(async () => {
     if (!row || !cardRef.current || !templateProps) return;
@@ -170,7 +172,11 @@ export function InformesNegativeReviewsImageModal({
               opacity: 0,
             }}
           >
-            <NegativeReviewAlertTemplate ref={cardRef} {...templateProps} />
+            {isBk ? (
+              <BurgerKingAlertTemplate ref={cardRef} {...templateProps} />
+            ) : (
+              <NegativeReviewAlertTemplate ref={cardRef} {...templateProps} />
+            )}
           </div>
         </div>
       </div>

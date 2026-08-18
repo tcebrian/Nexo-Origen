@@ -2,6 +2,8 @@ import type { BrandId } from "@/app/dashboard/restaurantes/data";
 
 export type NegativeReviewReportRow = {
   id: string;
+  /** resenas.restaurante_id — necesario para consultas nuevas (ej. contexto semanal). */
+  restauranteId: number | null;
   restaurant: string;
   restaurantSlug: string;
   brand: BrandId;
@@ -25,6 +27,8 @@ export type NegativeReviewReportRow = {
   impact: number | null;
   impactText: string;
   recommendation: string;
+  /** analisis_ia.empleado_mencionado, sin normalizar (null si no se menciona a nadie). */
+  employeeMentioned: string | null;
   /** Reseñas del periodo incluyendo la actual (solo impacto en media del rango). */
   reviewCountAfter: number | null;
   /** Total histórico de reseñas del local (kpi_restaurantes.total_resenas). */

@@ -96,6 +96,7 @@ export function buildNegativeReviewReportRows(
 
     rows.push({
       id: String(row.review_id ?? row.id),
+      restauranteId: row.restaurante_id ?? null,
       restaurant: restaurantName,
       restaurantSlug: restaurantSlug(restaurantName),
       brand,
@@ -122,6 +123,7 @@ export function buildNegativeReviewReportRows(
           ? `${impact.mediaBefore?.toFixed(2) ?? "—"} → ${impact.mediaAfter.toFixed(2)}`
           : IA_NO_DATA),
       recommendation: analisis?.recomendacion?.trim() || IA_NO_DATA,
+      employeeMentioned: analisis?.empleado_mencionado?.trim() || null,
       reviewCountAfter: impact?.reviewCountAfter ?? null,
       totalReviews: catalog && catalog.total_resenas > 0 ? catalog.total_resenas : null,
       lifetimeMedia: catalog && catalog.total_resenas > 0 ? catalog.media_total : null,

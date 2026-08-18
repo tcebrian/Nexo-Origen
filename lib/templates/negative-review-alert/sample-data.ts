@@ -13,6 +13,7 @@ const SAMPLE_IA_FIELDS = {
 
 /** Datos de layout para preview — sin análisis IA inventado. */
 export const SAMPLE_NEGATIVE_REVIEW_ALERT: NegativeReviewAlertData = {
+  brand: "bk",
   brand_name: "Burger King",
   brand_logo_url: "/brands/burger-king-transparent.png",
   restaurant_name: "BK UTEBO",
@@ -72,4 +73,25 @@ export const SAMPLE_ZIZUR_MAYOR: NegativeReviewAlertData = {
   review_count: 248,
   lifetime_rating: 4.62,
   report_date: "14 JUN 2026, 07:31 PM",
+};
+
+/**
+ * Fixture de prueba visual para la plantilla de Burger King — con todos los
+ * campos de análisis IA rellenos (texto de ejemplo, no un caso real) para
+ * comprobar el diseño completo, no solo el layout con placeholders vacíos.
+ */
+export const SAMPLE_BK_FULL: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT,
+  detected_reasons: ["Tiempo de espera", "Pedido incompleto", "Atención al cliente"],
+  sentiment: "Negativo",
+  risk_level: "ALTO",
+  recommendation:
+    "Reforzar personal en hora punta y revisar el proceso de verificación de pedidos antes de la entrega.",
+  ai_summary:
+    "Cliente reporta una espera excesiva y un pedido incompleto, con una atención percibida como poco resolutiva.",
+  main_motive: "Tiempo de espera",
+  detected_impact: "Bajada de 0.23 puntos en la media del local en el periodo analizado.",
+  employee_mentioned: null,
+  analisis_pending: false,
+  period_label: "18 may 2025 – 24 may 2025",
 };
