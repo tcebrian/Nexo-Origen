@@ -383,10 +383,10 @@
 .bka-quote__mark {
   position: absolute;
   font-family: Georgia, serif;
-  font-size: 58px;
+  font-size: 64px;
   line-height: 1;
   color: var(--bk-red);
-  opacity: 0.3;
+  opacity: 0.5;
 }
 
 .bka-quote__mark--open {
