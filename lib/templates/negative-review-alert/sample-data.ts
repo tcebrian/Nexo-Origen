@@ -41,6 +41,15 @@ export const SAMPLE_SHORT_COMMENT: NegativeReviewAlertData = {
   ...SAMPLE_NEGATIVE_REVIEW_ALERT,
   review_comment: "Comida fría y muy lenta la atención. No volveré.",
   review_author: "Carlos Ruiz",
+  detected_reasons: ["Comida fría", "Lentitud"],
+  sentiment: "Negativo",
+  risk_level: "MEDIO",
+  recommendation: "Revisar los tiempos de servicio y la temperatura de entrega del pedido.",
+  ai_summary: "Cliente insatisfecho por comida fría y atención lenta.",
+  main_motive: "Comida fría",
+  detected_impact: "Posible bajada leve en la media si se repite.",
+  employee_mentioned: null,
+  analisis_pending: false,
 };
 
 export const SAMPLE_MEDIUM_COMMENT: NegativeReviewAlertData = {
