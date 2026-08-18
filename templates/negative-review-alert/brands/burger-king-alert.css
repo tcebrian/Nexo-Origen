@@ -289,13 +289,20 @@
    tarjeta también es estable (~219px), así que 886-219=667px (+buffer)
    coincide con su borde real sea cual sea la altura final de la tarjeta,
    que sí varía según lo largo que sea el comentario. Ancladlo desde abajo
-   dejaba un hueco vacío de fondo liso antes de llegar a la hamburguesa. */
+   dejaba un hueco vacío de fondo liso antes de llegar a la hamburguesa.
+
+   Los puntos del borde inferior usan calc(100% + 300px) en vez de 100%:
+   la tarjeta puede comprimirse (grid) por debajo de lo que pide su
+   contenido, así que "Impacto en la media" a veces sobresale por debajo
+   del propio borde de la tarjeta. Un clip-path que terminase justo en el
+   100% recortaría esa parte que sobresale — con este margen de sobra se
+   queda siempre dentro de la zona visible. */
 .bka-review--notch-sm {
   clip-path: polygon(
     0 20px, 20px 0,
     calc(100% - 20px) 0, 100% 20px,
-    100% calc(100% - 20px), calc(100% - 20px) 100%,
-    140px 100%, 140px 670px, 0 670px
+    100% calc(100% + 280px), calc(100% - 20px) calc(100% + 300px),
+    140px calc(100% + 300px), 140px 670px, 0 670px
   );
 }
 
@@ -303,8 +310,8 @@
   clip-path: polygon(
     0 20px, 20px 0,
     calc(100% - 20px) 0, 100% 20px,
-    100% calc(100% - 20px), calc(100% - 20px) 100%,
-    220px 100%, 220px 670px, 0 670px
+    100% calc(100% + 280px), calc(100% - 20px) calc(100% + 300px),
+    220px calc(100% + 300px), 220px 670px, 0 670px
   );
 }
 
@@ -312,8 +319,8 @@
   clip-path: polygon(
     0 20px, 20px 0,
     calc(100% - 20px) 0, 100% 20px,
-    100% calc(100% - 20px), calc(100% - 20px) 100%,
-    300px 100%, 300px 670px, 0 670px
+    100% calc(100% + 280px), calc(100% - 20px) calc(100% + 300px),
+    300px calc(100% + 300px), 300px 670px, 0 670px
   );
 }
 
