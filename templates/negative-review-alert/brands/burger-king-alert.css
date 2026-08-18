@@ -263,8 +263,25 @@
 .bka-body {
   display: grid;
   grid-template-columns: 48% 1fr;
-  gap: 20px;
+  grid-template-rows: auto auto;
+  column-gap: 20px;
+  row-gap: 12px;
   min-height: 0;
+}
+
+.bka-body > .bka-review {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.bka-body > .bka-mini--under-quote {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.bka-body > .bka-insights {
+  grid-column: 2;
+  grid-row: 1 / span 2;
 }
 
 .bka-review {
@@ -272,56 +289,10 @@
   background: var(--bk-card);
   border: 1px solid var(--bk-line);
   box-shadow: 0 14px 30px rgba(33, 26, 19, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  padding: 18px 22px;
+  padding: 14px 22px;
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-
-/* Cuando "Impacto en la media" se desplaza a la derecha (comentario muy
-   largo), se recorta la esquina inferior izquierda de la tarjeta con el
-   mismo recorrido, para que el fondo no siga siendo un rectángulo hasta
-   abajo y la hamburguesa pueda asomar con naturalidad por ese hueco.
-
-   El corte horizontal está anclado a 670px desde la parte de ARRIBA de la
-   tarjeta (no desde abajo): la hamburguesa tiene una posición fija en el
-   canvas (empieza a 886px del borde superior) y la parte de arriba de la
-   tarjeta también es estable (~219px), así que 886-219=667px (+buffer)
-   coincide con su borde real sea cual sea la altura final de la tarjeta,
-   que sí varía según lo largo que sea el comentario. Ancladlo desde abajo
-   dejaba un hueco vacío de fondo liso antes de llegar a la hamburguesa.
-
-   Los puntos del borde inferior usan calc(100% + 300px) en vez de 100%:
-   la tarjeta puede comprimirse (grid) por debajo de lo que pide su
-   contenido, así que "Impacto en la media" a veces sobresale por debajo
-   del propio borde de la tarjeta. Un clip-path que terminase justo en el
-   100% recortaría esa parte que sobresale — con este margen de sobra se
-   queda siempre dentro de la zona visible. */
-.bka-review--notch-sm {
-  clip-path: polygon(
-    0 20px, 20px 0,
-    calc(100% - 20px) 0, 100% 20px,
-    100% calc(100% + 280px), calc(100% - 20px) calc(100% + 300px),
-    140px calc(100% + 300px), 140px 670px, 0 670px
-  );
-}
-
-.bka-review--notch-md {
-  clip-path: polygon(
-    0 20px, 20px 0,
-    calc(100% - 20px) 0, 100% 20px,
-    100% calc(100% + 280px), calc(100% - 20px) calc(100% + 300px),
-    220px calc(100% + 300px), 220px 670px, 0 670px
-  );
-}
-
-.bka-review--notch-lg {
-  clip-path: polygon(
-    0 20px, 20px 0,
-    calc(100% - 20px) 0, 100% 20px,
-    100% calc(100% + 280px), calc(100% - 20px) calc(100% + 300px),
-    300px calc(100% + 300px), 300px 670px, 0 670px
-  );
 }
 
 .bka-review__head {
@@ -399,8 +370,8 @@
 
 .bka-quote {
   position: relative;
-  margin-top: 16px;
-  padding: 28px 30px;
+  margin-top: 12px;
+  padding: 20px 26px;
   border-radius: 16px;
   background: #fff;
   border: 1px solid var(--bk-line);
@@ -715,8 +686,6 @@
 .bka-mini--under-quote {
   position: relative;
   z-index: 3;
-  flex: none;
-  margin-top: 16px;
   margin-left: 0;
   padding: 35px;
 }

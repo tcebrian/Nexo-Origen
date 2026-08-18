@@ -258,7 +258,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
 
           <div className="bka-body">
             {/* Tarjeta grande de la reseña — protagonista */}
-            <section className={`bka-review ${shiftTier ? `bka-review--notch-${shiftTier}` : ""}`}>
+            <section className="bka-review">
               <div className="bka-review__head">
                 <span className="bka-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
                 <div className="bka-review__meta">
@@ -290,26 +290,26 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                   &rdquo;
                 </span>
               </div>
+            </section>
 
-              <section className={`bka-mini bka-mini--under-quote ${shiftTier ? `bka-mini--shift-${shiftTier}` : ""}`}>
-                <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
-                <div className="bka-impact">
-                  <div className="bka-impact__col">
-                    <p className="bka-impact__label">Media anterior</p>
-                    <p className="bka-impact__value">{data.previous_rating.toFixed(2)}</p>
-                  </div>
-                  <div className="bka-impact__col">
-                    <p className="bka-impact__label">Media actual</p>
-                    <p className={`bka-impact__value bka-impact__value--tone-${tone}`}>
-                      {data.current_rating.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="bka-impact__col">
-                    <p className="bka-impact__label">Variación</p>
-                    <ImpactDelta delta={delta} />
-                  </div>
+            <section className={`bka-mini bka-mini--under-quote ${shiftTier ? `bka-mini--shift-${shiftTier}` : ""}`}>
+              <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
+              <div className="bka-impact">
+                <div className="bka-impact__col">
+                  <p className="bka-impact__label">Media anterior</p>
+                  <p className="bka-impact__value">{data.previous_rating.toFixed(2)}</p>
                 </div>
-              </section>
+                <div className="bka-impact__col">
+                  <p className="bka-impact__label">Media actual</p>
+                  <p className={`bka-impact__value bka-impact__value--tone-${tone}`}>
+                    {data.current_rating.toFixed(2)}
+                  </p>
+                </div>
+                <div className="bka-impact__col">
+                  <p className="bka-impact__label">Variación</p>
+                  <ImpactDelta delta={delta} />
+                </div>
+              </div>
             </section>
 
             {/* Columna de inteligencia artificial */}
