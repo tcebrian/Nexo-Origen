@@ -52,6 +52,18 @@ function analysisSizeClass(totalLength: number): string {
 }
 
 /**
+ * Cuando el comentario es muy largo, la tarjeta de reseña crece y "Impacto en
+ * la media" baja hasta la zona donde sangra la hamburguesa. A partir de ahí
+ * se desplaza hacia la derecha y se reduce, para no quedar tapada por ella.
+ */
+function impactShiftClass(commentLength: number): string {
+  if (commentLength <= 650) return "";
+  if (commentLength <= 900) return "bka-mini--shift-sm";
+  if (commentLength <= 1300) return "bka-mini--shift-md";
+  return "bka-mini--shift-lg";
+}
+
+/**
  * Valores que en la práctica significan "no hay dato" en Supabase
  * (placeholders, nulos convertidos a texto, vacíos) — se tratan como
  * ausencia real, no como contenido a mostrar.
@@ -274,7 +286,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                 </span>
               </div>
 
-              <section className="bka-mini bka-mini--under-quote">
+              <section className={`bka-mini bka-mini--under-quote ${impactShiftClass(fullComment.length)}`}>
                 <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
                 <div className="bka-impact">
                   <div className="bka-impact__col">
