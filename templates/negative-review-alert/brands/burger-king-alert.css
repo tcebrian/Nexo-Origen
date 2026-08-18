@@ -152,7 +152,7 @@
 
 .bka-header__sub {
   margin: 6px 0 0;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--bk-ink-soft);
@@ -687,8 +687,9 @@
 .bka-mini--under-quote {
   position: relative;
   z-index: 3;
+  align-self: start;
   margin-left: 0;
-  padding: 35px;
+  padding: 4px 35px;
 }
 
 /* Si el comentario es tan largo que empuja este bloque hasta la zona donde
