@@ -373,8 +373,11 @@
   border: 1px solid var(--bk-line);
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  /* Mismo alto que la reseña normal/larga (referencia) — un comentario corto
+     no encoge el cuadro, solo crece si el comentario es más largo que eso. */
+  min-height: 336px;
 }
 
 .bka-quote__mark {
