@@ -139,8 +139,6 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
     const incidents = data.detected_reasons.filter((r) => !isEmptyValue(r)).slice(0, 3);
     const sentiment = cleanValue(data.sentiment);
     const risk = cleanValue(data.risk_level);
-    const lifetimeMedia = data.lifetime_rating ?? data.current_rating;
-    const diffVsTarget = lifetimeMedia - target;
     const tone = mediaTone(data.current_rating, target);
 
     const analysisRows: AnalysisRow[] = [
@@ -345,30 +343,6 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                 </ul>
               </section>
             ) : null}
-
-            <section className="bka-mini">
-              <p className="bka-mini__band">CONTEXTO DEL PERIODO</p>
-              <dl className="bka-context">
-                <div>
-                  <dt>Periodo analizado</dt>
-                  <dd>{data.period_label || data.report_date || "—"}</dd>
-                </div>
-                <div>
-                  <dt>Número de reseñas</dt>
-                  <dd>{data.review_count ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt>Objetivo</dt>
-                  <dd>{target.toFixed(2)}</dd>
-                </div>
-                <div>
-                  <dt>Diferencia vs. objetivo</dt>
-                  <dd className={diffVsTarget < 0 ? "bka-context__neg" : "bka-context__pos"}>
-                    {`${diffVsTarget >= 0 ? "+" : ""}${diffVsTarget.toFixed(2)}`}
-                  </dd>
-                </div>
-              </dl>
-            </section>
           </div>
 
           {/* Conclusión */}
