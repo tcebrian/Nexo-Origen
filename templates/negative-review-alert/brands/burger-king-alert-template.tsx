@@ -1,9 +1,8 @@
 import { forwardRef } from "react";
-import { NEXO_ORIGEN_LOGO_SRC } from "@/app/_components/nexo-brand";
 import { getCommentDisplay } from "@/lib/templates/negative-review-alert/comment-layout";
 import { resolveDesignCanvasSize } from "@/lib/templates/negative-review-alert/dimensions";
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
-import { NexoHeaderBrand, StarRating } from "../icons";
+import { StarRating } from "../icons";
 import {
   BkIconArrowDown,
   BkIconArrowUp,
@@ -210,7 +209,14 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
             </div>
 
             <div className="bka-header__nexo">
-              <NexoHeaderBrand logoUrl={data.nexo_logo_url || NEXO_ORIGEN_LOGO_SRC} assetBaseUrl={assetBaseUrl} />
+              <span className="bka-header__nexo-badge">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={absUrl(assetBaseUrl, "/design/burger-king/nexo-origen-logo.png")}
+                  alt="Nexo Origen"
+                  className="bka-header__nexo-logo"
+                />
+              </span>
             </div>
           </header>
 

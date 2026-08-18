@@ -51,9 +51,9 @@
 }
 
 .bka-product--drink {
-  top: -34px;
-  right: -6px;
-  width: 300px;
+  top: 300px;
+  right: -30px;
+  width: 190px;
 }
 
 .bka-product--fries {
@@ -84,7 +84,7 @@
 
 .bka-header {
   display: grid;
-  grid-template-columns: 620px 150px 1fr 460px;
+  grid-template-columns: 620px 190px 1fr 460px;
   align-items: center;
   gap: 14px;
   padding-bottom: 14px;
@@ -152,18 +152,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 92px;
-  border-radius: 18px;
-  background: #fff;
-  border: 1px solid var(--bk-line);
-  box-shadow: 0 10px 22px rgba(33, 26, 19, 0.1);
-  padding: 6px;
+  height: 155px;
 }
 
 .bka-header__brand-logo {
   height: 100%;
   width: auto;
   object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(33, 26, 19, 0.16));
 }
 
 .bka-header__restaurant {
@@ -201,25 +197,19 @@
 .bka-header__nexo {
   display: flex;
   justify-content: flex-end;
-  overflow: hidden;
 }
 
-.bka-header__nexo .nra-nexo-header__row::before {
-  content: none;
+.bka-header__nexo-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.bka-header__nexo .nra-nexo-header__icon {
-  height: 95px;
-  filter: none;
-}
-
-.bka-header__nexo .nra-nexo-header__wordmark {
-  width: 340px;
-  filter: none;
-}
-
-.bka-header__nexo .nra-nexo-header__brand {
-  width: 360px;
+.bka-header__nexo-logo {
+  height: 230px;
+  width: auto;
+  object-fit: contain;
+  mix-blend-mode: screen;
 }
 
 /* ---------- cuerpo: reseña + inteligencia artificial ---------- */
