@@ -43,6 +43,14 @@ function quoteSizeClass(length: number): string {
   return "bka-quote__text--xxs";
 }
 
+/** Tamaño de la lista de Análisis IA adaptado al total de texto — así nunca queda nada oculto. */
+function analysisSizeClass(totalLength: number): string {
+  if (totalLength <= 260) return "bka-analysis--lg";
+  if (totalLength <= 420) return "bka-analysis--md";
+  if (totalLength <= 600) return "bka-analysis--sm";
+  return "bka-analysis--xs";
+}
+
 /**
  * Valores que en la práctica significan "no hay dato" en Supabase
  * (placeholders, nulos convertidos a texto, vacíos) — se tratan como
@@ -146,6 +154,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
       { key: "impacto", icon: <BkIconBars />, label: "Impacto detectado", value: cleanValue(data.detected_impact) as string },
       { key: "recomendacion", icon: <BkIconBulb />, label: "Recomendación", value: cleanValue(data.recommendation) as string },
     ].filter((row) => row.value);
+    const analysisTotalLength = analysisRows.reduce((sum, row) => sum + row.value.length, 0);
 
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
     const brandLabel = (cleanValue(data.brand_name) ?? "Burger King").toUpperCase();
@@ -291,7 +300,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
               {analysisRows.length > 0 ? (
                 <>
                   <p className="bka-ribbon">ANÁLISIS IA</p>
-                  <ul className="bka-analysis">
+                  <ul className={`bka-analysis ${analysisSizeClass(analysisTotalLength)}`}>
                     {analysisRows.map((row) => (
                       <li key={row.key}>
                         <span className="bka-analysis__icon">{row.icon}</span>
