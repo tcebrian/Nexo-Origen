@@ -263,25 +263,16 @@
 .bka-body {
   display: grid;
   grid-template-columns: 48% 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 20px;
-  row-gap: 12px;
+  align-items: start;
+  gap: 20px;
   min-height: 0;
 }
 
-.bka-body > .bka-review {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-.bka-body > .bka-mini--under-quote {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.bka-body > .bka-insights {
-  grid-column: 2;
-  grid-row: 1 / span 2;
+.bka-review-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
 }
 
 .bka-review {
@@ -468,7 +459,7 @@
   border-radius: 14px;
   background: var(--bk-card);
   border: 1px solid var(--bk-line);
-  padding: 21px 14px;
+  padding: 14px;
   text-align: center;
   box-shadow: 0 6px 14px rgba(33, 26, 19, 0.05);
 }
@@ -477,16 +468,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 66px;
-  height: 66px;
+  width: 50px;
+  height: 50px;
   border-radius: 999px;
   background: var(--bk-cream);
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .bka-diagnostics__icon svg {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
 }
 
 .bka-diagnostics__icon--high {

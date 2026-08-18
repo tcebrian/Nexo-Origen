@@ -257,6 +257,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
           </div>
 
           <div className="bka-body">
+            <div className="bka-review-col">
             {/* Tarjeta grande de la reseña — protagonista */}
             <section className="bka-review">
               <div className="bka-review__head">
@@ -311,6 +312,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                 </div>
               </div>
             </section>
+            </div>
 
             {/* Columna de inteligencia artificial */}
             <section className="bka-insights">
