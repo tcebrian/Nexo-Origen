@@ -1,5 +1,4 @@
 import { forwardRef } from "react";
-import { getCommentDisplay } from "@/lib/templates/negative-review-alert/comment-layout";
 import { resolveDesignCanvasSize } from "@/lib/templates/negative-review-alert/dimensions";
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
 import { StarRating } from "../icons";
@@ -12,14 +11,12 @@ import {
   BkIconClipboardBig,
   BkIconClipboardText,
   BkIconClock,
-  BkIconCrown,
   BkIconMagnifier,
   BkIconMinus,
   BkIconMood,
   BkIconPerson,
   BkIconPin,
   BkIconShield,
-  BkIconTarget,
 } from "./burger-king-alert-icons";
 import "./burger-king-alert.css";
 
@@ -37,11 +34,15 @@ function absUrl(base: string | undefined, path: string): string {
   return `${base.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-const COMMENT_SIZE_MAP: Record<string, string> = {
-  "nra-comment--lg": "bka-quote__text--lg",
-  "nra-comment--md": "bka-quote__text--md",
-  "nra-comment--sm": "bka-quote__text--sm",
-};
+/** Tamaño del comentario adaptado a su longitud real — cuanto más largo, más se reduce la letra. */
+function quoteSizeClass(length: number): string {
+  if (length <= 200) return "bka-quote__text--xl";
+  if (length <= 400) return "bka-quote__text--lg";
+  if (length <= 650) return "bka-quote__text--md";
+  if (length <= 900) return "bka-quote__text--sm";
+  if (length <= 1300) return "bka-quote__text--xs";
+  return "bka-quote__text--xxs";
+}
 
 /**
  * Valores que en la práctica significan "no hay dato" en Supabase
@@ -132,7 +133,7 @@ type AnalysisRow = {
 export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAlertTemplateProps>(
   function BurgerKingAlertTemplate({ data, assetBaseUrl }, ref) {
     const design = resolveDesignCanvasSize(data.aspect_ratio);
-    const comment = getCommentDisplay(data.review_comment);
+    const fullComment = data.review_comment.trim();
     const location = data.restaurant_address || data.restaurant_location;
     const target = data.target_rating ?? 4.4;
     const delta = data.rating_impact;
@@ -185,14 +186,20 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
           {/* Header editorial */}
           <header className="bka-header">
             <div className="bka-header__alert">
-              <span className="bka-header__crown">
-                <BkIconCrown />
-              </span>
               <div>
                 <p className="bka-header__title">
                   RESEÑA
+                  <span className="bka-header__crown">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={absUrl(assetBaseUrl, "/design/burger-king/bk-crown.png")}
+                      alt=""
+                      aria-hidden
+                      className="bka-header__crown-img"
+                    />
+                  </span>
                   <br />
-                  <span>NEGATIVA</span>
+                  <span className="bka-header__title-neg">NEGATIVA</span>
                 </p>
                 <p className="bka-header__sub">NUEVO COMENTARIO RECIBIDO</p>
               </div>
@@ -216,6 +223,8 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
               <p className="bka-header__restaurant-address">{location}</p>
             </div>
           </header>
+
+          <span className="bka-header__divider" aria-hidden />
 
           <div className="bka-header__nexo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -253,14 +262,33 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                 <span className="bka-quote__mark bka-quote__mark--open" aria-hidden>
                   &ldquo;
                 </span>
-                <p className={`bka-quote__text ${COMMENT_SIZE_MAP[comment.sizeClass] ?? "bka-quote__text--md"}`}>
-                  {comment.text}
+                <p className={`bka-quote__text ${quoteSizeClass(fullComment.length)}`}>
+                  {fullComment}
                 </p>
-                {comment.showReadMore ? <p className="bka-quote__more">Ver comentario completo →</p> : null}
                 <span className="bka-quote__mark bka-quote__mark--close" aria-hidden>
                   &rdquo;
                 </span>
               </div>
+
+              <section className="bka-mini bka-mini--under-quote">
+                <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
+                <div className="bka-impact">
+                  <div className="bka-impact__col">
+                    <p className="bka-impact__label">Media anterior</p>
+                    <p className="bka-impact__value">{data.previous_rating.toFixed(2)}</p>
+                  </div>
+                  <div className="bka-impact__col">
+                    <p className="bka-impact__label">Media actual</p>
+                    <p className={`bka-impact__value bka-impact__value--tone-${tone}`}>
+                      {data.current_rating.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="bka-impact__col">
+                    <p className="bka-impact__label">Variación</p>
+                    <ImpactDelta delta={delta} />
+                  </div>
+                </div>
+              </section>
             </section>
 
             {/* Columna de inteligencia artificial */}
@@ -326,33 +354,6 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                 </ul>
               </section>
             ) : null}
-
-            <section className="bka-mini">
-              <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
-              <div className="bka-impact">
-                <div className="bka-impact__col">
-                  <p className="bka-impact__label">Media anterior</p>
-                  <p className="bka-impact__value">{data.previous_rating.toFixed(2)}</p>
-                </div>
-                <div className="bka-impact__col">
-                  <p className="bka-impact__label">Media actual</p>
-                  <p className={`bka-impact__value bka-impact__value--tone-${tone}`}>
-                    {data.current_rating.toFixed(2)}
-                  </p>
-                </div>
-                <div className="bka-impact__col">
-                  <p className="bka-impact__label">Variación</p>
-                  <ImpactDelta delta={delta} />
-                </div>
-                <div className="bka-impact__col">
-                  <p className="bka-impact__label">Objetivo</p>
-                  <p className="bka-impact__value bka-impact__value--target">
-                    <BkIconTarget />
-                    {target.toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            </section>
 
             <section className="bka-mini">
               <p className="bka-mini__band">CONTEXTO DEL PERIODO</p>
