@@ -207,18 +207,16 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
               </p>
               <p className="bka-header__restaurant-address">{location}</p>
             </div>
-
-            <div className="bka-header__nexo">
-              <span className="bka-header__nexo-badge">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={absUrl(assetBaseUrl, "/design/burger-king/nexo-origen-logo.png")}
-                  alt="Nexo Origen"
-                  className="bka-header__nexo-logo"
-                />
-              </span>
-            </div>
           </header>
+
+          <div className="bka-header__nexo">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={absUrl(assetBaseUrl, "/design/burger-king/nexo-origen-logo.png")}
+              alt="Nexo Origen"
+              className="bka-header__nexo-logo"
+            />
+          </div>
 
           <div className="bka-body">
             {/* Tarjeta grande de la reseña — protagonista */}

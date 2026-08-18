@@ -51,7 +51,7 @@
 }
 
 .bka-product--drink {
-  top: 300px;
+  top: 205px;
   right: -30px;
   width: 190px;
 }
@@ -84,7 +84,7 @@
 
 .bka-header {
   display: grid;
-  grid-template-columns: 620px 190px 1fr 460px;
+  grid-template-columns: 620px 190px 1fr;
   align-items: center;
   gap: 14px;
   padding-bottom: 14px;
@@ -175,6 +175,7 @@
   font-weight: 800;
   color: var(--bk-ink);
   min-width: 0;
+  padding-right: 190px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -187,6 +188,7 @@
 
 .bka-header__restaurant-address {
   margin: 4px 0 0 21px;
+  padding-right: 190px;
   font-size: 12px;
   color: var(--bk-ink-soft);
   white-space: nowrap;
@@ -195,20 +197,20 @@
 }
 
 .bka-header__nexo {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.bka-header__nexo-badge {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .bka-header__nexo-logo {
-  height: 230px;
+  height: 140px;
   width: auto;
   object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(33, 26, 19, 0.18));
 }
 
 /* ---------- cuerpo: reseña + inteligencia artificial ---------- */
