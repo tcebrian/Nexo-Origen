@@ -511,8 +511,8 @@
 
 .bka-analysis li {
   display: flex;
-  gap: 10px;
-  padding: 7px 0;
+  gap: 17.5px;
+  padding: 12px 0;
   border-bottom: 1px solid var(--bk-line);
 }
 
@@ -524,13 +524,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 46px;
+  height: 46px;
   border-radius: 999px;
   background: var(--bk-cream);
   color: var(--bk-red);
   flex-shrink: 0;
   margin-top: 1px;
+}
+
+.bka-analysis__icon svg {
+  width: 26px;
+  height: 26px;
 }
 
 .bka-analysis__copy {
@@ -539,7 +544,7 @@
 
 .bka-analysis__label {
   margin: 0;
-  font-size: 10.5px;
+  font-size: 18px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -547,8 +552,8 @@
 }
 
 .bka-analysis__value {
-  margin: 2px 0 0;
-  font-size: 12.5px;
+  margin: 3px 0 0;
+  font-size: 22px;
   line-height: 1.35;
   color: var(--bk-ink);
   display: -webkit-box;
