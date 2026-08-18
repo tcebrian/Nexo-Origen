@@ -370,8 +370,8 @@
 
 .bka-quote {
   position: relative;
-  margin-top: 12px;
-  padding: 20px 26px;
+  margin-top: 10px;
+  padding: 14px 20px;
   border-radius: 16px;
   background: #fff;
   border: 1px solid var(--bk-line);
@@ -688,18 +688,12 @@
   justify-content: center;
 }
 
-/* Desplazada a la derecha SIEMPRE (no solo con comentarios largos): la
-   hamburguesa sangra en la esquina inferior izquierda en una posición fija
-   del canvas, así que la forma más simple y robusta de no taparla —sea cual
-   sea la altura final de la tarjeta— es no ocupar nunca esa franja
-   izquierda, en vez de perseguir un ajuste vertical exacto. El z-index de
-   arriba es además una red de seguridad para cualquier caso límite. */
 .bka-mini--under-quote {
   position: relative;
   z-index: 3;
   align-self: start;
-  margin-left: 310px;
-  padding: 35px;
+  margin-left: 0;
+  padding: 8px 35px;
 }
 
 /* Si además el comentario es muy largo, se compacta un poco más para
