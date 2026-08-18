@@ -537,8 +537,9 @@
 
 .bka-analysis li {
   display: flex;
-  gap: 17.5px;
-  padding: 12px 0;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 0;
   border-bottom: 1px solid var(--bk-line);
 }
 
@@ -550,8 +551,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 70px;
-  height: 70px;
+  width: 80px;
+  height: 80px;
   border-radius: 999px;
   background: var(--bk-cream);
   color: var(--bk-red);
@@ -560,8 +561,8 @@
 }
 
 .bka-analysis__icon svg {
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
 }
 
 .bka-analysis__copy {
@@ -570,7 +571,7 @@
 
 .bka-analysis__label {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -578,35 +579,35 @@
 }
 
 .bka-analysis__value {
-  margin: 3px 0 0;
-  font-size: 22px;
-  line-height: 1.35;
+  margin: 4px 0 0;
+  font-size: 25px;
+  line-height: 1.4;
   color: var(--bk-ink);
 }
 
 /* Tamaños adaptables según el volumen total de texto de análisis IA, para que nunca quede nada oculto. */
 .bka-analysis--md li {
-  gap: 14px;
-  padding: 9px 0;
+  gap: 16px;
+  padding: 12px 0;
 }
 
 .bka-analysis--md .bka-analysis__icon {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
 }
 
 .bka-analysis--md .bka-analysis__icon svg {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
 }
 
 .bka-analysis--md .bka-analysis__label {
-  font-size: 16px;
+  font-size: 17px;
 }
 
 .bka-analysis--md .bka-analysis__value {
-  font-size: 19px;
-  line-height: 1.3;
+  font-size: 21px;
+  line-height: 1.32;
 }
 
 .bka-analysis--sm li {
