@@ -281,17 +281,40 @@
 /* Cuando "Impacto en la media" se desplaza a la derecha (comentario muy
    largo), se recorta la esquina inferior izquierda de la tarjeta con el
    mismo recorrido, para que el fondo no siga siendo un rectángulo hasta
-   abajo y la hamburguesa pueda asomar con naturalidad por ese hueco. */
+   abajo y la hamburguesa pueda asomar con naturalidad por ese hueco.
+
+   El corte horizontal está anclado a 670px desde la parte de ARRIBA de la
+   tarjeta (no desde abajo): la hamburguesa tiene una posición fija en el
+   canvas (empieza a 886px del borde superior) y la parte de arriba de la
+   tarjeta también es estable (~219px), así que 886-219=667px (+buffer)
+   coincide con su borde real sea cual sea la altura final de la tarjeta,
+   que sí varía según lo largo que sea el comentario. Ancladlo desde abajo
+   dejaba un hueco vacío de fondo liso antes de llegar a la hamburguesa. */
 .bka-review--notch-sm {
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 140px 100%, 140px calc(100% - 185px), 0 calc(100% - 185px));
+  clip-path: polygon(
+    0 20px, 20px 0,
+    calc(100% - 20px) 0, 100% 20px,
+    100% calc(100% - 20px), calc(100% - 20px) 100%,
+    140px 100%, 140px 670px, 0 670px
+  );
 }
 
 .bka-review--notch-md {
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 220px 100%, 220px calc(100% - 175px), 0 calc(100% - 175px));
+  clip-path: polygon(
+    0 20px, 20px 0,
+    calc(100% - 20px) 0, 100% 20px,
+    100% calc(100% - 20px), calc(100% - 20px) 100%,
+    220px 100%, 220px 670px, 0 670px
+  );
 }
 
 .bka-review--notch-lg {
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 300px 100%, 300px calc(100% - 155px), 0 calc(100% - 155px));
+  clip-path: polygon(
+    0 20px, 20px 0,
+    calc(100% - 20px) 0, 100% 20px,
+    100% calc(100% - 20px), calc(100% - 20px) 100%,
+    300px 100%, 300px 670px, 0 670px
+  );
 }
 
 .bka-review__head {
