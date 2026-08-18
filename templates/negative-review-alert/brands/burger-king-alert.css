@@ -408,15 +408,15 @@
 }
 
 .bka-quote__text--xl {
-  font-size: 27px;
+  font-size: 31px;
 }
 
 .bka-quote__text--lg {
-  font-size: 25px;
+  font-size: 28px;
 }
 
 .bka-quote__text--md {
-  font-size: 22px;
+  font-size: 24px;
 }
 
 .bka-quote__text--sm {
@@ -693,12 +693,15 @@
   z-index: 3;
   align-self: start;
   margin-left: 0;
-  padding: 8px 35px;
+  padding: 0 35px;
 }
 
-/* Si además el comentario es muy largo, se compacta un poco más para
-   asegurar que todo siga cabiendo dentro del canvas. */
+/* Con comentarios muy largos (tanto que ni compactando el padding basta
+   para no llegar a la zona donde sangra la hamburguesa) sí se desplaza a
+   la derecha, además de compactarse. Con comentarios normales/cortos no
+   se desplaza: se queda a ancho completo. */
 .bka-mini--shift-sm {
+  margin-left: 140px;
   padding: 26px;
 }
 
@@ -719,6 +722,7 @@
 }
 
 .bka-mini--shift-md {
+  margin-left: 220px;
   padding: 20px;
 }
 
@@ -743,6 +747,7 @@
 }
 
 .bka-mini--shift-lg {
+  margin-left: 300px;
   padding: 16px;
 }
 
@@ -773,8 +778,8 @@
 
 .bka-mini--under-quote .bka-mini__band {
   font-size: 17.5px;
-  padding: 10.5px 21px;
-  margin-bottom: 17.5px;
+  padding: 6px 21px;
+  margin-bottom: 8px;
 }
 
 .bka-mini--under-quote .bka-impact__col {
@@ -786,7 +791,7 @@
 
 .bka-mini--under-quote .bka-impact__label {
   font-size: 16.5px;
-  margin: 0 0 7px;
+  margin: 0 0 3px;
   height: 20px;
   display: flex;
   align-items: center;
