@@ -583,6 +583,10 @@
   font-size: 25px;
   line-height: 1.4;
   color: var(--bk-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* Tamaños adaptables según el volumen total de texto de análisis IA, para que nunca quede nada oculto. */
@@ -684,20 +688,23 @@
   justify-content: center;
 }
 
+/* Desplazada a la derecha SIEMPRE (no solo con comentarios largos): la
+   hamburguesa sangra en la esquina inferior izquierda en una posición fija
+   del canvas, así que la forma más simple y robusta de no taparla —sea cual
+   sea la altura final de la tarjeta— es no ocupar nunca esa franja
+   izquierda, en vez de perseguir un ajuste vertical exacto. El z-index de
+   arriba es además una red de seguridad para cualquier caso límite. */
 .bka-mini--under-quote {
   position: relative;
   z-index: 3;
   align-self: start;
-  margin-left: 0;
-  padding: 4px 35px;
+  margin-left: 310px;
+  padding: 35px;
 }
 
-/* Si el comentario es tan largo que empuja este bloque hasta la zona donde
-   sangra la hamburguesa (esquina inferior izquierda), se desplaza a la
-   derecha y se compacta para no quedar ni tapado ni tapándola. El z-index
-   de arriba es además una red de seguridad para cualquier caso límite. */
+/* Si además el comentario es muy largo, se compacta un poco más para
+   asegurar que todo siga cabiendo dentro del canvas. */
 .bka-mini--shift-sm {
-  margin-left: 140px;
   padding: 26px;
 }
 
@@ -718,7 +725,6 @@
 }
 
 .bka-mini--shift-md {
-  margin-left: 220px;
   padding: 20px;
 }
 
@@ -743,7 +749,6 @@
 }
 
 .bka-mini--shift-lg {
-  margin-left: 300px;
   padding: 16px;
 }
 
