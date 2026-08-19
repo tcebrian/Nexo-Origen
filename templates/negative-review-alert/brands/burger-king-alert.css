@@ -862,10 +862,11 @@
   padding: 18px 38px;
 }
 
-/* Con comentarios muy largos (tanto que ni compactando el padding basta
-   para no llegar a la zona donde sangra la hamburguesa) sí se desplaza a
-   la derecha, además de compactarse. Con comentarios normales/cortos no
-   se desplaza: se queda a ancho completo. */
+/* Con comentarios ya bastante largos (dentro del diseño normal, ≤900
+   caracteres — por encima de eso se usa el diseño alternativo centrado) se
+   desplaza a la derecha y se compacta un poco para no quedar tapada por la
+   hamburguesa. Con comentarios normales/cortos no se desplaza: se queda a
+   ancho completo. */
 .bka-mini--shift-sm {
   margin-left: 140px;
   padding: 26px;
@@ -885,61 +886,6 @@
 .bka-mini--shift-sm .bka-impact__delta {
   font-size: 33px;
   height: 44px;
-}
-
-.bka-mini--shift-md {
-  margin-left: 220px;
-  padding: 20px;
-}
-
-.bka-mini--shift-md .bka-mini__band {
-  font-size: 13px;
-  padding: 8px 16px;
-  margin-bottom: 12px;
-}
-
-.bka-mini--shift-md .bka-impact__label {
-  font-size: 14px;
-}
-
-.bka-mini--shift-md .bka-impact__value {
-  font-size: 29px;
-  height: 36px;
-}
-
-.bka-mini--shift-md .bka-impact__delta {
-  font-size: 26px;
-  height: 36px;
-}
-
-.bka-mini--shift-lg {
-  margin-left: 300px;
-  padding: 22px;
-}
-
-.bka-mini--shift-lg .bka-mini__band {
-  font-size: 14px;
-  padding: 9px 16px;
-  margin-bottom: 12px;
-}
-
-.bka-mini--shift-lg .bka-impact__label {
-  font-size: 14px;
-}
-
-.bka-mini--shift-lg .bka-impact__value {
-  font-size: 30px;
-  height: 38px;
-}
-
-.bka-mini--shift-lg .bka-impact__delta {
-  font-size: 27px;
-  height: 38px;
-}
-
-.bka-mini--shift-lg .bka-impact__delta svg {
-  width: 30px;
-  height: 30px;
 }
 
 .bka-mini--under-quote .bka-mini__band {

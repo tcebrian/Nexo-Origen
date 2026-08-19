@@ -110,18 +110,13 @@ function footerTier(length: number): "lg" | "md" | "sm" | "xs" {
 }
 
 /**
- * Cuando el comentario es muy largo, la tarjeta de reseña crece y "Impacto en
- * la media" baja hasta la zona donde sangra la hamburguesa. A partir de ahí
- * se desplaza hacia la derecha y se reduce, para no quedar tapada por ella.
- * El mismo nivel se usa para recortar el fondo de la tarjeta (clip-path) por
- * donde el bloque se ha desplazado, así el fondo no sigue siendo un
- * rectángulo hasta abajo y la hamburguesa puede asomar con naturalidad.
+ * Dentro del diseño normal (comentarios ≤900 caracteres — por encima de eso
+ * se usa el diseño alternativo centrado), cuando el comentario ya es
+ * bastante largo "Impacto en la media" se desplaza hacia la derecha y se
+ * compacta un poco para no quedar tapada por la hamburguesa.
  */
-function commentShiftTier(commentLength: number): "" | "sm" | "md" | "lg" {
-  if (commentLength <= 650) return "";
-  if (commentLength <= 900) return "sm";
-  if (commentLength <= 1300) return "md";
-  return "lg";
+function commentShiftTier(commentLength: number): "" | "sm" {
+  return commentLength <= 650 ? "" : "sm";
 }
 
 /**
