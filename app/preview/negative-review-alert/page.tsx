@@ -11,6 +11,7 @@ import {
 import {
   SAMPLE_BK_FULL,
   SAMPLE_BK_LONG,
+  SAMPLE_BK_SHORT,
 } from "@/lib/templates/negative-review-alert/sample-data";
 import { NegativeReviewAlertTemplate } from "@/templates/negative-review-alert";
 import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brands/burger-king-alert-template";
@@ -18,7 +19,8 @@ import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brand
 const REFERENCE_PATH = "/design/negative-review-alert-reference.png";
 
 const SAMPLE_VARIANTS = {
-  normal: { label: "Diseño normal", data: SAMPLE_BK_FULL },
+  normal: { label: "Diseño reseña media", data: SAMPLE_BK_FULL },
+  corta: { label: "Diseño corta", data: SAMPLE_BK_SHORT },
   largo: { label: "Diseño largo", data: SAMPLE_BK_LONG },
 } as const;
 

@@ -866,6 +866,12 @@
   padding: 18px 38px;
 }
 
+/* Con comentarios cortos (<500 caracteres) sube bastante más, ya que el
+   cuadro del comentario queda más corto y deja mucho hueco debajo. */
+.bka-mini--under-quote.bka-mini--short {
+  bottom: 0px;
+}
+
 /* Con comentarios ya bastante largos (dentro del diseño normal, ≤900
    caracteres — por encima de eso se usa el diseño alternativo centrado) se
    desplaza a la derecha y se compacta un poco para no quedar tapada por la

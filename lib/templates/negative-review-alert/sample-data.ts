@@ -61,6 +61,31 @@ export const SAMPLE_BK_FULL: NegativeReviewAlertData = {
 };
 
 /**
+ * Fixture de prueba visual — comentario corto (texto de ejemplo, no un caso
+ * real) para comprobar el diseño normal con un comentario breve.
+ */
+export const SAMPLE_BK_SHORT: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT,
+  review_author: "Carlos Ruiz",
+  review_comment:
+    "La comida llegó fría y la atención fue bastante lenta, tuvimos que esperar más de 20 minutos solo para que nos tomaran el pedido. Además, una de las hamburguesas venía sin salsa a pesar de haberla pedido. No creo que volvamos pronto a este restaurante.",
+  previous_rating: 4.41,
+  current_rating: 4.18,
+  rating_impact: -0.41,
+  review_count: 312,
+  lifetime_rating: 4.18,
+  detected_reasons: ["Comida fría", "Lentitud"],
+  sentiment: "Negativo",
+  risk_level: "MEDIO",
+  recommendation: "Revisar los tiempos de servicio y la temperatura de entrega del pedido.",
+  ai_summary: "Cliente insatisfecho por comida fría y atención lenta.",
+  main_motive: "Comida fría",
+  detected_impact: "Posible bajada leve en la media si se repite.",
+  employee_mentioned: null,
+  analisis_pending: false,
+};
+
+/**
  * Fixture de prueba visual — comentario > 900 caracteres (texto de ejemplo,
  * no un caso real) para comprobar el diseño largo (centrado, solo
  * comentario + Impacto en la media).

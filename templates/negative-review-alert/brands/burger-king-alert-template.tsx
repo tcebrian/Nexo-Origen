@@ -419,7 +419,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                 </div>
               </section>
 
-              <section className={`bka-mini bka-mini--under-quote ${shiftTier ? `bka-mini--shift-${shiftTier}` : ""}`}>
+              <section className={`bka-mini bka-mini--under-quote ${fullComment.length < 500 ? "bka-mini--short" : ""} ${shiftTier ? `bka-mini--shift-${shiftTier}` : ""}`}>
                 <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
                 <div className="bka-impact">
                   <div className="bka-impact__col">
