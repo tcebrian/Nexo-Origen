@@ -583,7 +583,7 @@
   line-height: 1.4;
   color: var(--bk-ink);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -613,6 +613,12 @@
   line-height: 1.32;
 }
 
+.bka-analysis--md .bka-analysis__copy {
+  /* Icono más pequeño que en el tier base -> el texto arranca más a la
+     izquierda, así que hay más margen antes del vaso: se aprovecha. */
+  max-width: 405px;
+}
+
 .bka-analysis--sm li {
   gap: 11px;
   padding: 7px 0;
@@ -637,6 +643,10 @@
   line-height: 1.28;
 }
 
+.bka-analysis--sm .bka-analysis__copy {
+  max-width: 428px;
+}
+
 .bka-analysis--xs li {
   gap: 9px;
   padding: 5px 0;
@@ -659,6 +669,10 @@
 .bka-analysis--xs .bka-analysis__value {
   font-size: 14.5px;
   line-height: 1.25;
+}
+
+.bka-analysis--xs .bka-analysis__copy {
+  max-width: 438px;
 }
 
 /* ---------- fila inferior de paneles ---------- */
