@@ -1,9 +1,112 @@
 # Estado del proyecto — Nexo Origen
 
-**Última actualización:** 2026-08-18. Léelo entero antes de seguir trabajando —
+**Última actualización:** 2026-08-19. Léelo entero antes de seguir trabajando —
 sustituye a "contexto perdido" al cambiar de conversación o de ordenador.
 
-## 🆕 Sesión 2026-08-18 — Plantilla PNG de reseña negativa por marca (Burger King)
+## 🆕 Sesión 2026-08-19 — Plantilla BK: 3 diseños fijos (corta/media/larga) + verificación con datos reales
+
+Continuación directa de la sesión del 18/08 (mismo archivo, misma plantilla BK). Todo
+commiteado y pusheado a `origin/main`. Cambios principales, en orden:
+
+1. **Sistema de tamaños "definitivo"** en `burger-king-alert-template.tsx`: el
+   comentario, Análisis Nexo, Diagnóstico Nexo y Conclusión/Acción se adaptan por
+   tramos según longitud de texto, y un comentario absurdamente largo (>1400
+   caracteres) se trunca en un límite de palabra añadiendo
+   `" (pulsa el enlace para leer más)"` (`truncateComment`) en vez de crecer sin
+   límite y romper el diseño.
+2. **Verificación con reseñas reales de Supabase (tablas `resenas` + `analisis_ia`,
+   proyecto `tsbkcaxbgzfnpqmihabb`) encontró 2 bugs reales que las pruebas
+   sintéticas no habían detectado**:
+   - Reseñas con saltos de línea manuales (el cliente escribe en varios párrafos)
+     forzaban líneas extra sin sumar caracteres al cálculo de tamaño → el cuadro
+     salía más alto de lo previsto. **Arreglo**: `normalizeComment()` colapsa
+     `\s+` a un espacio antes de medir/mostrar — ya no se preservan los saltos de
+     línea originales del cliente, es una decisión deliberada, no un descuido.
+   - El tramo "grande" del comentario (antes hasta 400 caracteres) era demasiado
+     generoso: una reseña real de 323 caracteres (Utebo) crecía lo bastante para
+     invadir "Impacto en la media" con **texto real**, no solo el recuadro. Bajado
+     a 260 caracteres con margen comprobado por medición real. **Si se vuelve a
+     tocar `quoteSizeClass`, verificar siempre con una reseña real cercana al
+     límite superior de cada tramo, no solo con texto sintético corto.**
+   - Importante para el futuro: `risk_level` en producción **siempre** se calcula
+     desde las estrellas (`resolveRiskLevelFromStars`, `lib/templates/negative-review-alert/risk-level.ts`)
+     — nunca es el texto largo de `analisis_ia.riesgo`. Si se construye un fixture
+     de prueba a mano, no poner ahí el texto largo de `riesgo`.
+3. **Diseño alternativo para comentarios muy largos (>900 caracteres)** — en vez de
+   seguir comprimiendo Análisis/Diagnóstico/Conclusión hasta hacerlos ilegibles, a
+   partir de ese umbral se renderiza un layout totalmente distinto: solo el
+   comentario (centrado, ancho completo) + "Impacto en la media" debajo, sin
+   Análisis Nexo, Diagnóstico Nexo ni Conclusión/Acción. Header, logo y productos
+   decorativos (hamburguesa/patatas/vaso) se mantienen igual. Condición:
+   `isExtremeComment = fullComment.length > EXTREME_COMMENT_CHARS` (900),
+   `commentShiftTier` simplificado a solo `""`/`"sm"` (los tramos `"md"`/`"lg"` ya
+   eran inalcanzables con el umbral de 900, se eliminaron junto con su CSS
+   `.bka-mini--shift-md/lg`).
+4. **Bug real de CSS Grid encontrado al verificar el diseño largo con la reseña
+   extrema de Soria (1584 car., ver más abajo)**: con Análisis/Diagnóstico a
+   tamaño completo, el conjunto cabecera+cuerpo+pie ya superaba la altura fija del
+   canvas (1200px) — y CSS Grid, en vez de crecer, **comprimía la fila `auto` del
+   cuerpo silenciosamente** (visible solo con `getComputedStyle().gridTemplateRows`,
+   no con la altura "natural" del contenido), haciendo que Conclusión/Acción tapara
+   Diagnóstico Nexo. **Pasaba también en el caso corto/normal**, no solo en el
+   extremo — se había colado sin que nadie lo notara hasta medir esto a fondo.
+   Arreglado reduciendo el icono base de Análisis Nexo (80px→70px) y el margen de
+   Conclusión/Acción. **Lección para el futuro: si algo se solapa de forma rara sin
+   razón aparente en este archivo, comprobar `grid-template-rows` calculado, no
+   solo las posiciones de los elementos — puede que una fila `auto` se esté
+   comprimiendo por falta de espacio total.**
+5. **Bug real de especificidad/orden CSS, repetido dos veces esta sesión**: las
+   reglas del diseño largo (`.bka-quote--extreme`, `.bka-review--extreme`) están
+   definidas ANTES que las reglas base (`.bka-quote`, `.bka-review`) en el archivo
+   CSS. Con la misma especificidad (una sola clase cada una), la regla que aparece
+   **después** en el archivo gana, así que la base pisaba silenciosamente el
+   `min-height` del diseño largo sin ningún error visible — el cambio simplemente
+   "no hacía nada". **Arreglo y patrón a seguir**: usar selector combinado
+   (`.bka-quote.bka-quote--extreme`, `.bka-review.bka-review--extreme`) para subir
+   la especificidad por encima de la regla base, en vez de depender del orden en
+   el archivo. **Si se añade un nuevo modificador de variante a esta plantilla y
+   "no hace nada" a pesar de aplicarse la clase, sospechar primero de esto.**
+6. **Tres ejemplos fijos en `/preview/negative-review-alert`** (antes había 6,
+   redundantes): `SAMPLE_BK_SHORT` (252 car., "Diseño corta", rango 0-499),
+   `SAMPLE_BK_FULL` (899 car. exactos, "Diseño reseña media", rango 500-899, tal
+   como estaba en la sesión del 18/08) y `SAMPLE_BK_LONG` (1121 car., "Diseño
+   largo", texto de ejemplo no real, dispara el diseño alternativo del punto 3).
+   Se borraron las fixtures que ya no se usaban en ningún sitio
+   (`SAMPLE_SHORT_COMMENT`, `SAMPLE_MEDIUM_COMMENT`, `SAMPLE_EXTRA_LONG_COMMENT`,
+   `SAMPLE_ZIZUR_MAYOR`) — **`SAMPLE_NEGATIVE_REVIEW_ALERT` no se tocó**, sigue
+   siendo el fallback real de `/api/generate-negative-review-image` y de
+   `/templates/negative-review-alert`, no es solo una fixture de preview.
+   El usuario pidió explícitamente **fijar las posiciones de los 3 diseños** — a
+   partir de aquí solo se deberían tocar tamaños de letra si hace falta, no
+   posiciones, salvo que lo pida de nuevo.
+7. **"Impacto en la media" tiene ahora una clase extra `.bka-mini--short`** que
+   solo se aplica cuando el comentario del diseño normal es corto (`fullComment.length < 500`)
+   — lo sube bastante más que en el caso de reseña media (500-899), a petición
+   explícita del usuario. Es la única diferenciación de posición dentro del rango
+   ≤900; el resto del rango (500-899) usa siempre la misma posición.
+8. **La hamburguesa pasa a `z-index:4`** — por delante de "Impacto en la media"
+   (z-index:3) y del resto de productos decorativos (z-index:2), a petición
+   explícita ("quiero que la hamburguesa quede por arriba").
+9. **Reseñas reales usadas para probar** (Utebo, Calahorra 1621 car., Soria 1584
+   car.) se usaron siempre como fixtures **temporales** (añadidas a
+   `sample-data.ts` + al picker de preview, verificadas, luego revertidas antes de
+   cada commit) — decisión deliberada por privacidad: no dejar nombres/quejas de
+   clientes reales commiteados en el repo. Si hace falta volver a probar con datos
+   reales, repetir el patrón: consulta SQL a Supabase (`resenas` join
+   `analisis_ia` por `review_id`), fixture temporal, verificar, revertir.
+
+**Metodología de esta sesión**: la mayor parte se hizo con verificación exhaustiva
+por DOM (`getBoundingClientRect`, overlaps, `scrollHeight` vs `clientHeight` para
+detectar texto cortado) + capturas reales generadas con el botón "PNG navegador"
+(interceptando el `<a download>` vía `HTMLAnchorElement.prototype.click` y
+convirtiendo a base64/JPEG para poder verlas). Hacia el final, a petición expresa
+del usuario ("quiero que te limites a hacer lo que te pido, para evitarnos tardar
+tanto"), varios ajustes de posición se hicieron **sin verificar** cada paso — si
+algo del diseño largo se ve raro en la próxima sesión, revisar primero esa última
+tanda de cambios (búsqueda: commit "Ajustes finos de posición en diseño largo y
+normal, y hamburguesa al frente" y el commit siguiente).
+
+## Sesión 2026-08-18 — Plantilla PNG de reseña negativa por marca (Burger King)
 
 Petición del usuario: en Informes, al pulsar "Generar imagen" en una reseña negativa,
 quiere un diseño **único por marca** (no la plantilla genérica actual), empezando por
