@@ -258,7 +258,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
           className="bka-product bka-product--burger"
         />
 
-        <div className="bka-sheet">
+        <div className={`bka-sheet ${isExtremeComment ? "bka-sheet--extreme" : ""}`}>
           {/* Header editorial */}
           <header className="bka-header">
             <div className="bka-header__alert">

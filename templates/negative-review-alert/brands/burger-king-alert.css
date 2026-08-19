@@ -95,6 +95,12 @@
   grid-row: 4;
 }
 
+/* Diseño extremo: sin footer ni fila espaciadora, recupera esas 2 filas y
+   sus gaps (40px) para el comentario/impacto en la media. */
+.bka-sheet.bka-sheet--extreme {
+  grid-template-rows: auto 1fr;
+}
+
 /* ---------- header editorial ---------- */
 
 .bka-header {
@@ -292,17 +298,22 @@
   flex-direction: column;
   align-items: center;
   gap: 28px;
-  padding: 10px 260px 0 250px;
+  padding: 10px 320px 0 330px;
+  min-height: 0;
 }
 
 .bka-review.bka-review--extreme {
   width: 100%;
   margin-top: 15px;
   min-height: 720px;
+  height: auto;
+  flex-shrink: 0;
 }
 
 .bka-quote.bka-quote--extreme {
   min-height: 593px;
+  height: auto;
+  flex-shrink: 0;
 }
 
 .bka-mini--extreme {
@@ -522,11 +533,11 @@
 }
 
 .bka-quote__text--xs {
-  font-size: 23px;
+  font-size: 20px;
 }
 
 .bka-quote__text--xxs {
-  font-size: 19px;
+  font-size: 17px;
 }
 
 /* ---------- columna de IA ---------- */
