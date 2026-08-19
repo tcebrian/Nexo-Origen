@@ -79,19 +79,25 @@ function truncateComment(comment: string): string {
 }
 
 /** Tamaño de la lista de Análisis IA adaptado al total de texto — así nunca queda nada oculto. */
-function analysisSizeClass(totalLength: number): string {
-  if (totalLength <= 260) return "bka-analysis--lg";
-  if (totalLength <= 420) return "bka-analysis--md";
-  if (totalLength <= 600) return "bka-analysis--sm";
-  return "bka-analysis--xs";
+/**
+ * Mismo nivel para Análisis Nexo y Diagnóstico Nexo (Sentimiento/Riesgo):
+ * cuando el análisis es muy largo, Diagnóstico se compacta un poco para
+ * dejarle más sitio a Análisis, en vez de quedarse siempre igual de grande
+ * mientras Análisis se aprieta solo.
+ */
+function insightsTier(totalLength: number): "lg" | "md" | "sm" | "xs" {
+  if (totalLength <= 260) return "lg";
+  if (totalLength <= 420) return "md";
+  if (totalLength <= 600) return "sm";
+  return "xs";
 }
 
 /** Tamaño de la conclusión final adaptado a su longitud — nunca se sale del recuadro. */
-function footerTextSizeClass(length: number): string {
-  if (length <= 110) return "bka-footer__text--lg";
-  if (length <= 180) return "bka-footer__text--md";
-  if (length <= 260) return "bka-footer__text--sm";
-  return "bka-footer__text--xs";
+function footerTier(length: number): "lg" | "md" | "sm" | "xs" {
+  if (length <= 110) return "lg";
+  if (length <= 180) return "md";
+  if (length <= 260) return "sm";
+  return "xs";
 }
 
 /**
@@ -213,6 +219,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
       { key: "recomendacion", icon: <BkIconBulb />, label: "Recomendación", value: cleanValue(data.recommendation) as string },
     ].filter((row) => row.value);
     const analysisTotalLength = analysisRows.reduce((sum, row) => sum + row.value.length, 0);
+    const analysisTier = insightsTier(analysisTotalLength);
 
     const shiftTier = commentShiftTier(fullComment.length);
 
@@ -376,7 +383,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
               {analysisRows.length > 0 ? (
                 <>
                   <p className="bka-ribbon">ANÁLISIS NEXO</p>
-                  <ul className={`bka-analysis ${analysisSizeClass(analysisTotalLength)}`}>
+                  <ul className={`bka-analysis bka-analysis--${analysisTier}`}>
                     {analysisRows.map((row) => (
                       <li key={row.key}>
                         <span className="bka-analysis__icon">{row.icon}</span>
@@ -391,7 +398,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
               ) : null}
 
               <p className={`bka-ribbon ${analysisRows.length > 0 ? "bka-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
-              <div className="bka-diagnostics">
+              <div className={`bka-diagnostics bka-diagnostics--${analysisTier}`}>
                 <div className="bka-diagnostics__item">
                   <span className="bka-diagnostics__icon bka-diagnostics__icon--neutral">
                     <BkIconMood />
@@ -411,17 +418,22 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
           </div>
 
           {/* Conclusión */}
-          {conclusion ? (
-            <footer className="bka-footer">
-              <span className="bka-footer__icon">
-                <BkIconClipboardBig />
-              </span>
-              <div className="bka-footer__body">
-                <p className="bka-footer__label">CONCLUSIÓN / ACCIÓN</p>
-                <p className={`bka-footer__text ${footerTextSizeClass(conclusion.length)}`}>{conclusion}</p>
-              </div>
-            </footer>
-          ) : null}
+          {conclusion
+            ? (() => {
+                const footerSizeTier = footerTier(conclusion.length);
+                return (
+                  <footer className={`bka-footer bka-footer--${footerSizeTier}`}>
+                    <span className="bka-footer__icon">
+                      <BkIconClipboardBig />
+                    </span>
+                    <div className="bka-footer__body">
+                      <p className="bka-footer__label">CONCLUSIÓN / ACCIÓN</p>
+                      <p className={`bka-footer__text bka-footer__text--${footerSizeTier}`}>{conclusion}</p>
+                    </div>
+                  </footer>
+                );
+              })()
+            : null}
         </div>
       </div>
     );
