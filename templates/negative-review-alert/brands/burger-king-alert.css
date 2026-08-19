@@ -65,9 +65,7 @@
 }
 
 .bka-product--burger {
-  /* bottom baja lo suficiente para que el borde superior (una vez rotada)
-     quede por debajo de "Impacto en la media" (~888px), sin taparlo. */
-  bottom: -192px;
+  bottom: -100px;
   left: -155px;
   width: 480px;
   transform: rotate(6deg);

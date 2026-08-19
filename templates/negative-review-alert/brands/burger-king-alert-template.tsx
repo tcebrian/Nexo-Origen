@@ -40,7 +40,11 @@ function absUrl(base: string | undefined, path: string): string {
  * es el comentario.
  */
 function quoteSizeClass(length: number): string {
-  if (length <= 400) return "bka-quote__text--lg";
+  // El salto de línea real no es perfectamente proporcional a la longitud
+  // (depende de cómo caigan las palabras), así que el límite de "lg" deja
+  // margen de sobra por debajo del punto donde se confirmó por medición
+  // real que empieza a invadir "Impacto en la media" (~300 caracteres).
+  if (length <= 260) return "bka-quote__text--lg";
   if (length <= 650) return "bka-quote__text--md";
   if (length <= 900) return "bka-quote__text--sm";
   if (length <= 1300) return "bka-quote__text--xs";
@@ -55,6 +59,17 @@ function quoteSizeClass(length: number): string {
  */
 const MAX_COMMENT_CHARS = 1400;
 const READ_MORE_HINT = " (pulsa el enlace para leer más)";
+
+/**
+ * Reseñas reales a veces traen saltos de línea manuales (el cliente escribe
+ * en varios párrafos). Cada salto fuerza una línea más alta sin que cuente
+ * como más caracteres, así que el cálculo de tamaño por longitud se queda
+ * corto y el cuadro puede acabar más alto de lo previsto. Se normaliza a
+ * espacios para que la altura real dependa solo de la longitud del texto.
+ */
+function normalizeComment(comment: string): string {
+  return comment.replace(/\s+/g, " ").trim();
+}
 
 function truncateComment(comment: string): string {
   if (comment.length <= MAX_COMMENT_CHARS) return comment;
@@ -183,7 +198,7 @@ type AnalysisRow = {
 export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAlertTemplateProps>(
   function BurgerKingAlertTemplate({ data, assetBaseUrl }, ref) {
     const design = resolveDesignCanvasSize(data.aspect_ratio);
-    const fullComment = truncateComment(data.review_comment.trim());
+    const fullComment = truncateComment(normalizeComment(data.review_comment));
     const location = data.restaurant_address || data.restaurant_location;
     const target = data.target_rating ?? 4.4;
     const delta = data.rating_impact;
