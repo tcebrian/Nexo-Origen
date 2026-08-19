@@ -565,7 +565,7 @@
   /* No dejar que el texto llegue hasta donde sangra el vaso de refresco
      (bleed fijo a la derecha del canvas) — se corta antes y sigue en la
      línea de abajo en vez de quedar tapado detrás del vaso. */
-  max-width: 385px;
+  max-width: 391px;
 }
 
 .bka-analysis__label {
@@ -616,7 +616,7 @@
 .bka-analysis--md .bka-analysis__copy {
   /* Icono más pequeño que en el tier base -> el texto arranca más a la
      izquierda, así que hay más margen antes del vaso: se aprovecha. */
-  max-width: 405px;
+  max-width: 411px;
 }
 
 .bka-analysis--sm li {
@@ -644,7 +644,7 @@
 }
 
 .bka-analysis--sm .bka-analysis__copy {
-  max-width: 428px;
+  max-width: 434px;
 }
 
 .bka-analysis--xs li {
@@ -672,7 +672,7 @@
 }
 
 .bka-analysis--xs .bka-analysis__copy {
-  max-width: 438px;
+  max-width: 444px;
 }
 
 /* ---------- fila inferior de paneles ---------- */
