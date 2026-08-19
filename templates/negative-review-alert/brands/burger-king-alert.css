@@ -687,7 +687,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 1px;
+  bottom: -7px;
   z-index: 3;
   margin-left: 0;
   padding: 18px 38px;
@@ -835,17 +835,20 @@
 
 .bka-impact__stars {
   display: flex;
+  justify-content: center;
+  width: 100%;
   margin-top: 3px;
 }
 
 .bka-impact__stars .nra-stars {
   display: flex;
-  gap: 2px;
+  justify-content: center;
+  gap: 3px;
 }
 
 .bka-impact__stars svg {
-  width: 11px;
-  height: 11px;
+  width: 18px;
+  height: 18px;
 }
 
 .bka-mini__band {
