@@ -57,6 +57,15 @@ function quoteSizeClass(length: number): string {
  * límite y rompería el diseño. A partir de MAX_COMMENT_CHARS se corta en un
  * límite de palabra y se avisa de que hay más para leer en el enlace.
  */
+/**
+ * A partir de aquí el comentario es tan largo que intentar mantenerlo en el
+ * layout de dos columnas obliga a encoger demasiado el resto (Análisis,
+ * Diagnóstico, Conclusión). En vez de eso se usa un diseño alternativo: solo
+ * el comentario, centrado, y el Impacto en la media debajo — se quita todo
+ * lo demás en vez de aplastarlo.
+ */
+const EXTREME_COMMENT_CHARS = 900;
+
 const MAX_COMMENT_CHARS = 1400;
 const READ_MORE_HINT = " (pulsa el enlace para leer más)";
 
@@ -221,7 +230,8 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
     const analysisTotalLength = analysisRows.reduce((sum, row) => sum + row.value.length, 0);
     const analysisTier = insightsTier(analysisTotalLength);
 
-    const shiftTier = commentShiftTier(fullComment.length);
+    const isExtremeComment = fullComment.length > EXTREME_COMMENT_CHARS;
+    const shiftTier = isExtremeComment ? "" : commentShiftTier(fullComment.length);
 
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
     const brandLabel = (cleanValue(data.brand_name) ?? "Burger King").toUpperCase();
@@ -314,111 +324,175 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
             className="bka-header__extra-photo"
           />
 
-          <div className="bka-body">
-            <div className="bka-review-col">
-            {/* Tarjeta grande de la reseña — protagonista */}
-            <section className="bka-review">
-              <div className="bka-review__head">
-                <span className="bka-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
-                <div className="bka-review__meta">
-                  <p className="bka-review__name">{data.review_author}</p>
-                  <p className="bka-review__datetime">
-                    <BkIconCalendar />
-                    <span>{data.review_date}</span>
-                    <span className="bka-review__sep" aria-hidden>
-                      |
+          {isExtremeComment ? (
+            <div className="bka-body bka-body--extreme">
+              <section className="bka-review bka-review--extreme">
+                <div className="bka-review__head">
+                  <span className="bka-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
+                  <div className="bka-review__meta">
+                    <p className="bka-review__name">{data.review_author}</p>
+                    <p className="bka-review__datetime">
+                      <BkIconCalendar />
+                      <span>{data.review_date}</span>
+                      <span className="bka-review__sep" aria-hidden>
+                        |
+                      </span>
+                      <BkIconClock />
+                      <span>{data.review_time}</span>
+                    </p>
+                  </div>
+                  <div className="bka-review__rating">
+                    <StarRating stars={data.review_stars} size="lg" />
+                    <span className="bka-review__rating-value">{data.review_stars}/5</span>
+                  </div>
+                </div>
+
+                <div className="bka-quote bka-quote--extreme">
+                  <span className="bka-quote__mark bka-quote__mark--open" aria-hidden>
+                    &ldquo;
+                  </span>
+                  <p className={`bka-quote__text ${quoteSizeClass(fullComment.length)}`}>
+                    {fullComment}
+                  </p>
+                  <span className="bka-quote__mark bka-quote__mark--close" aria-hidden>
+                    &rdquo;
+                  </span>
+                </div>
+              </section>
+
+              <section className="bka-mini bka-mini--extreme">
+                <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
+                <div className="bka-impact">
+                  <div className="bka-impact__col">
+                    <p className="bka-impact__label">Media anterior</p>
+                    <p className="bka-impact__value">{data.previous_rating.toFixed(2)}</p>
+                    <span className="bka-impact__stars">
+                      <StarRating stars={data.previous_rating} size="md" />
                     </span>
-                    <BkIconClock />
-                    <span>{data.review_time}</span>
-                  </p>
+                  </div>
+                  <div className="bka-impact__col">
+                    <p className="bka-impact__label">Media actual</p>
+                    <p className={`bka-impact__value bka-impact__value--tone-${tone}`}>
+                      {data.current_rating.toFixed(2)}
+                    </p>
+                    <span className="bka-impact__stars">
+                      <StarRating stars={data.current_rating} size="md" />
+                    </span>
+                  </div>
+                  <div className="bka-impact__col">
+                    <p className="bka-impact__label">Variación</p>
+                    <ImpactDelta delta={delta} />
+                  </div>
                 </div>
-                <div className="bka-review__rating">
-                  <StarRating stars={data.review_stars} size="lg" />
-                  <span className="bka-review__rating-value">{data.review_stars}/5</span>
-                </div>
-              </div>
-
-              <div className="bka-quote">
-                <span className="bka-quote__mark bka-quote__mark--open" aria-hidden>
-                  &ldquo;
-                </span>
-                <p className={`bka-quote__text ${quoteSizeClass(fullComment.length)}`}>
-                  {fullComment}
-                </p>
-                <span className="bka-quote__mark bka-quote__mark--close" aria-hidden>
-                  &rdquo;
-                </span>
-              </div>
-            </section>
-
-            <section className={`bka-mini bka-mini--under-quote ${shiftTier ? `bka-mini--shift-${shiftTier}` : ""}`}>
-              <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
-              <div className="bka-impact">
-                <div className="bka-impact__col">
-                  <p className="bka-impact__label">Media anterior</p>
-                  <p className="bka-impact__value">{data.previous_rating.toFixed(2)}</p>
-                  <span className="bka-impact__stars">
-                    <StarRating stars={data.previous_rating} size="md" />
-                  </span>
-                </div>
-                <div className="bka-impact__col">
-                  <p className="bka-impact__label">Media actual</p>
-                  <p className={`bka-impact__value bka-impact__value--tone-${tone}`}>
-                    {data.current_rating.toFixed(2)}
-                  </p>
-                  <span className="bka-impact__stars">
-                    <StarRating stars={data.current_rating} size="md" />
-                  </span>
-                </div>
-                <div className="bka-impact__col">
-                  <p className="bka-impact__label">Variación</p>
-                  <ImpactDelta delta={delta} />
-                </div>
-              </div>
-            </section>
+              </section>
             </div>
-
-            {/* Columna de inteligencia artificial */}
-            <section className="bka-insights">
-              {analysisRows.length > 0 ? (
-                <>
-                  <p className="bka-ribbon">ANÁLISIS NEXO</p>
-                  <ul className={`bka-analysis bka-analysis--${analysisTier}`}>
-                    {analysisRows.map((row) => (
-                      <li key={row.key}>
-                        <span className="bka-analysis__icon">{row.icon}</span>
-                        <div className="bka-analysis__copy">
-                          <p className="bka-analysis__label">{row.label}</p>
-                          <p className="bka-analysis__value">{row.value}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : null}
-
-              <p className={`bka-ribbon ${analysisRows.length > 0 ? "bka-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
-              <div className={`bka-diagnostics bka-diagnostics--${analysisTier}`}>
-                <div className="bka-diagnostics__item">
-                  <span className="bka-diagnostics__icon bka-diagnostics__icon--neutral">
-                    <BkIconMood />
-                  </span>
-                  <p className="bka-diagnostics__label">Sentimiento</p>
-                  <p className="bka-diagnostics__value">{sentiment ?? "Sin datos"}</p>
+          ) : (
+            <div className="bka-body">
+              <div className="bka-review-col">
+              {/* Tarjeta grande de la reseña — protagonista */}
+              <section className="bka-review">
+                <div className="bka-review__head">
+                  <span className="bka-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
+                  <div className="bka-review__meta">
+                    <p className="bka-review__name">{data.review_author}</p>
+                    <p className="bka-review__datetime">
+                      <BkIconCalendar />
+                      <span>{data.review_date}</span>
+                      <span className="bka-review__sep" aria-hidden>
+                        |
+                      </span>
+                      <BkIconClock />
+                      <span>{data.review_time}</span>
+                    </p>
+                  </div>
+                  <div className="bka-review__rating">
+                    <StarRating stars={data.review_stars} size="lg" />
+                    <span className="bka-review__rating-value">{data.review_stars}/5</span>
+                  </div>
                 </div>
-                <div className="bka-diagnostics__item">
-                  <span className={`bka-diagnostics__icon bka-diagnostics__icon--${riskTone(risk)}`}>
-                    <BkIconShield />
+
+                <div className="bka-quote">
+                  <span className="bka-quote__mark bka-quote__mark--open" aria-hidden>
+                    &ldquo;
                   </span>
-                  <p className="bka-diagnostics__label">Riesgo</p>
-                  <p className="bka-diagnostics__value">{risk ?? "Sin datos"}</p>
+                  <p className={`bka-quote__text ${quoteSizeClass(fullComment.length)}`}>
+                    {fullComment}
+                  </p>
+                  <span className="bka-quote__mark bka-quote__mark--close" aria-hidden>
+                    &rdquo;
+                  </span>
                 </div>
+              </section>
+
+              <section className={`bka-mini bka-mini--under-quote ${shiftTier ? `bka-mini--shift-${shiftTier}` : ""}`}>
+                <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
+                <div className="bka-impact">
+                  <div className="bka-impact__col">
+                    <p className="bka-impact__label">Media anterior</p>
+                    <p className="bka-impact__value">{data.previous_rating.toFixed(2)}</p>
+                    <span className="bka-impact__stars">
+                      <StarRating stars={data.previous_rating} size="md" />
+                    </span>
+                  </div>
+                  <div className="bka-impact__col">
+                    <p className="bka-impact__label">Media actual</p>
+                    <p className={`bka-impact__value bka-impact__value--tone-${tone}`}>
+                      {data.current_rating.toFixed(2)}
+                    </p>
+                    <span className="bka-impact__stars">
+                      <StarRating stars={data.current_rating} size="md" />
+                    </span>
+                  </div>
+                  <div className="bka-impact__col">
+                    <p className="bka-impact__label">Variación</p>
+                    <ImpactDelta delta={delta} />
+                  </div>
+                </div>
+              </section>
               </div>
-            </section>
-          </div>
 
-          {/* Conclusión */}
-          {conclusion
+              {/* Columna de inteligencia artificial */}
+              <section className="bka-insights">
+                {analysisRows.length > 0 ? (
+                  <>
+                    <p className="bka-ribbon">ANÁLISIS NEXO</p>
+                    <ul className={`bka-analysis bka-analysis--${analysisTier}`}>
+                      {analysisRows.map((row) => (
+                        <li key={row.key}>
+                          <span className="bka-analysis__icon">{row.icon}</span>
+                          <div className="bka-analysis__copy">
+                            <p className="bka-analysis__label">{row.label}</p>
+                            <p className="bka-analysis__value">{row.value}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+
+                <p className={`bka-ribbon ${analysisRows.length > 0 ? "bka-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
+                <div className={`bka-diagnostics bka-diagnostics--${analysisTier}`}>
+                  <div className="bka-diagnostics__item">
+                    <span className="bka-diagnostics__icon bka-diagnostics__icon--neutral">
+                      <BkIconMood />
+                    </span>
+                    <p className="bka-diagnostics__label">Sentimiento</p>
+                    <p className="bka-diagnostics__value">{sentiment ?? "Sin datos"}</p>
+                  </div>
+                  <div className="bka-diagnostics__item">
+                    <span className={`bka-diagnostics__icon bka-diagnostics__icon--${riskTone(risk)}`}>
+                      <BkIconShield />
+                    </span>
+                    <p className="bka-diagnostics__label">Riesgo</p>
+                    <p className="bka-diagnostics__value">{risk ?? "Sin datos"}</p>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* Conclusión — se omite en el diseño extremo (solo comentario + Impacto en la media) */}
+          {!isExtremeComment && conclusion
             ? (() => {
                 const footerSizeTier = footerTier(conclusion.length);
                 return (

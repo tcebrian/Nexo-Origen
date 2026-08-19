@@ -281,6 +281,92 @@
   align-items: start;
 }
 
+/* ---------- diseño alternativo: comentario extremadamente largo ---------- */
+/* Solo comentario + Impacto en la media, centrado, sin Análisis/Diagnóstico/
+   Conclusión — evita comprimir todo lo demás para que quepa un comentario
+   enorme. El padding horizontal deja libre la zona donde sangran la
+   hamburguesa (izquierda) y el vaso/patatas (derecha). */
+.bka-body--extreme {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 10px 330px 0 320px;
+}
+
+.bka-review--extreme {
+  width: 100%;
+}
+
+.bka-quote--extreme {
+  min-height: 0;
+}
+
+.bka-mini--extreme {
+  width: 100%;
+  padding: 24px 40px;
+}
+
+.bka-mini--extreme .bka-mini__band {
+  font-size: 18px;
+  padding: 7px 22px;
+  margin-bottom: 10px;
+}
+
+.bka-mini--extreme .bka-impact__col {
+  padding: 0 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bka-mini--extreme .bka-impact__label {
+  font-size: 17px;
+  margin: 0 0 4px;
+  height: 21px;
+  display: flex;
+  align-items: center;
+}
+
+.bka-mini--extreme .bka-impact__value {
+  margin: 0;
+  font-size: 46px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
+}
+
+.bka-mini--extreme .bka-impact__delta {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 54px;
+  gap: 6px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
+}
+
+.bka-mini--extreme .bka-impact__delta svg {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.bka-mini--extreme .bka-impact__col + .bka-impact__col::before {
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+}
+
 .bka-review-col {
   position: relative;
   min-width: 0;
