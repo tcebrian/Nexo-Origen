@@ -65,9 +65,12 @@
 }
 
 .bka-product--burger {
-  bottom: -46px;
-  left: -34px;
-  width: 360px;
+  /* bottom baja lo suficiente para que el borde superior (una vez rotada)
+     quede por debajo de "Impacto en la media" (~888px), sin taparlo. */
+  bottom: -192px;
+  left: -155px;
+  width: 480px;
+  transform: rotate(6deg);
   filter: drop-shadow(0 24px 22px rgba(33, 20, 10, 0.32));
 }
 
@@ -258,6 +261,18 @@
   filter: drop-shadow(0 4px 8px rgba(33, 26, 19, 0.18));
 }
 
+.bka-header__extra-photo {
+  position: absolute;
+  top: 240px;
+  right: 24px;
+  z-index: 3;
+  width: 185px;
+  height: auto;
+  object-fit: contain;
+  transform: rotate(9deg);
+  filter: drop-shadow(0 10px 14px rgba(33, 26, 19, 0.2));
+}
+
 /* ---------- cuerpo: reseña + inteligencia artificial ---------- */
 
 .bka-body {
@@ -407,7 +422,7 @@
 }
 
 .bka-quote__text--lg {
-  font-size: 28px;
+  font-size: 29px;
 }
 
 .bka-quote__text--md {
@@ -457,6 +472,9 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 17.5px;
   flex-shrink: 0;
+  /* Acerca los dos recuadros a su título "Diagnóstico Nexo" sin tocar el
+     espaciado del bloque de Análisis Nexo (comparten el mismo .bka-ribbon). */
+  margin-top: -9px;
 }
 
 .bka-diagnostics__item {
@@ -472,16 +490,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  height: 50px;
+  width: 60px;
+  height: 60px;
   border-radius: 999px;
   background: var(--bk-cream);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .bka-diagnostics__icon svg {
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
 }
 
 .bka-diagnostics__icon--high {
@@ -505,7 +523,7 @@
 
 .bka-diagnostics__label {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--bk-ink-soft);
   text-transform: uppercase;
@@ -513,8 +531,8 @@
 }
 
 .bka-diagnostics__value {
-  margin: 5px 0 0;
-  font-size: 19px;
+  margin: 6px 0 0;
+  font-size: 23px;
   font-weight: 700;
   color: var(--bk-ink);
   overflow-wrap: anywhere;
@@ -1041,7 +1059,7 @@
   align-items: center;
   justify-content: center;
   gap: 24px;
-  margin: 0 293px 0 300px;
+  margin: 30px 293px 0 300px;
   border-radius: 16px;
   background: linear-gradient(155deg, #2a2320 0%, var(--bk-ink) 100%);
   padding: 52px 30px;
@@ -1072,7 +1090,7 @@
 
 .bka-footer__label {
   margin: 0 0 5px;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 800;
   letter-spacing: 0.08em;
   color: var(--bk-orange);
@@ -1080,11 +1098,31 @@
 
 .bka-footer__text {
   margin: 0;
-  font-size: 19px;
   line-height: 1.4;
   color: #f8f4ea;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Tamaño adaptado a la longitud de la conclusión, para que quepa siempre
+   dentro del recuadro en vez de cortarse a media frase. */
+.bka-footer__text--lg {
+  font-size: 23px;
+  -webkit-line-clamp: 2;
+}
+
+.bka-footer__text--md {
+  font-size: 20px;
+  -webkit-line-clamp: 3;
+}
+
+.bka-footer__text--sm {
+  font-size: 17px;
+  -webkit-line-clamp: 3;
+}
+
+.bka-footer__text--xs {
+  font-size: 14.5px;
+  -webkit-line-clamp: 4;
 }

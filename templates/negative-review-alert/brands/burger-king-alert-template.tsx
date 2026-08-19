@@ -47,12 +47,36 @@ function quoteSizeClass(length: number): string {
   return "bka-quote__text--xxs";
 }
 
+/**
+ * Los tamaños de letra ya se reducen hasta xxs (13.5px) para comentarios muy
+ * largos, pero un comentario desmesuradamente largo seguiría creciendo sin
+ * límite y rompería el diseño. A partir de MAX_COMMENT_CHARS se corta en un
+ * límite de palabra y se avisa de que hay más para leer en el enlace.
+ */
+const MAX_COMMENT_CHARS = 1400;
+const READ_MORE_HINT = " (pulsa el enlace para leer más)";
+
+function truncateComment(comment: string): string {
+  if (comment.length <= MAX_COMMENT_CHARS) return comment;
+  const limit = MAX_COMMENT_CHARS - READ_MORE_HINT.length - 1;
+  const cut = comment.slice(0, limit).replace(/\s+\S*$/, "");
+  return `${cut}…${READ_MORE_HINT}`;
+}
+
 /** Tamaño de la lista de Análisis IA adaptado al total de texto — así nunca queda nada oculto. */
 function analysisSizeClass(totalLength: number): string {
   if (totalLength <= 260) return "bka-analysis--lg";
   if (totalLength <= 420) return "bka-analysis--md";
   if (totalLength <= 600) return "bka-analysis--sm";
   return "bka-analysis--xs";
+}
+
+/** Tamaño de la conclusión final adaptado a su longitud — nunca se sale del recuadro. */
+function footerTextSizeClass(length: number): string {
+  if (length <= 110) return "bka-footer__text--lg";
+  if (length <= 180) return "bka-footer__text--md";
+  if (length <= 260) return "bka-footer__text--sm";
+  return "bka-footer__text--xs";
 }
 
 /**
@@ -159,7 +183,7 @@ type AnalysisRow = {
 export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAlertTemplateProps>(
   function BurgerKingAlertTemplate({ data, assetBaseUrl }, ref) {
     const design = resolveDesignCanvasSize(data.aspect_ratio);
-    const fullComment = data.review_comment.trim();
+    const fullComment = truncateComment(data.review_comment.trim());
     const location = data.restaurant_address || data.restaurant_location;
     const target = data.target_rating ?? 4.4;
     const delta = data.rating_impact;
@@ -259,6 +283,14 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
               className="bka-header__nexo-logo"
             />
           </div>
+
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={absUrl(assetBaseUrl, "/design/burger-king/bk-header-extra.png")}
+            alt=""
+            aria-hidden
+            className="bka-header__extra-photo"
+          />
 
           <div className="bka-body">
             <div className="bka-review-col">
@@ -371,7 +403,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
               </span>
               <div className="bka-footer__body">
                 <p className="bka-footer__label">CONCLUSIÓN / ACCIÓN</p>
-                <p className="bka-footer__text">{conclusion}</p>
+                <p className={`bka-footer__text ${footerTextSizeClass(conclusion.length)}`}>{conclusion}</p>
               </div>
             </footer>
           ) : null}
