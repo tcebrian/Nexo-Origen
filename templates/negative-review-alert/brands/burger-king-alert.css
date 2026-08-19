@@ -69,6 +69,7 @@
   left: -155px;
   width: 480px;
   transform: rotate(6deg);
+  z-index: 4;
   filter: drop-shadow(0 24px 22px rgba(33, 20, 10, 0.32));
 }
 
@@ -291,19 +292,22 @@
   flex-direction: column;
   align-items: center;
   gap: 28px;
-  padding: 10px 330px 0 320px;
+  padding: 10px 260px 0 250px;
 }
 
-.bka-review--extreme {
+.bka-review.bka-review--extreme {
   width: 100%;
+  margin-top: 15px;
+  min-height: 720px;
 }
 
-.bka-quote--extreme {
-  min-height: 0;
+.bka-quote.bka-quote--extreme {
+  min-height: 593px;
 }
 
 .bka-mini--extreme {
   width: 100%;
+  margin-top: -40px;
   padding: 24px 40px;
 }
 
@@ -518,11 +522,11 @@
 }
 
 .bka-quote__text--xs {
-  font-size: 16px;
+  font-size: 23px;
 }
 
 .bka-quote__text--xxs {
-  font-size: 13.5px;
+  font-size: 19px;
 }
 
 /* ---------- columna de IA ---------- */
@@ -856,7 +860,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -20px;
+  bottom: -60px;
   z-index: 3;
   margin-left: 0;
   padding: 18px 38px;
@@ -891,6 +895,7 @@
 .bka-mini--under-quote .bka-mini__band {
   font-size: 17.5px;
   padding: 6px 21px;
+  margin-top: -30px;
   margin-bottom: 5px;
 }
 
@@ -899,6 +904,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-top: 14px;
 }
 
 .bka-mini--under-quote .bka-impact__label {

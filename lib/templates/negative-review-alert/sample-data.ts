@@ -44,6 +44,8 @@ export const SAMPLE_NEGATIVE_REVIEW_ALERT: NegativeReviewAlertData = {
  */
 export const SAMPLE_BK_FULL: NegativeReviewAlertData = {
   ...SAMPLE_NEGATIVE_REVIEW_ALERT,
+  review_comment:
+    "Fuimos a cenar un sábado por la noche, y la experiencia fue bastante decepcionante de principio a fin. Empezamos esperando casi 20 minutos largos solo para que nos tomaran el pedido, a pesar de que el local no estaba especialmente lleno esa noche. Cuando por fin llegó la comida, una de las hamburguesas venía sin queso a pesar de que lo habíamos pedido expresamente, y las patatas estaban frías, como si llevaran bastante tiempo hechas antes de servirlas. Pedimos amablemente que nos las cambiaran y tardaron otros diez minutos largos en traernos unas nuevas, que tampoco estaban muy calientes de verdad. El refresco bien grande que pedimos nos lo sirvieron en un vaso mediano sin darnos ninguna explicación al respecto en ningún momento. Cuando comentamos todo esto al camarero, se limitó a disculparse sin ofrecernos ningún tipo de compensación, y eso es lo que más nos ha molestado de la visita.",
   detected_reasons: ["Tiempo de espera", "Pedido incompleto", "Atención al cliente"],
   sentiment: "Negativo",
   risk_level: "ALTO",
