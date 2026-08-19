@@ -37,57 +37,10 @@ export const SAMPLE_NEGATIVE_REVIEW_ALERT: NegativeReviewAlertData = {
   ...SAMPLE_IA_FIELDS,
 };
 
-export const SAMPLE_SHORT_COMMENT: NegativeReviewAlertData = {
-  ...SAMPLE_NEGATIVE_REVIEW_ALERT,
-  review_comment: "Comida fría y muy lenta la atención. No volveré.",
-  review_author: "Carlos Ruiz",
-  detected_reasons: ["Comida fría", "Lentitud"],
-  sentiment: "Negativo",
-  risk_level: "MEDIO",
-  recommendation: "Revisar los tiempos de servicio y la temperatura de entrega del pedido.",
-  ai_summary: "Cliente insatisfecho por comida fría y atención lenta.",
-  main_motive: "Comida fría",
-  detected_impact: "Posible bajada leve en la media si se repite.",
-  employee_mentioned: null,
-  analisis_pending: false,
-};
-
-export const SAMPLE_MEDIUM_COMMENT: NegativeReviewAlertData = {
-  ...SAMPLE_NEGATIVE_REVIEW_ALERT,
-  review_comment:
-    "Esperamos más de 20 minutos y el pedido llegó incompleto. El personal no mostró interés en solucionarlo.",
-  review_author: "Ana García",
-};
-
-export const SAMPLE_EXTRA_LONG_COMMENT: NegativeReviewAlertData = {
-  ...SAMPLE_NEGATIVE_REVIEW_ALERT,
-  review_comment:
-    "Después de esperar más de 25 minutos para que nos atendieran, la comida llegó fría y además faltaban productos del pedido. El personal no nos ofreció ninguna solución y parecían desorganizados. No es la primera vez que tenemos una mala experiencia en este restaurante. Muy decepcionados. Además el local estaba sucio y la actitud del encargado fue pésima cuando reclamamos. Llevamos años viniendo y cada vez empeora más la calidad del servicio.",
-};
-
-export const SAMPLE_ZIZUR_MAYOR: NegativeReviewAlertData = {
-  ...SAMPLE_NEGATIVE_REVIEW_ALERT,
-  brand_name: "Burger King",
-  restaurant_name: "BK ZIZUR MAYOR",
-  restaurant_location: "Navarra, España",
-  restaurant_address: "Navarra, España",
-  review_author: "Fernando",
-  review_date: "14 JUN 2026",
-  review_time: "19:31",
-  review_comment:
-    "El local estaba bastante sucio, mesas sin recoger y baños en mal estado. Pedimos un producto del menú y nos dijeron que no lo tenían sin ofrecer alternativa. La actitud del personal fue indiferente. No volveremos hasta que mejoren la limpieza y la organización del servicio.",
-  previous_rating: 4.76,
-  current_rating: 4.62,
-  rating_impact: -0.14,
-  review_count: 248,
-  lifetime_rating: 4.62,
-  report_date: "14 JUN 2026, 07:31 PM",
-};
-
 /**
  * Fixture de prueba visual para la plantilla de Burger King — con todos los
  * campos de análisis IA rellenos (texto de ejemplo, no un caso real) para
- * comprobar el diseño completo, no solo el layout con placeholders vacíos.
+ * comprobar el diseño normal (comentario ≤900 caracteres) completo.
  */
 export const SAMPLE_BK_FULL: NegativeReviewAlertData = {
   ...SAMPLE_NEGATIVE_REVIEW_ALERT,
@@ -103,4 +56,33 @@ export const SAMPLE_BK_FULL: NegativeReviewAlertData = {
   employee_mentioned: null,
   analisis_pending: false,
   period_label: "18 may 2025 – 24 may 2025",
+};
+
+/**
+ * Fixture de prueba visual — comentario > 900 caracteres (texto de ejemplo,
+ * no un caso real) para comprobar el diseño largo (centrado, solo
+ * comentario + Impacto en la media).
+ */
+export const SAMPLE_BK_LONG: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT,
+  review_author: "Marta Sánchez",
+  review_comment:
+    "Pedimos a domicilio y la experiencia fue de las peores que hemos tenido con esta cadena. Para empezar, el pedido tardó más de una hora en llegar, cuando la propia aplicación indicaba entre 30 y 40 minutos. Cuando por fin llegó, faltaban dos de las hamburguesas que habíamos pedido y una de las que sí venían tenía el pan completamente empapado, como si llevara mucho tiempo hecha antes de salir del local. Las patatas venían frías y sin sal, y el refresco grande que pedimos era en realidad uno mediano. Llamamos al restaurante para explicar la situación y nos dijeron que no podían hacer nada porque el pedido ya figuraba como entregado en su sistema, así que tuvimos que reclamar directamente a través de la aplicación, algo que no nos habían explicado hasta ese momento. Es la segunda vez en el último mes que tenemos un problema parecido con este mismo restaurante, y cada vez es más difícil que nos den una solución razonable sin tener que insistir varias veces. Entendemos que puede haber errores puntuales, pero la falta de comunicación y la actitud a la hora de resolverlo es lo que de verdad nos ha decepcionado.",
+  previous_rating: 4.28,
+  current_rating: 4.05,
+  rating_impact: -0.23,
+  review_count: 501,
+  lifetime_rating: 4.05,
+  detected_reasons: [],
+  sentiment: "Muy negativo",
+  risk_level: "ALTO",
+  recommendation:
+    "Revisar el proceso de reparto y los tiempos de entrega, confirmar pedidos completos antes de salir del local y mejorar la comunicación con el cliente sobre cómo reclamar cuando hay una incidencia.",
+  ai_summary:
+    "La clienta recibió un pedido a domicilio con más de una hora de retraso, faltaban productos, la comida llegó fría y el tamaño de una bebida no coincidía con lo pedido. Es la segunda incidencia similar en el último mes.",
+  main_motive: "Retraso considerable en la entrega, pedido incompleto y productos de menor calidad/tamaño al solicitado.",
+  detected_impact:
+    "La clienta está muy insatisfecha por la reincidencia del problema y la falta de una solución clara, lo que afecta a su confianza en el servicio de reparto.",
+  employee_mentioned: null,
+  analisis_pending: false,
 };

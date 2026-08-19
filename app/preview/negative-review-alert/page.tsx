@@ -10,11 +10,7 @@ import {
 } from "@/lib/reports/negative-reviews/export-image";
 import {
   SAMPLE_BK_FULL,
-  SAMPLE_EXTRA_LONG_COMMENT,
-  SAMPLE_MEDIUM_COMMENT,
-  SAMPLE_NEGATIVE_REVIEW_ALERT,
-  SAMPLE_SHORT_COMMENT,
-  SAMPLE_ZIZUR_MAYOR,
+  SAMPLE_BK_LONG,
 } from "@/lib/templates/negative-review-alert/sample-data";
 import { NegativeReviewAlertTemplate } from "@/templates/negative-review-alert";
 import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brands/burger-king-alert-template";
@@ -22,12 +18,8 @@ import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brand
 const REFERENCE_PATH = "/design/negative-review-alert-reference.png";
 
 const SAMPLE_VARIANTS = {
-  bkFull: { label: "Burger King (diseño completo)", data: SAMPLE_BK_FULL },
-  zizur: { label: "BK Zizur Mayor (real)", data: SAMPLE_ZIZUR_MAYOR },
-  reference: { label: "Referencia (largo)", data: SAMPLE_NEGATIVE_REVIEW_ALERT },
-  short: { label: "Comentario corto", data: SAMPLE_SHORT_COMMENT },
-  medium: { label: "Comentario medio", data: SAMPLE_MEDIUM_COMMENT },
-  extraLong: { label: "Comentario muy largo", data: SAMPLE_EXTRA_LONG_COMMENT },
+  normal: { label: "Diseño normal", data: SAMPLE_BK_FULL },
+  largo: { label: "Diseño largo", data: SAMPLE_BK_LONG },
 } as const;
 
 type SampleKey = keyof typeof SAMPLE_VARIANTS;
@@ -40,7 +32,7 @@ export default function NegativeReviewAlertPreviewPage() {
   const [overlayOpacity, setOverlayOpacity] = useState(50);
   const [referenceOk, setReferenceOk] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [sampleKey, setSampleKey] = useState<SampleKey>("bkFull");
+  const [sampleKey, setSampleKey] = useState<SampleKey>("normal");
   const sample = SAMPLE_VARIANTS[sampleKey];
   const isBk = sample.data.brand === "bk";
   const renderWidth = NEGATIVE_REVIEW_RENDER_WIDTH;
