@@ -58,11 +58,54 @@ export async function exportElementToPng(
   }
 }
 
-export function downloadDataUrl(dataUrl: string, filename: string) {
-  const link = document.createElement("a");
-  link.download = filename;
-  link.href = dataUrl;
-  link.click();
+/**
+ * Descarga una imagen a partir de un data URL, con varias estrategias
+ * según el navegador. El truco de `<a download>` con un data: URL directo
+ * funciona en escritorio y en Android, pero iOS Safari IGNORA el atributo
+ * `download` en enlaces (solo lo respeta en algunos casos con blob:), así
+ * que ahí hace falta una vía distinta para que el usuario pueda guardar
+ * la imagen de verdad.
+ */
+export async function downloadDataUrl(dataUrl: string, filename: string) {
+  let blob: Blob | null = null;
+  try {
+    blob = await (await fetch(dataUrl)).blob();
+  } catch {
+    blob = null;
+  }
+
+  // Móvil (iOS y Android): la hoja de compartir nativa incluye "Guardar
+  // imagen" y es el único camino fiable en iOS Safari, donde el atributo
+  // download de <a> no dispara una descarga real.
+  if (blob && typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
+    try {
+      const file = new File([blob], filename, { type: blob.type || "image/png" });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        return;
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      // el usuario canceló o el share falló: seguimos con el resto de vías
+    }
+  }
+
+  // Escritorio y la mayoría de Android: blob: URL + <a download>.
+  if (blob) {
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = filename;
+    link.href = blobUrl;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    return;
+  }
+
+  // Último recurso (p.ej. si fetch del data: URL falla): abrir en pestaña
+  // nueva para que el usuario la guarde a mano (mantener pulsado > Guardar).
+  window.open(dataUrl, "_blank");
 }
 
 export function buildNegativeReviewFilename(row: {

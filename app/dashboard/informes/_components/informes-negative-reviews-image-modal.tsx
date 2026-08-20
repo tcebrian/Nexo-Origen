@@ -169,7 +169,7 @@ export function InformesNegativeReviewsImageModal({
               disabled={!previewUrl || generating}
               onClick={() => {
                 if (!previewUrl) return;
-                downloadDataUrl(previewUrl, buildNegativeReviewFilename(row));
+                void downloadDataUrl(previewUrl, buildNegativeReviewFilename(row));
               }}
             >
               Descargar PNG
