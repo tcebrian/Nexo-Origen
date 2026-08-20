@@ -113,3 +113,92 @@ export const SAMPLE_BK_LONG: NegativeReviewAlertData = {
   employee_mentioned: null,
   analisis_pending: false,
 };
+
+/** Datos base de layout para preview de Popeyes — sin análisis IA inventado. */
+const SAMPLE_NEGATIVE_REVIEW_ALERT_PP: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT,
+  brand: "pp",
+  brand_name: "Popeyes",
+  brand_logo_url: "/brands/popeyes-transparent.png",
+  restaurant_name: "PP ZARAGOZA CENTRO",
+  restaurant_location: "Zaragoza",
+  restaurant_address: "Paseo de la Independencia, 12, 50004 Zaragoza",
+};
+
+/**
+ * Fixture de prueba visual para la plantilla de Popeyes — con todos los
+ * campos de análisis IA rellenos (texto de ejemplo, no un caso real) para
+ * comprobar el diseño normal (comentario ≤900 caracteres) completo.
+ */
+export const SAMPLE_PP_FULL: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_PP,
+  review_author: "Sara Domínguez",
+  review_comment:
+    "Pedimos un combo de tenders con patatas cajún y una bebida grande, y la experiencia fue bastante floja para lo que cuesta. Los tenders venían templados, no calientes de verdad, como si llevaran ya un rato hechos antes de servirlos. Las patatas cajún, que suelen ser lo mejor de la carta, estaban blandas y con muy poco del toque picante que las caracteriza. Pedimos que nos las cambiaran por unas recién hechas y tardaron casi quince minutos en traer un pedido tan sencillo, con la tienda medio vacía además. La bebida grande que pagamos de más nos la sirvieron prácticamente sin hielo, así que se quedó caliente enseguida. Cuando comentamos la espera en el mostrador, la persona que nos atendió se limitó a encogerse de hombros sin ofrecer ninguna disculpa ni compensación por la tardanza.",
+  detected_reasons: ["Comida templada", "Tiempo de espera", "Atención al cliente"],
+  sentiment: "Negativo",
+  risk_level: "ALTO",
+  recommendation:
+    "Revisar el mantenimiento de temperatura de tenders y patatas en el punto de calor, y reforzar personal en cocina en horas valle para evitar reprocesos lentos.",
+  ai_summary:
+    "Cliente reporta comida templada (tenders y patatas cajún) y una espera larga para un pedido sencillo, con atención percibida como poco resolutiva.",
+  main_motive: "Comida templada",
+  detected_impact: "Bajada de 0.19 puntos en la media del local en el periodo analizado.",
+  employee_mentioned: null,
+  analisis_pending: false,
+  period_label: "18 may 2025 – 24 may 2025",
+};
+
+/**
+ * Fixture de prueba visual — comentario corto (texto de ejemplo, no un caso
+ * real) para comprobar el diseño normal de Popeyes con un comentario breve.
+ */
+export const SAMPLE_PP_SHORT: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_PP,
+  review_author: "Iván Castro",
+  review_comment:
+    "Los tenders llegaron fríos por dentro y las patatas cajún estaban ya frías del todo, tuvimos que esperar bastante para que nos tomaran nota a pesar de haber poca gente. No fue la experiencia que esperaba de Popeyes, la verdad.",
+  previous_rating: 4.36,
+  current_rating: 4.15,
+  rating_impact: -0.21,
+  review_count: 268,
+  lifetime_rating: 4.15,
+  detected_reasons: ["Comida fría", "Lentitud"],
+  sentiment: "Negativo",
+  risk_level: "MEDIO",
+  recommendation: "Revisar los tiempos de servicio y la temperatura de entrega del pedido.",
+  ai_summary: "Cliente insatisfecho por comida fría y atención lenta.",
+  main_motive: "Comida fría",
+  detected_impact: "Posible bajada leve en la media si se repite.",
+  employee_mentioned: null,
+  analisis_pending: false,
+};
+
+/**
+ * Fixture de prueba visual — comentario > 900 caracteres (texto de ejemplo,
+ * no un caso real) para comprobar el diseño largo de Popeyes (centrado,
+ * solo comentario + Impacto en la media).
+ */
+export const SAMPLE_PP_LONG: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_PP,
+  review_author: "Nuria Vidal",
+  review_comment:
+    "Pedimos a domicilio un cubo de tenders para compartir y la experiencia fue de las peores que hemos tenido con esta cadena. Para empezar, el pedido tardó casi una hora en llegar cuando la aplicación indicaba entre 25 y 35 minutos. Cuando por fin llegó, faltaba una de las salsas que habíamos pedido expresamente y varios de los tenders venían con un rebozado completamente blando, como si el pedido llevara mucho tiempo esperando antes de salir del local. Las patatas cajún venían frías y prácticamente sin especias, y el refresco grande que pedimos era en realidad uno mediano, sin ninguna explicación al respecto. Llamamos al restaurante para explicar la situación y nos dijeron que no podían hacer nada porque el pedido ya figuraba como entregado en su sistema, así que tuvimos que reclamar directamente a través de la aplicación de reparto, algo que no nos habían explicado hasta ese momento. Es la segunda vez en el último mes que tenemos un problema parecido con este mismo restaurante, y cada vez es más difícil que nos den una solución razonable sin tener que insistir varias veces. Entendemos que puede haber errores puntuales, pero la falta de comunicación y la actitud a la hora de resolverlo es lo que de verdad nos ha decepcionado.",
+  previous_rating: 4.24,
+  current_rating: 4.02,
+  rating_impact: -0.22,
+  review_count: 415,
+  lifetime_rating: 4.02,
+  detected_reasons: [],
+  sentiment: "Muy negativo",
+  risk_level: "ALTO",
+  recommendation:
+    "Revisar el proceso de reparto y los tiempos de entrega, confirmar pedidos completos antes de salir del local y mejorar la comunicación con el cliente sobre cómo reclamar cuando hay una incidencia.",
+  ai_summary:
+    "La clienta recibió un pedido a domicilio con casi una hora de retraso, faltaba una salsa, parte de los tenders llegaron blandos y el tamaño de la bebida no coincidía con lo pedido. Es la segunda incidencia similar en el último mes.",
+  main_motive: "Retraso considerable en la entrega, pedido incompleto y productos de menor calidad al solicitado.",
+  detected_impact:
+    "La clienta está muy insatisfecha por la reincidencia del problema y la falta de una solución clara, lo que afecta a su confianza en el servicio de reparto.",
+  employee_mentioned: null,
+  analisis_pending: false,
+};

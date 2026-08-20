@@ -3,23 +3,24 @@ import { resolveDesignCanvasSize } from "@/lib/templates/negative-review-alert/d
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
 import { StarRating } from "../icons";
 import {
-  BkIconArrowDown,
-  BkIconArrowUp,
-  BkIconBars,
-  BkIconBulb,
-  BkIconCalendar,
-  BkIconClipboardBig,
-  BkIconClipboardText,
-  BkIconClock,
-  BkIconMagnifier,
-  BkIconMinus,
-  BkIconMood,
-  BkIconPin,
-  BkIconShield,
-} from "./burger-king-alert-icons";
-import "./burger-king-alert.css";
+  PpIconArrowDown,
+  PpIconArrowUp,
+  PpIconBars,
+  PpIconBulb,
+  PpIconCalendar,
+  PpIconClipboardBig,
+  PpIconClipboardText,
+  PpIconClock,
+  PpIconMagnifier,
+  PpIconMinus,
+  PpIconMood,
+  PpIconPin,
+  PpIconShield,
+  PpIconSparkle,
+} from "./popeyes-alert-icons";
+import "./popeyes-alert.css";
 
-type BurgerKingAlertTemplateProps = {
+type PopeyesAlertTemplateProps = {
   data: NegativeReviewAlertData;
   assetBaseUrl?: string;
 };
@@ -44,11 +45,11 @@ function quoteSizeClass(length: number): string {
   // (depende de cómo caigan las palabras), así que el límite de "lg" deja
   // margen de sobra por debajo del punto donde se confirmó por medición
   // real que empieza a invadir "Impacto en la media" (~300 caracteres).
-  if (length <= 260) return "bka-quote__text--lg";
-  if (length <= 650) return "bka-quote__text--md";
-  if (length <= 900) return "bka-quote__text--sm";
-  if (length <= 1300) return "bka-quote__text--xs";
-  return "bka-quote__text--xxs";
+  if (length <= 260) return "ppa-quote__text--lg";
+  if (length <= 650) return "ppa-quote__text--md";
+  if (length <= 900) return "ppa-quote__text--sm";
+  if (length <= 1300) return "ppa-quote__text--xs";
+  return "ppa-quote__text--xxs";
 }
 
 /**
@@ -149,9 +150,9 @@ function cleanValue(value: string | null | undefined): string | null {
   return isEmptyValue(value) ? null : (value as string).trim();
 }
 
-/** "BK Utebo" / "BK ZIZUR MAYOR" -> "Utebo" / "ZIZUR MAYOR" (quita el prefijo de marca). */
+/** "PP Utebo" / "Popeyes ZIZUR MAYOR" -> "Utebo" / "ZIZUR MAYOR" (quita el prefijo de marca). */
 function stripBrandPrefix(name: string): string {
-  return name.replace(/^\s*bk\s+/i, "").trim();
+  return name.replace(/^\s*(pp|popeyes)\s+/i, "").trim();
 }
 
 type RiskTone = "high" | "medium" | "low" | "neutral";
@@ -176,23 +177,23 @@ function mediaTone(current: number, target: number): MediaTone {
 function ImpactDelta({ delta }: { delta: number }) {
   if (delta > 0.005) {
     return (
-      <span className="bka-impact__delta bka-impact__delta--up">
-        <BkIconArrowUp />
+      <span className="ppa-impact__delta ppa-impact__delta--up">
+        <PpIconArrowUp />
         {`+${delta.toFixed(2)}`}
       </span>
     );
   }
   if (delta < -0.005) {
     return (
-      <span className="bka-impact__delta bka-impact__delta--down">
-        <BkIconArrowDown />
+      <span className="ppa-impact__delta ppa-impact__delta--down">
+        <PpIconArrowDown />
         {delta.toFixed(2)}
       </span>
     );
   }
   return (
-    <span className="bka-impact__delta bka-impact__delta--flat">
-      <BkIconMinus />
+    <span className="ppa-impact__delta ppa-impact__delta--flat">
+      <PpIconMinus />
       0.00
     </span>
   );
@@ -205,8 +206,8 @@ type AnalysisRow = {
   value: string;
 };
 
-export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAlertTemplateProps>(
-  function BurgerKingAlertTemplate({ data, assetBaseUrl }, ref) {
+export const PopeyesAlertTemplate = forwardRef<HTMLDivElement, PopeyesAlertTemplateProps>(
+  function PopeyesAlertTemplate({ data, assetBaseUrl }, ref) {
     const design = resolveDesignCanvasSize(data.aspect_ratio);
     const fullComment = truncateComment(normalizeComment(data.review_comment));
     const location = data.restaurant_address || data.restaurant_location;
@@ -217,10 +218,10 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
     const tone = mediaTone(data.current_rating, target);
 
     const analysisRows: AnalysisRow[] = [
-      { key: "resumen", icon: <BkIconClipboardText />, label: "Resumen IA", value: cleanValue(data.ai_summary) as string },
-      { key: "motivo", icon: <BkIconMagnifier />, label: "Motivo principal", value: cleanValue(data.main_motive) as string },
-      { key: "impacto", icon: <BkIconBars />, label: "Impacto detectado", value: cleanValue(data.detected_impact) as string },
-      { key: "recomendacion", icon: <BkIconBulb />, label: "Recomendación", value: cleanValue(data.recommendation) as string },
+      { key: "resumen", icon: <PpIconClipboardText />, label: "Resumen IA", value: cleanValue(data.ai_summary) as string },
+      { key: "motivo", icon: <PpIconMagnifier />, label: "Motivo principal", value: cleanValue(data.main_motive) as string },
+      { key: "impacto", icon: <PpIconBars />, label: "Impacto detectado", value: cleanValue(data.detected_impact) as string },
+      { key: "recomendacion", icon: <PpIconBulb />, label: "Recomendación", value: cleanValue(data.recommendation) as string },
     ].filter((row) => row.value);
     const analysisTotalLength = analysisRows.reduce((sum, row) => sum + row.value.length, 0);
     const analysisTier = insightsTier(analysisTotalLength);
@@ -229,217 +230,232 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
     const shiftTier = isExtremeComment ? "" : commentShiftTier(fullComment.length);
 
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
-    const brandLabel = (cleanValue(data.brand_name) ?? "Burger King").toUpperCase();
+    const brandLabel = (cleanValue(data.brand_name) ?? "Popeyes").toUpperCase();
     const locationLabel = stripBrandPrefix(data.restaurant_name) || data.restaurant_name;
 
     return (
-      <div ref={ref} className="bka-canvas" style={{ width: design.width, height: design.height }}>
+      <div ref={ref} className="ppa-canvas" style={{ width: design.width, height: design.height }}>
 
         {/* Producto — elementos editoriales, no contenidos en tarjeta */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={absUrl(assetBaseUrl, "/design/burger-king/bk-drink.png")}
+          src={absUrl(assetBaseUrl, "/design/popeyes/pp-drink.png")}
           alt=""
           aria-hidden
-          className="bka-product bka-product--drink"
+          className="ppa-product ppa-product--drink"
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={absUrl(assetBaseUrl, "/design/burger-king/bk-fries.png")}
+          src={absUrl(assetBaseUrl, "/design/popeyes/pp-fries.png")}
           alt=""
           aria-hidden
-          className="bka-product bka-product--fries"
+          className="ppa-product ppa-product--fries"
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={absUrl(assetBaseUrl, "/design/burger-king/bk-burger.png")}
+          src={absUrl(assetBaseUrl, "/design/popeyes/pp-tenders.png")}
           alt=""
           aria-hidden
-          className="bka-product bka-product--burger"
+          className="ppa-product ppa-product--tenders"
         />
 
-        <div className={`bka-sheet ${isExtremeComment ? "bka-sheet--extreme" : ""}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/popeyes/pp-rooster.png")}
+          alt=""
+          aria-hidden
+          className="ppa-rooster"
+        />
+
+        {/* Destellos decorativos alrededor de los productos */}
+        <span className="ppa-sparkle ppa-sparkle--tenders-1" aria-hidden>
+          <PpIconSparkle />
+        </span>
+        <span className="ppa-sparkle ppa-sparkle--tenders-2" aria-hidden>
+          <PpIconSparkle />
+        </span>
+        <span className="ppa-sparkle ppa-sparkle--fries-1" aria-hidden>
+          <PpIconSparkle />
+        </span>
+        <span className="ppa-sparkle ppa-sparkle--fries-2" aria-hidden>
+          <PpIconSparkle />
+        </span>
+        <span className="ppa-sparkle ppa-sparkle--drink-1" aria-hidden>
+          <PpIconSparkle />
+        </span>
+        <span className="ppa-sparkle ppa-sparkle--drink-2" aria-hidden>
+          <PpIconSparkle />
+        </span>
+
+        <div className={`ppa-sheet ${isExtremeComment ? "ppa-sheet--extreme" : ""}`}>
           {/* Header editorial */}
-          <header className="bka-header">
-            <div className="bka-header__alert">
+          <header className="ppa-header">
+            <div className="ppa-header__alert">
               <div>
-                <p className="bka-header__title">
+                <p className="ppa-header__title">
                   RESEÑA
-                  <span className="bka-header__crown">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={absUrl(assetBaseUrl, "/design/burger-king/bk-crown.png")}
-                      alt=""
-                      aria-hidden
-                      className="bka-header__crown-img"
-                    />
-                  </span>
                   <br />
-                  <span className="bka-header__title-neg">NEGATIVA</span>
+                  <span className="ppa-header__title-neg">NEGATIVA</span>
                 </p>
-                <p className="bka-header__sub">NUEVO COMENTARIO RECIBIDO</p>
+                <p className="ppa-header__sub">NUEVO COMENTARIO RECIBIDO</p>
               </div>
             </div>
 
-            <div className="bka-header__brand">
+            <div className="ppa-header__restaurant">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={absUrl(assetBaseUrl, "/design/burger-king/bk-logo.png")}
-                alt={data.brand_name}
-                className="bka-header__brand-logo"
+                src={absUrl(assetBaseUrl, "/design/popeyes/pp-wordmark-2.png")}
+                alt=""
+                aria-hidden
+                className="ppa-header__wordmark"
               />
-            </div>
-
-            <div className="bka-header__restaurant">
-              <p className="bka-header__restaurant-name">
-                <BkIconPin />
-                {brandLabel}
+              <p className="ppa-header__restaurant-location">
+                <PpIconPin />
+                {brandLabel} {locationLabel}
               </p>
-              <p className="bka-header__restaurant-location">{locationLabel}</p>
-              <p className="bka-header__restaurant-address">{location}</p>
             </div>
           </header>
 
-          <span className="bka-header__divider" aria-hidden />
+          <span className="ppa-header__divider" aria-hidden />
 
-          <div className="bka-header__nexo">
+          <div className="ppa-header__nexo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={absUrl(assetBaseUrl, "/design/burger-king/nexo-origen-logo-2.png")}
+              src={absUrl(assetBaseUrl, "/design/popeyes/nexo-origen-logo-2.png")}
               alt="Nexo Origen"
-              className="bka-header__nexo-logo"
+              className="ppa-header__nexo-logo"
             />
           </div>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={absUrl(assetBaseUrl, "/design/burger-king/bk-header-extra.png")}
+            src={absUrl(assetBaseUrl, "/design/popeyes/pp-header-extra.png")}
             alt=""
             aria-hidden
-            className="bka-header__extra-photo"
+            className="ppa-header__extra-photo"
           />
 
           {isExtremeComment ? (
-            <div className="bka-body bka-body--extreme">
-              <section className="bka-review bka-review--extreme">
-                <div className="bka-review__head">
-                  <span className="bka-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
-                  <div className="bka-review__meta">
-                    <p className="bka-review__name">{data.review_author}</p>
-                    <p className="bka-review__datetime">
-                      <BkIconCalendar />
+            <div className="ppa-body ppa-body--extreme">
+              <section className="ppa-review ppa-review--extreme">
+                <div className="ppa-review__head">
+                  <span className="ppa-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
+                  <div className="ppa-review__meta">
+                    <p className="ppa-review__name">{data.review_author}</p>
+                    <p className="ppa-review__datetime">
+                      <PpIconCalendar />
                       <span>{data.review_date}</span>
-                      <span className="bka-review__sep" aria-hidden>
+                      <span className="ppa-review__sep" aria-hidden>
                         |
                       </span>
-                      <BkIconClock />
+                      <PpIconClock />
                       <span>{data.review_time}</span>
                     </p>
                   </div>
-                  <div className="bka-review__rating">
+                  <div className="ppa-review__rating">
                     <StarRating stars={data.review_stars} size="lg" />
-                    <span className="bka-review__rating-value">{data.review_stars}/5</span>
+                    <span className="ppa-review__rating-value">{data.review_stars}/5</span>
                   </div>
                 </div>
 
-                <div className="bka-quote bka-quote--extreme">
-                  <span className="bka-quote__mark bka-quote__mark--open" aria-hidden>
+                <div className="ppa-quote ppa-quote--extreme">
+                  <span className="ppa-quote__mark ppa-quote__mark--open" aria-hidden>
                     &ldquo;
                   </span>
-                  <p className={`bka-quote__text ${quoteSizeClass(fullComment.length)}`}>
+                  <p className={`ppa-quote__text ${quoteSizeClass(fullComment.length)}`}>
                     {fullComment}
                   </p>
-                  <span className="bka-quote__mark bka-quote__mark--close" aria-hidden>
+                  <span className="ppa-quote__mark ppa-quote__mark--close" aria-hidden>
                     &rdquo;
                   </span>
                 </div>
               </section>
 
-              <section className="bka-mini bka-mini--extreme">
-                <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
-                <div className="bka-impact">
-                  <div className="bka-impact__col">
-                    <p className="bka-impact__label">Media anterior</p>
-                    <p className="bka-impact__value">{data.previous_rating.toFixed(2)}</p>
-                    <span className="bka-impact__stars">
+              <section className="ppa-mini ppa-mini--extreme">
+                <p className="ppa-mini__band">IMPACTO EN LA MEDIA</p>
+                <div className="ppa-impact">
+                  <div className="ppa-impact__col">
+                    <p className="ppa-impact__label">Media anterior</p>
+                    <p className="ppa-impact__value">{data.previous_rating.toFixed(2)}</p>
+                    <span className="ppa-impact__stars">
                       <StarRating stars={data.previous_rating} size="md" />
                     </span>
                   </div>
-                  <div className="bka-impact__col">
-                    <p className="bka-impact__label">Media actual</p>
-                    <p className={`bka-impact__value bka-impact__value--tone-${tone}`}>
+                  <div className="ppa-impact__col">
+                    <p className="ppa-impact__label">Media actual</p>
+                    <p className={`ppa-impact__value ppa-impact__value--tone-${tone}`}>
                       {data.current_rating.toFixed(2)}
                     </p>
-                    <span className="bka-impact__stars">
+                    <span className="ppa-impact__stars">
                       <StarRating stars={data.current_rating} size="md" />
                     </span>
                   </div>
-                  <div className="bka-impact__col">
-                    <p className="bka-impact__label">Variación</p>
+                  <div className="ppa-impact__col">
+                    <p className="ppa-impact__label">Variación</p>
                     <ImpactDelta delta={delta} />
                   </div>
                 </div>
               </section>
             </div>
           ) : (
-            <div className="bka-body">
-              <div className="bka-review-col">
+            <div className="ppa-body">
+              <div className="ppa-review-col">
               {/* Tarjeta grande de la reseña — protagonista */}
-              <section className="bka-review">
-                <div className="bka-review__head">
-                  <span className="bka-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
-                  <div className="bka-review__meta">
-                    <p className="bka-review__name">{data.review_author}</p>
-                    <p className="bka-review__datetime">
-                      <BkIconCalendar />
+              <section className="ppa-review">
+                <div className="ppa-review__head">
+                  <span className="ppa-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
+                  <div className="ppa-review__meta">
+                    <p className="ppa-review__name">{data.review_author}</p>
+                    <p className="ppa-review__datetime">
+                      <PpIconCalendar />
                       <span>{data.review_date}</span>
-                      <span className="bka-review__sep" aria-hidden>
+                      <span className="ppa-review__sep" aria-hidden>
                         |
                       </span>
-                      <BkIconClock />
+                      <PpIconClock />
                       <span>{data.review_time}</span>
                     </p>
                   </div>
-                  <div className="bka-review__rating">
+                  <div className="ppa-review__rating">
                     <StarRating stars={data.review_stars} size="lg" />
-                    <span className="bka-review__rating-value">{data.review_stars}/5</span>
+                    <span className="ppa-review__rating-value">{data.review_stars}/5</span>
                   </div>
                 </div>
 
-                <div className="bka-quote">
-                  <span className="bka-quote__mark bka-quote__mark--open" aria-hidden>
+                <div className="ppa-quote">
+                  <span className="ppa-quote__mark ppa-quote__mark--open" aria-hidden>
                     &ldquo;
                   </span>
-                  <p className={`bka-quote__text ${quoteSizeClass(fullComment.length)}`}>
+                  <p className={`ppa-quote__text ${quoteSizeClass(fullComment.length)}`}>
                     {fullComment}
                   </p>
-                  <span className="bka-quote__mark bka-quote__mark--close" aria-hidden>
+                  <span className="ppa-quote__mark ppa-quote__mark--close" aria-hidden>
                     &rdquo;
                   </span>
                 </div>
               </section>
 
-              <section className={`bka-mini bka-mini--under-quote ${fullComment.length < 500 ? "bka-mini--short" : ""} ${shiftTier ? `bka-mini--shift-${shiftTier}` : ""}`}>
-                <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
-                <div className="bka-impact">
-                  <div className="bka-impact__col">
-                    <p className="bka-impact__label">Media anterior</p>
-                    <p className="bka-impact__value">{data.previous_rating.toFixed(2)}</p>
-                    <span className="bka-impact__stars">
+              <section className={`ppa-mini ppa-mini--under-quote ${fullComment.length < 500 ? "ppa-mini--short" : ""} ${shiftTier ? `ppa-mini--shift-${shiftTier}` : ""}`}>
+                <p className="ppa-mini__band">IMPACTO EN LA MEDIA</p>
+                <div className="ppa-impact">
+                  <div className="ppa-impact__col">
+                    <p className="ppa-impact__label">Media anterior</p>
+                    <p className="ppa-impact__value">{data.previous_rating.toFixed(2)}</p>
+                    <span className="ppa-impact__stars">
                       <StarRating stars={data.previous_rating} size="md" />
                     </span>
                   </div>
-                  <div className="bka-impact__col">
-                    <p className="bka-impact__label">Media actual</p>
-                    <p className={`bka-impact__value bka-impact__value--tone-${tone}`}>
+                  <div className="ppa-impact__col">
+                    <p className="ppa-impact__label">Media actual</p>
+                    <p className={`ppa-impact__value ppa-impact__value--tone-${tone}`}>
                       {data.current_rating.toFixed(2)}
                     </p>
-                    <span className="bka-impact__stars">
+                    <span className="ppa-impact__stars">
                       <StarRating stars={data.current_rating} size="md" />
                     </span>
                   </div>
-                  <div className="bka-impact__col">
-                    <p className="bka-impact__label">Variación</p>
+                  <div className="ppa-impact__col">
+                    <p className="ppa-impact__label">Variación</p>
                     <ImpactDelta delta={delta} />
                   </div>
                 </div>
@@ -447,17 +463,17 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
               </div>
 
               {/* Columna de inteligencia artificial */}
-              <section className="bka-insights">
+              <section className="ppa-insights">
                 {analysisRows.length > 0 ? (
                   <>
-                    <p className="bka-ribbon">ANÁLISIS NEXO</p>
-                    <ul className={`bka-analysis bka-analysis--${analysisTier}`}>
+                    <p className="ppa-ribbon">ANÁLISIS NEXO</p>
+                    <ul className={`ppa-analysis ppa-analysis--${analysisTier}`}>
                       {analysisRows.map((row) => (
                         <li key={row.key}>
-                          <span className="bka-analysis__icon">{row.icon}</span>
-                          <div className="bka-analysis__copy">
-                            <p className="bka-analysis__label">{row.label}</p>
-                            <p className="bka-analysis__value">{row.value}</p>
+                          <span className="ppa-analysis__icon">{row.icon}</span>
+                          <div className="ppa-analysis__copy">
+                            <p className="ppa-analysis__label">{row.label}</p>
+                            <p className="ppa-analysis__value">{row.value}</p>
                           </div>
                         </li>
                       ))}
@@ -465,21 +481,21 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                   </>
                 ) : null}
 
-                <p className={`bka-ribbon ${analysisRows.length > 0 ? "bka-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
-                <div className={`bka-diagnostics bka-diagnostics--${analysisTier}`}>
-                  <div className="bka-diagnostics__item">
-                    <span className="bka-diagnostics__icon bka-diagnostics__icon--neutral">
-                      <BkIconMood />
+                <p className={`ppa-ribbon ${analysisRows.length > 0 ? "ppa-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
+                <div className={`ppa-diagnostics ppa-diagnostics--${analysisTier}`}>
+                  <div className="ppa-diagnostics__item">
+                    <span className="ppa-diagnostics__icon ppa-diagnostics__icon--neutral">
+                      <PpIconMood />
                     </span>
-                    <p className="bka-diagnostics__label">Sentimiento</p>
-                    <p className="bka-diagnostics__value">{sentiment ?? "Sin datos"}</p>
+                    <p className="ppa-diagnostics__label">Sentimiento</p>
+                    <p className="ppa-diagnostics__value">{sentiment ?? "Sin datos"}</p>
                   </div>
-                  <div className="bka-diagnostics__item">
-                    <span className={`bka-diagnostics__icon bka-diagnostics__icon--${riskTone(risk)}`}>
-                      <BkIconShield />
+                  <div className="ppa-diagnostics__item">
+                    <span className={`ppa-diagnostics__icon ppa-diagnostics__icon--${riskTone(risk)}`}>
+                      <PpIconShield />
                     </span>
-                    <p className="bka-diagnostics__label">Riesgo</p>
-                    <p className="bka-diagnostics__value">{risk ?? "Sin datos"}</p>
+                    <p className="ppa-diagnostics__label">Riesgo</p>
+                    <p className="ppa-diagnostics__value">{risk ?? "Sin datos"}</p>
                   </div>
                 </div>
               </section>
@@ -491,13 +507,13 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
             ? (() => {
                 const footerSizeTier = footerTier(conclusion.length);
                 return (
-                  <footer className={`bka-footer bka-footer--${footerSizeTier}`}>
-                    <span className="bka-footer__icon">
-                      <BkIconClipboardBig />
+                  <footer className={`ppa-footer ppa-footer--${footerSizeTier}`}>
+                    <span className="ppa-footer__icon">
+                      <PpIconClipboardBig />
                     </span>
-                    <div className="bka-footer__body">
-                      <p className="bka-footer__label">CONCLUSIÓN / ACCIÓN</p>
-                      <p className={`bka-footer__text bka-footer__text--${footerSizeTier}`}>{conclusion}</p>
+                    <div className="ppa-footer__body">
+                      <p className="ppa-footer__label">CONCLUSIÓN / ACCIÓN</p>
+                      <p className={`ppa-footer__text ppa-footer__text--${footerSizeTier}`}>{conclusion}</p>
                     </div>
                   </footer>
                 );

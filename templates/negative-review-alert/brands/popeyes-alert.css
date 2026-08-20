@@ -1,43 +1,41 @@
-/* Plantilla Burger King — pieza editorial de marca, no un dashboard SaaS. */
+/* Plantilla Popeyes — pieza editorial de marca, no un dashboard SaaS. */
 
-.bka-canvas {
-  --bk-red: #d62b1f;
-  --bk-red-dark: #a11d14;
-  --bk-orange: #f0842a;
-  --bk-ink: #211a13;
-  --bk-ink-soft: #6b6153;
-  --bk-cream: #f3e9d2;
-  --bk-cream-deep: #ecdfc0;
-  --bk-card: #fbf6e9;
-  --bk-line: rgba(33, 26, 19, 0.12);
-  --bk-line-strong: rgba(33, 26, 19, 0.2);
-  --bk-good: #1c7a4d;
-  --bk-warn: #b3690f;
+.ppa-canvas {
+  --pp-primary: #ed6a25;
+  --pp-primary-dark: #a83913;
+  --pp-gold: #f2a93b;
+  --pp-ink: #211a13;
+  --pp-ink-soft: #6b6153;
+  --pp-cream: #f3e9d2;
+  --pp-cream-deep: #ecdfc0;
+  --pp-card: #fbf6e9;
+  --pp-line: rgba(33, 26, 19, 0.12);
+  --pp-line-strong: rgba(33, 26, 19, 0.2);
+  --pp-good: #1c7a4d;
+  --pp-warn: #b3690f;
 
   position: relative;
   overflow: hidden;
   background:
     radial-gradient(120% 90% at 8% -10%, rgba(255, 255, 255, 0.55) 0%, transparent 45%),
     radial-gradient(130% 100% at 100% 110%, rgba(200, 150, 90, 0.18) 0%, transparent 50%),
-    radial-gradient(circle, rgba(140, 100, 60, 0.07) 1.5px, transparent 1.5px),
-    linear-gradient(160deg, #f7efdc 0%, var(--bk-cream) 45%, var(--bk-cream-deep) 100%);
-  background-size: auto, auto, 26px 26px, auto;
-  color: var(--bk-ink);
+    linear-gradient(160deg, #f7efdc 0%, var(--pp-cream) 45%, var(--pp-cream-deep) 100%);
+  color: var(--pp-ink);
   font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
-.bka-canvas,
-.bka-canvas *,
-.bka-canvas *::before,
-.bka-canvas *::after {
+.ppa-canvas,
+.ppa-canvas *,
+.ppa-canvas *::before,
+.ppa-canvas *::after {
   box-sizing: border-box;
 }
 
-.bka-canvas img,
-.bka-canvas svg {
+.ppa-canvas img,
+.ppa-canvas svg {
   display: block;
   max-width: 100%;
 }
@@ -45,28 +43,28 @@
 
 /* ---------- producto: elementos editoriales, no confinados a una tarjeta ---------- */
 
-.bka-product {
+.ppa-product {
   position: absolute;
   z-index: 2;
   pointer-events: none;
   filter: drop-shadow(0 22px 26px rgba(33, 20, 10, 0.28));
 }
 
-.bka-product--drink {
+.ppa-product--drink {
   bottom: 190px;
   right: -150px;
   width: 518px;
 }
 
-.bka-product--fries {
+.ppa-product--fries {
   bottom: -40px;
-  right: -140px;
+  right: -195px;
   width: 460px;
   transform: rotate(-18deg);
   transform-origin: bottom right;
 }
 
-.bka-product--burger {
+.ppa-product--tenders {
   bottom: -100px;
   left: -155px;
   width: 480px;
@@ -75,84 +73,150 @@
   filter: drop-shadow(0 24px 22px rgba(33, 20, 10, 0.32));
 }
 
-.bka-sheet {
+.ppa-rooster {
+  position: absolute;
+  top: -35px;
+  left: -35px;
+  width: 250px;
+  transform: rotate(-12deg);
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* Destellos decorativos naranjas esparcidos alrededor de los productos. */
+.ppa-sparkle {
+  position: absolute;
+  z-index: 5;
+  color: var(--pp-gold);
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(33, 20, 10, 0.35));
+}
+
+.ppa-sparkle svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ppa-sparkle--tenders-1 {
+  width: 40px;
+  height: 40px;
+  left: 85px;
+  bottom: 125px;
+  transform: rotate(-12deg);
+  opacity: 0.95;
+}
+
+.ppa-sparkle--tenders-2 {
+  width: 26px;
+  height: 26px;
+  left: 172px;
+  bottom: 62px;
+  transform: rotate(18deg);
+  opacity: 0.85;
+}
+
+.ppa-sparkle--fries-1 {
+  width: 34px;
+  height: 34px;
+  right: 286px;
+  bottom: 166px;
+  transform: rotate(10deg);
+  opacity: 0.95;
+}
+
+.ppa-sparkle--fries-2 {
+  width: 24px;
+  height: 24px;
+  right: 204px;
+  bottom: 91px;
+  transform: rotate(-15deg);
+  opacity: 0.85;
+}
+
+.ppa-sparkle--drink-1 {
+  width: 32px;
+  height: 32px;
+  right: 191px;
+  top: 466px;
+  transform: rotate(-8deg);
+  opacity: 0.9;
+}
+
+.ppa-sparkle--drink-2 {
+  width: 22px;
+  height: 22px;
+  right: 124px;
+  top: 545px;
+  transform: rotate(20deg);
+  opacity: 0.65;
+}
+
+.ppa-sheet {
   position: relative;
   display: grid;
   grid-template-rows: auto auto 1fr auto;
   gap: 20px;
   width: 100%;
   height: 100%;
-  padding: 30px 150px 26px 40px;
+  padding: 5px 150px 26px 40px;
 }
 
-.bka-sheet > .bka-header {
+.ppa-sheet > .ppa-header {
   grid-row: 1;
 }
 
-.bka-sheet > .bka-body {
+.ppa-sheet > .ppa-body {
   grid-row: 2;
 }
 
-.bka-sheet > .bka-footer {
+.ppa-sheet > .ppa-footer {
   grid-row: 4;
 }
 
 /* Diseño extremo: sin footer ni fila espaciadora, recupera esas 2 filas y
    sus gaps (40px) para el comentario/impacto en la media. */
-.bka-sheet.bka-sheet--extreme {
+.ppa-sheet.ppa-sheet--extreme {
   grid-template-rows: auto 1fr;
 }
 
 /* ---------- header editorial ---------- */
 
-.bka-header {
+.ppa-header {
   display: grid;
-  grid-template-columns: 620px 190px 1fr;
+  grid-template-columns: 620px 1fr;
   align-items: center;
   gap: 14px;
   padding-bottom: 14px;
 }
 
-.bka-header__alert {
+.ppa-header__alert {
   display: flex;
   align-items: flex-start;
+  width: 100%;
 }
 
-.bka-header__crown {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  margin: -6px 0 0 10px;
-  vertical-align: top;
-  overflow: visible;
+.ppa-header__alert > div {
+  margin-left: 180px;
 }
 
-.bka-header__crown-img {
-  width: 112px;
-  height: 112px;
-  object-fit: contain;
-  filter: drop-shadow(0 4px 6px rgba(33, 26, 19, 0.25));
-}
-
-.bka-header__title {
+.ppa-header__title {
   margin: 0;
   font-size: 50px;
   font-weight: 600;
   line-height: 0.82;
   letter-spacing: -0.005em;
-  color: var(--bk-ink);
+  color: var(--pp-ink);
   text-transform: uppercase;
   text-shadow: 0 2px 3px rgba(33, 26, 19, 0.18);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-.bka-header__title-neg {
+.ppa-header__title-neg {
   font-size: 100px;
   font-weight: 800;
-  color: var(--bk-red);
+  color: var(--pp-primary);
   letter-spacing: -0.02em;
   text-shadow:
     0 1px 0 #ffe3b0,
@@ -160,34 +224,35 @@
     0 10px 18px rgba(33, 20, 10, 0.35);
 }
 
-.bka-header__sub {
+.ppa-header__sub {
   margin: 6px 0 0;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: var(--bk-ink-soft);
+  color: var(--pp-ink-soft);
 }
 
-.bka-header__brand {
+.ppa-header__brand {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   height: 155px;
 }
 
-.bka-header__brand-logo {
+.ppa-header__brand-logo {
   height: 100%;
   width: auto;
   object-fit: contain;
   filter: drop-shadow(0 6px 10px rgba(33, 26, 19, 0.16));
 }
 
-.bka-header__restaurant {
+.ppa-header__restaurant {
+  position: relative;
   min-width: 0;
-  margin-left: -20px;
+  margin-left: -80px;
 }
 
-.bka-header__restaurant-name {
+.ppa-header__restaurant-name {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -195,7 +260,7 @@
   font-size: 38px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--bk-ink);
+  color: var(--pp-ink);
   min-width: 0;
   padding-right: 190px;
   white-space: nowrap;
@@ -206,19 +271,35 @@
   text-rendering: optimizeLegibility;
 }
 
-.bka-header__restaurant-name svg {
+.ppa-header__restaurant-name svg {
   width: 24px;
   height: 24px;
-  color: var(--bk-red);
+  color: var(--pp-primary);
   flex-shrink: 0;
 }
 
-.bka-header__restaurant-location {
-  margin: -22px 0 0 26px;
-  padding-right: 190px;
-  font-size: 44px;
-  font-weight: 800;
-  color: var(--bk-red);
+.ppa-header__wordmark {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 170px;
+  width: auto;
+  object-fit: contain;
+}
+
+.ppa-header__restaurant-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 125px auto 0;
+  padding: 7px 18px;
+  border-radius: 8px;
+  border: 1.5px solid var(--pp-primary);
+  font-size: 25px;
+  font-weight: 500;
+  color: var(--pp-primary);
   text-transform: uppercase;
   letter-spacing: 0.005em;
   white-space: nowrap;
@@ -227,12 +308,19 @@
   text-shadow: 0 2px 4px rgba(161, 29, 20, 0.25);
 }
 
-.bka-header__restaurant-address {
+.ppa-header__restaurant-location svg {
+  width: 25px;
+  height: 25px;
+  color: var(--pp-primary);
+  flex-shrink: 0;
+}
+
+.ppa-header__restaurant-address {
   margin: -6px 0 0 36px;
   padding-right: 190px;
   font-size: 22px;
   line-height: 1.05;
-  color: var(--bk-ink-soft);
+  color: var(--pp-ink-soft);
   white-space: normal;
   overflow: hidden;
   display: -webkit-box;
@@ -240,7 +328,7 @@
   -webkit-box-orient: vertical;
 }
 
-.bka-header__divider {
+.ppa-header__divider {
   position: absolute;
   top: 48px;
   height: 135px;
@@ -251,7 +339,7 @@
   z-index: 3;
 }
 
-.bka-header__nexo {
+.ppa-header__nexo {
   position: absolute;
   top: 24px;
   right: 24px;
@@ -261,14 +349,14 @@
   justify-content: center;
 }
 
-.bka-header__nexo-logo {
+.ppa-header__nexo-logo {
   height: 175px;
   width: auto;
   object-fit: contain;
   filter: drop-shadow(0 4px 8px rgba(33, 26, 19, 0.18));
 }
 
-.bka-header__extra-photo {
+.ppa-header__extra-photo {
   position: absolute;
   top: 240px;
   right: 24px;
@@ -282,7 +370,7 @@
 
 /* ---------- cuerpo: reseña + inteligencia artificial ---------- */
 
-.bka-body {
+.ppa-body {
   display: grid;
   grid-template-columns: 48% 1fr;
   gap: 20px;
@@ -294,8 +382,8 @@
 /* Solo comentario + Impacto en la media, centrado, sin Análisis/Diagnóstico/
    Conclusión — evita comprimir todo lo demás para que quepa un comentario
    enorme. El padding horizontal deja libre la zona donde sangran la
-   hamburguesa (izquierda) y el vaso/patatas (derecha). */
-.bka-body--extreme {
+   cesta de pollo (izquierda) y el vaso/patatas (derecha). */
+.ppa-body--extreme {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -304,7 +392,7 @@
   min-height: 0;
 }
 
-.bka-review.bka-review--extreme {
+.ppa-review.ppa-review--extreme {
   width: 100%;
   margin-top: 15px;
   min-height: 720px;
@@ -312,32 +400,32 @@
   flex-shrink: 0;
 }
 
-.bka-quote.bka-quote--extreme {
+.ppa-quote.ppa-quote--extreme {
   min-height: 593px;
   height: auto;
   flex-shrink: 0;
 }
 
-.bka-mini--extreme {
+.ppa-mini--extreme {
   width: 100%;
   margin-top: -40px;
   padding: 24px 40px;
 }
 
-.bka-mini--extreme .bka-mini__band {
+.ppa-mini--extreme .ppa-mini__band {
   font-size: 18px;
   padding: 7px 22px;
   margin-bottom: 10px;
 }
 
-.bka-mini--extreme .bka-impact__col {
+.ppa-mini--extreme .ppa-impact__col {
   padding: 0 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.bka-mini--extreme .bka-impact__label {
+.ppa-mini--extreme .ppa-impact__label {
   font-size: 17px;
   margin: 0 0 4px;
   height: 21px;
@@ -345,7 +433,7 @@
   align-items: center;
 }
 
-.bka-mini--extreme .bka-impact__value {
+.ppa-mini--extreme .ppa-impact__value {
   margin: 0;
   font-size: 46px;
   font-weight: 600;
@@ -359,7 +447,7 @@
   text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
 }
 
-.bka-mini--extreme .bka-impact__delta {
+.ppa-mini--extreme .ppa-impact__delta {
   margin: 0;
   font-size: 42px;
   font-weight: 600;
@@ -372,34 +460,34 @@
   text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
 }
 
-.bka-mini--extreme .bka-impact__delta svg {
+.ppa-mini--extreme .ppa-impact__delta svg {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
 }
 
-.bka-mini--extreme .bka-impact__col + .bka-impact__col::before {
+.ppa-mini--extreme .ppa-impact__col + .ppa-impact__col::before {
   top: 10px;
   bottom: 10px;
   width: 2px;
 }
 
-.bka-review-col {
+.ppa-review-col {
   position: relative;
   min-width: 0;
   /* Altura fija (no depende de la columna de insights ni del alto de la
      reseña): ancla "Impacto en la media" (position:absolute, bottom:0 más
-     abajo) a un punto fijo casi pegado a donde sangra la hamburguesa, sin
-     taparla. La hamburguesa está anclada en posición fija dentro del canvas
+     abajo) a un punto fijo casi pegado a donde sangra la cesta de pollo, sin
+     taparla. La cesta está anclada en posición fija dentro del canvas
      (bottom:-46px), así que su borde superior siempre cae en el mismo punto
      — este valor está calculado contra ese punto fijo. */
   height: 653px;
 }
 
-.bka-review {
+.ppa-review {
   border-radius: 20px;
-  background: var(--bk-card);
-  border: 1px solid var(--bk-line);
+  background: var(--pp-card);
+  border: 1px solid var(--pp-line);
   box-shadow: 0 14px 30px rgba(33, 26, 19, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
   padding: 14px 22px;
   display: flex;
@@ -407,21 +495,21 @@
   min-height: 0;
 }
 
-.bka-review__head {
+.ppa-review__head {
   display: flex;
   align-items: center;
   gap: 14px;
   flex-shrink: 0;
 }
 
-.bka-review__avatar {
+.ppa-review__avatar {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 78px;
   height: 78px;
   border-radius: 999px;
-  background: linear-gradient(155deg, #ff5340 0%, var(--bk-red) 55%, var(--bk-red-dark) 100%);
+  background: linear-gradient(155deg, #ff5340 0%, var(--pp-primary) 55%, var(--pp-primary-dark) 100%);
   color: #fff;
   font-size: 28px;
   font-weight: 800;
@@ -429,39 +517,39 @@
   box-shadow: 0 6px 14px rgba(214, 43, 31, 0.35);
 }
 
-.bka-review__meta {
+.ppa-review__meta {
   min-width: 0;
   flex: 1;
 }
 
-.bka-review__name {
+.ppa-review__name {
   margin: 0;
   font-size: 30px;
   font-weight: 800;
-  color: var(--bk-ink);
+  color: var(--pp-ink);
 }
 
-.bka-review__datetime {
+.ppa-review__datetime {
   display: flex;
   align-items: center;
   gap: 6px;
   margin: 5px 0 0;
   font-size: 24px;
-  color: var(--bk-ink-soft);
+  color: var(--pp-ink-soft);
 }
 
-.bka-review__datetime svg {
+.ppa-review__datetime svg {
   width: 22px;
   height: 22px;
-  color: var(--bk-ink-soft);
+  color: var(--pp-ink-soft);
   flex-shrink: 0;
 }
 
-.bka-review__sep {
-  color: var(--bk-line-strong);
+.ppa-review__sep {
+  color: var(--pp-line-strong);
 }
 
-.bka-review__rating {
+.ppa-review__rating {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -469,24 +557,24 @@
   flex-shrink: 0;
 }
 
-.bka-review__rating svg {
+.ppa-review__rating svg {
   width: 40px;
   height: 40px;
 }
 
-.bka-review__rating-value {
+.ppa-review__rating-value {
   font-size: 28px;
   font-weight: 800;
-  color: var(--bk-red);
+  color: var(--pp-primary);
 }
 
-.bka-quote {
+.ppa-quote {
   position: relative;
   margin-top: 12px;
   padding: 20px 26px;
   border-radius: 16px;
   background: #fff;
-  border: 1px solid var(--bk-line);
+  border: 1px solid var(--pp-line);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -496,65 +584,65 @@
   min-height: 350px;
 }
 
-.bka-quote__mark {
+.ppa-quote__mark {
   position: absolute;
   font-family: Georgia, serif;
   font-size: 64px;
   line-height: 1;
-  color: var(--bk-red);
+  color: var(--pp-primary);
   opacity: 0.5;
 }
 
-.bka-quote__mark--open {
+.ppa-quote__mark--open {
   top: 2px;
   left: 12px;
 }
 
-.bka-quote__mark--close {
+.ppa-quote__mark--close {
   bottom: 4px;
   right: 16px;
 }
 
-.bka-quote__text {
+.ppa-quote__text {
   margin: 0;
-  color: var(--bk-ink);
+  color: var(--pp-ink);
   line-height: 1.5;
   white-space: pre-wrap;
 }
 
-.bka-quote__text--lg {
+.ppa-quote__text--lg {
   font-size: 29px;
 }
 
-.bka-quote__text--md {
+.ppa-quote__text--md {
   font-size: 24px;
 }
 
-.bka-quote__text--sm {
+.ppa-quote__text--sm {
   font-size: 19px;
 }
 
-.bka-quote__text--xs {
+.ppa-quote__text--xs {
   font-size: 20px;
 }
 
-.bka-quote__text--xxs {
+.ppa-quote__text--xxs {
   font-size: 17px;
 }
 
 /* ---------- columna de IA ---------- */
 
-.bka-insights {
+.ppa-insights {
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-.bka-ribbon {
+.ppa-ribbon {
   margin: 0 0 17.5px;
   padding: 10.5px 21px;
   border-radius: 8px 8px 8px 0;
-  background: linear-gradient(155deg, var(--bk-red) 0%, var(--bk-red-dark) 100%);
+  background: linear-gradient(155deg, var(--pp-primary) 0%, var(--pp-primary-dark) 100%);
   color: #fff;
   font-size: 17.5px;
   font-weight: 800;
@@ -564,130 +652,135 @@
   width: fit-content;
 }
 
-.bka-ribbon--mt {
+.ppa-ribbon--mt {
   margin-top: 14px;
 }
 
-.bka-diagnostics {
+.ppa-diagnostics {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 17.5px;
   flex-shrink: 0;
   /* Acerca los dos recuadros a su título "Diagnóstico Nexo" sin tocar el
-     espaciado del bloque de Análisis Nexo (comparten el mismo .bka-ribbon). */
+     espaciado del bloque de Análisis Nexo (comparten el mismo .ppa-ribbon). */
   margin-top: -9px;
 }
 
-.bka-diagnostics__item {
+.ppa-diagnostics__item {
   border-radius: 14px;
-  background: var(--bk-card);
-  border: 1px solid var(--bk-line);
+  background: var(--pp-card);
+  border: 1px solid var(--pp-line);
   padding: 12px;
   text-align: center;
   box-shadow: 0 6px 14px rgba(33, 26, 19, 0.05);
 }
 
-.bka-diagnostics__icon {
+.ppa-diagnostics__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 56px;
   height: 56px;
   border-radius: 999px;
-  background: var(--bk-cream);
+  background: var(--pp-cream);
   margin-bottom: 6px;
 }
 
-.bka-diagnostics__icon svg {
+.ppa-diagnostics__icon svg {
   width: 34px;
   height: 34px;
 }
 
-.bka-diagnostics__icon--high {
-  color: var(--bk-red);
+.ppa-diagnostics__icon--high {
+  color: var(--pp-primary);
   background: rgba(214, 43, 31, 0.12);
 }
 
-.bka-diagnostics__icon--medium {
-  color: var(--bk-warn);
+.ppa-diagnostics__icon--medium {
+  color: var(--pp-warn);
   background: rgba(179, 105, 15, 0.14);
 }
 
-.bka-diagnostics__icon--low {
-  color: var(--bk-good);
+.ppa-diagnostics__icon--low {
+  color: var(--pp-good);
   background: rgba(28, 122, 77, 0.14);
 }
 
-.bka-diagnostics__icon--neutral {
-  color: var(--bk-ink-soft);
+.ppa-diagnostics__icon--neutral {
+  color: var(--pp-ink-soft);
 }
 
-.bka-diagnostics__label {
+.ppa-diagnostics__label {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
-  color: var(--bk-ink-soft);
+  color: var(--pp-ink-soft);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
-.bka-diagnostics__value {
+.ppa-diagnostics__value {
   margin: 6px 0 0;
   font-size: 23px;
   font-weight: 700;
-  color: var(--bk-ink);
+  color: var(--pp-ink);
   overflow-wrap: anywhere;
 }
 
-/* Con Análisis Nexo muy largo (sm/xs), Diagnóstico se compacta un pelín
+/* Con Análisis Nexo ya largo (md/sm/xs), Diagnóstico se compacta un pelín
    para dejarle más sitio a Análisis — un toque, no un cambio grande. */
-.bka-diagnostics--sm .bka-diagnostics__item,
-.bka-diagnostics--xs .bka-diagnostics__item {
+.ppa-diagnostics--md .ppa-diagnostics__item,
+.ppa-diagnostics--sm .ppa-diagnostics__item,
+.ppa-diagnostics--xs .ppa-diagnostics__item {
   padding: 11px;
 }
 
-.bka-diagnostics--sm .bka-diagnostics__icon,
-.bka-diagnostics--xs .bka-diagnostics__icon {
+.ppa-diagnostics--md .ppa-diagnostics__icon,
+.ppa-diagnostics--sm .ppa-diagnostics__icon,
+.ppa-diagnostics--xs .ppa-diagnostics__icon {
   width: 52px;
   height: 52px;
   margin-bottom: 6px;
 }
 
-.bka-diagnostics--sm .bka-diagnostics__icon svg,
-.bka-diagnostics--xs .bka-diagnostics__icon svg {
+.ppa-diagnostics--md .ppa-diagnostics__icon svg,
+.ppa-diagnostics--sm .ppa-diagnostics__icon svg,
+.ppa-diagnostics--xs .ppa-diagnostics__icon svg {
   width: 30px;
   height: 30px;
 }
 
-.bka-diagnostics--sm .bka-diagnostics__label,
-.bka-diagnostics--xs .bka-diagnostics__label {
+.ppa-diagnostics--md .ppa-diagnostics__label,
+.ppa-diagnostics--sm .ppa-diagnostics__label,
+.ppa-diagnostics--xs .ppa-diagnostics__label {
   font-size: 14.5px;
 }
 
-.bka-diagnostics--sm .bka-diagnostics__value,
-.bka-diagnostics--xs .bka-diagnostics__value {
+.ppa-diagnostics--md .ppa-diagnostics__value,
+.ppa-diagnostics--sm .ppa-diagnostics__value,
+.ppa-diagnostics--xs .ppa-diagnostics__value {
   font-size: 20px;
   margin-top: 5px;
 }
 
 /* xs (el caso más largo) se compacta un poco más que sm, para dejar
    siempre un margen de seguridad y no ir justo al límite del canvas. */
-.bka-diagnostics--xs .bka-diagnostics__item {
+.ppa-diagnostics--xs .ppa-diagnostics__item {
   padding: 9px;
 }
 
-.bka-diagnostics--xs .bka-diagnostics__icon {
+.ppa-diagnostics--xs .ppa-diagnostics__icon {
   width: 46px;
   height: 46px;
   margin-bottom: 5px;
 }
 
-.bka-diagnostics--xs .bka-diagnostics__icon svg {
+.ppa-diagnostics--xs .ppa-diagnostics__icon svg {
   width: 27px;
   height: 27px;
 }
 
-.bka-analysis {
+.ppa-analysis {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -697,37 +790,37 @@
   gap: 0;
 }
 
-.bka-analysis li {
+.ppa-analysis li {
   display: flex;
   align-items: center;
   gap: 18px;
   padding: 11px 0;
-  border-bottom: 1px solid var(--bk-line);
+  border-bottom: 1px solid var(--pp-line);
 }
 
-.bka-analysis li:last-child {
+.ppa-analysis li:last-child {
   border-bottom: none;
 }
 
-.bka-analysis__icon {
+.ppa-analysis__icon {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 70px;
   height: 70px;
   border-radius: 999px;
-  background: var(--bk-cream);
-  color: var(--bk-red);
+  background: var(--pp-cream);
+  color: var(--pp-primary);
   flex-shrink: 0;
   margin-top: 1px;
 }
 
-.bka-analysis__icon svg {
+.ppa-analysis__icon svg {
   width: 40px;
   height: 40px;
 }
 
-.bka-analysis__copy {
+.ppa-analysis__copy {
   min-width: 0;
   /* No dejar que el texto llegue hasta donde sangra el vaso de refresco
      (bleed fijo a la derecha del canvas) — se corta antes y sigue en la
@@ -735,20 +828,20 @@
   max-width: 485px;
 }
 
-.bka-analysis__label {
+.ppa-analysis__label {
   margin: 0;
   font-size: 20px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--bk-red);
+  color: var(--pp-primary);
 }
 
-.bka-analysis__value {
+.ppa-analysis__value {
   margin: 4px 0 0;
   font-size: 25px;
   line-height: 1.4;
-  color: var(--bk-ink);
+  color: var(--pp-ink);
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -756,112 +849,112 @@
 }
 
 /* Tamaños adaptables según el volumen total de texto de análisis IA, para que nunca quede nada oculto. */
-.bka-analysis--md li {
-  gap: 16px;
-  padding: 12px 0;
+.ppa-analysis--md li {
+  gap: 14px;
+  padding: 8px 0;
 }
 
-.bka-analysis--md .bka-analysis__icon {
-  width: 64px;
-  height: 64px;
+.ppa-analysis--md .ppa-analysis__icon {
+  width: 56px;
+  height: 56px;
 }
 
-.bka-analysis--md .bka-analysis__icon svg {
-  width: 36px;
-  height: 36px;
+.ppa-analysis--md .ppa-analysis__icon svg {
+  width: 32px;
+  height: 32px;
 }
 
-.bka-analysis--md .bka-analysis__label {
-  font-size: 17px;
+.ppa-analysis--md .ppa-analysis__label {
+  font-size: 15.5px;
 }
 
-.bka-analysis--md .bka-analysis__value {
-  font-size: 21px;
-  line-height: 1.32;
+.ppa-analysis--md .ppa-analysis__value {
+  font-size: 19px;
+  line-height: 1.28;
 }
 
-.bka-analysis--md .bka-analysis__copy {
+.ppa-analysis--md .ppa-analysis__copy {
   /* Icono más pequeño que en el tier base -> el texto arranca más a la
      izquierda, así que hay más margen antes del vaso: se aprovecha. */
   max-width: 505px;
 }
 
-.bka-analysis--sm li {
+.ppa-analysis--sm li {
   gap: 11px;
   padding: 7px 0;
 }
 
-.bka-analysis--sm .bka-analysis__icon {
+.ppa-analysis--sm .ppa-analysis__icon {
   width: 46px;
   height: 46px;
 }
 
-.bka-analysis--sm .bka-analysis__icon svg {
+.ppa-analysis--sm .ppa-analysis__icon svg {
   width: 26px;
   height: 26px;
 }
 
-.bka-analysis--sm .bka-analysis__label {
+.ppa-analysis--sm .ppa-analysis__label {
   font-size: 14px;
 }
 
-.bka-analysis--sm .bka-analysis__value {
+.ppa-analysis--sm .ppa-analysis__value {
   font-size: 16.5px;
   line-height: 1.28;
 }
 
-.bka-analysis--sm .bka-analysis__copy {
+.ppa-analysis--sm .ppa-analysis__copy {
   max-width: 528px;
 }
 
-.bka-analysis--xs li {
+.ppa-analysis--xs li {
   gap: 10px;
   padding: 4px 0;
 }
 
-.bka-analysis--xs .bka-analysis__icon {
+.ppa-analysis--xs .ppa-analysis__icon {
   width: 44px;
   height: 44px;
 }
 
-.bka-analysis--xs .bka-analysis__icon svg {
+.ppa-analysis--xs .ppa-analysis__icon svg {
   width: 26px;
   height: 26px;
 }
 
-.bka-analysis--xs .bka-analysis__label {
+.ppa-analysis--xs .ppa-analysis__label {
   font-size: 14px;
 }
 
-.bka-analysis--xs .bka-analysis__value {
+.ppa-analysis--xs .ppa-analysis__value {
   font-size: 15.5px;
   line-height: 1.28;
   -webkit-line-clamp: 5;
 }
 
-.bka-analysis--xs .bka-analysis__copy {
+.ppa-analysis--xs .ppa-analysis__copy {
   max-width: 538px;
 }
 
 /* ---------- fila inferior de paneles ---------- */
 
-.bka-row3 {
+.ppa-row3 {
   display: flex;
   justify-content: flex-start;
   gap: 16px;
   min-height: 0;
 }
 
-.bka-row3 .bka-mini {
+.ppa-row3 .ppa-mini {
   flex: 0 1 45%;
 }
 
-.bka-mini {
+.ppa-mini {
   flex: 1;
   min-width: 0;
   border-radius: 16px;
-  background: var(--bk-card);
-  border: 1px solid var(--bk-line);
+  background: var(--pp-card);
+  border: 1px solid var(--pp-line);
   box-shadow: 0 10px 22px rgba(33, 26, 19, 0.06);
   padding: 20px 20px;
   display: flex;
@@ -869,7 +962,7 @@
   justify-content: center;
 }
 
-.bka-mini--under-quote {
+.ppa-mini--under-quote {
   position: absolute;
   left: 0;
   right: 0;
@@ -881,44 +974,44 @@
 
 /* Con comentarios cortos (<500 caracteres) sube bastante más, ya que el
    cuadro del comentario queda más corto y deja mucho hueco debajo. */
-.bka-mini--under-quote.bka-mini--short {
+.ppa-mini--under-quote.ppa-mini--short {
   bottom: 0px;
 }
 
 /* Con comentarios ya bastante largos (dentro del diseño normal, ≤900
    caracteres — por encima de eso se usa el diseño alternativo centrado) se
    desplaza a la derecha y se compacta un poco para no quedar tapada por la
-   hamburguesa. Con comentarios normales/cortos no se desplaza: se queda a
+   cesta de pollo. Con comentarios normales/cortos no se desplaza: se queda a
    ancho completo. */
-.bka-mini--shift-sm {
+.ppa-mini--shift-sm {
   margin-left: 140px;
   padding: 26px;
 }
 
-.bka-mini--shift-sm .bka-mini__band {
+.ppa-mini--shift-sm .ppa-mini__band {
   font-size: 15px;
   padding: 9px 18px;
   margin-bottom: 14px;
 }
 
-.bka-mini--shift-sm .bka-impact__value {
+.ppa-mini--shift-sm .ppa-impact__value {
   font-size: 36px;
   height: 44px;
 }
 
-.bka-mini--shift-sm .bka-impact__delta {
+.ppa-mini--shift-sm .ppa-impact__delta {
   font-size: 33px;
   height: 44px;
 }
 
-.bka-mini--under-quote .bka-mini__band {
+.ppa-mini--under-quote .ppa-mini__band {
   font-size: 17.5px;
   padding: 6px 21px;
   margin-top: -30px;
   margin-bottom: 5px;
 }
 
-.bka-mini--under-quote .bka-impact__col {
+.ppa-mini--under-quote .ppa-impact__col {
   padding: 0 21px;
   display: flex;
   flex-direction: column;
@@ -926,7 +1019,7 @@
   margin-top: 14px;
 }
 
-.bka-mini--under-quote .bka-impact__label {
+.ppa-mini--under-quote .ppa-impact__label {
   font-size: 16.5px;
   margin: 0 0 3px;
   height: 20px;
@@ -934,7 +1027,7 @@
   align-items: center;
 }
 
-.bka-mini--under-quote .bka-impact__value {
+.ppa-mini--under-quote .ppa-impact__value {
   margin: 0;
   font-size: 44px;
   font-weight: 600;
@@ -948,7 +1041,7 @@
   text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
 }
 
-.bka-mini--under-quote .bka-impact__delta {
+.ppa-mini--under-quote .ppa-impact__delta {
   margin: 0;
   font-size: 40px;
   font-weight: 600;
@@ -961,41 +1054,41 @@
   text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
 }
 
-.bka-mini--under-quote .bka-impact__delta svg {
+.ppa-mini--under-quote .ppa-impact__delta svg {
   width: 38px;
   height: 38px;
   flex-shrink: 0;
 }
 
-.bka-mini--under-quote .bka-impact__col + .bka-impact__col::before {
+.ppa-mini--under-quote .ppa-impact__col + .ppa-impact__col::before {
   top: 10px;
   bottom: 10px;
   width: 2px;
 }
 
-.bka-impact__stars {
+.ppa-impact__stars {
   display: flex;
   justify-content: center;
   width: 100%;
   margin-top: 3px;
 }
 
-.bka-impact__stars .nra-stars {
+.ppa-impact__stars .nra-stars {
   display: flex;
   justify-content: center;
   gap: 3px;
 }
 
-.bka-impact__stars svg {
+.ppa-impact__stars svg {
   width: 18px;
   height: 18px;
 }
 
-.bka-mini__band {
+.ppa-mini__band {
   margin: 0 0 10px;
   padding: 6px 12px;
   border-radius: 7px 7px 7px 0;
-  background: linear-gradient(155deg, var(--bk-red) 0%, var(--bk-red-dark) 100%);
+  background: linear-gradient(155deg, var(--pp-primary) 0%, var(--pp-primary-dark) 100%);
   color: #fff;
   font-size: 10px;
   font-weight: 800;
@@ -1003,7 +1096,7 @@
   width: fit-content;
 }
 
-.bka-incidents {
+.ppa-incidents {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1012,16 +1105,16 @@
   gap: 8px;
 }
 
-.bka-incidents li {
+.ppa-incidents li {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--bk-ink);
+  color: var(--pp-ink);
 }
 
-.bka-incidents__icon {
+.ppa-incidents__icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1029,16 +1122,16 @@
   height: 24px;
   border-radius: 999px;
   background: rgba(214, 43, 31, 0.12);
-  color: var(--bk-red);
+  color: var(--pp-primary);
   flex-shrink: 0;
 }
 
-.bka-impact {
+.ppa-impact {
   display: flex;
   align-items: stretch;
 }
 
-.bka-impact__col {
+.ppa-impact__col {
   position: relative;
   flex: 1;
   min-width: 0;
@@ -1046,53 +1139,53 @@
   padding: 0 12px;
 }
 
-.bka-impact__col + .bka-impact__col::before {
+.ppa-impact__col + .ppa-impact__col::before {
   content: "";
   position: absolute;
   left: 0;
   top: 6px;
   bottom: 6px;
   width: 1px;
-  background: var(--bk-line-strong);
+  background: var(--pp-line-strong);
 }
 
-.bka-impact__label {
+.ppa-impact__label {
   margin: 0 0 4px;
   font-size: 9.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--bk-ink-soft);
+  color: var(--pp-ink-soft);
 }
 
-.bka-impact__value {
+.ppa-impact__value {
   margin: 0;
   font-size: 19px;
   font-weight: 800;
-  color: var(--bk-ink);
+  color: var(--pp-ink);
 }
 
-.bka-impact__value--tone-good {
-  color: var(--bk-good);
+.ppa-impact__value--tone-good {
+  color: var(--pp-good);
 }
 
-.bka-impact__value--tone-warn {
-  color: var(--bk-warn);
+.ppa-impact__value--tone-warn {
+  color: var(--pp-warn);
 }
 
-.bka-impact__value--tone-bad {
-  color: var(--bk-red);
+.ppa-impact__value--tone-bad {
+  color: var(--pp-primary);
 }
 
-.bka-impact__value--target {
+.ppa-impact__value--target {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  color: var(--bk-ink-soft);
+  color: var(--pp-ink-soft);
 }
 
-.bka-impact__delta {
+.ppa-impact__delta {
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -1100,63 +1193,63 @@
   font-weight: 800;
 }
 
-.bka-impact__delta--down {
-  color: var(--bk-red);
+.ppa-impact__delta--down {
+  color: var(--pp-primary);
 }
 
-.bka-impact__delta--up {
-  color: var(--bk-good);
+.ppa-impact__delta--up {
+  color: var(--pp-good);
 }
 
-.bka-impact__delta--flat {
-  color: var(--bk-ink-soft);
+.ppa-impact__delta--flat {
+  color: var(--pp-ink-soft);
 }
 
-.bka-context {
+.ppa-context {
   margin: 0;
   display: flex;
   flex-direction: column;
   gap: 7px;
 }
 
-.bka-context div {
+.ppa-context div {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
   padding-bottom: 6px;
-  border-bottom: 1px dashed var(--bk-line-strong);
+  border-bottom: 1px dashed var(--pp-line-strong);
 }
 
-.bka-context div:last-child {
+.ppa-context div:last-child {
   border-bottom: none;
 }
 
-.bka-context dt {
+.ppa-context dt {
   margin: 0;
   font-size: 11.5px;
-  color: var(--bk-ink-soft);
+  color: var(--pp-ink-soft);
 }
 
-.bka-context dd {
+.ppa-context dd {
   margin: 0;
   font-size: 13px;
   font-weight: 800;
-  color: var(--bk-ink);
+  color: var(--pp-ink);
   text-align: right;
 }
 
-.bka-context__neg {
-  color: var(--bk-red);
+.ppa-context__neg {
+  color: var(--pp-primary);
 }
 
-.bka-context__pos {
-  color: var(--bk-good);
+.ppa-context__pos {
+  color: var(--pp-good);
 }
 
 /* ---------- footer: conclusión / acción ---------- */
 
-.bka-footer {
+.ppa-footer {
   position: relative;
   z-index: 4;
   display: flex;
@@ -1165,7 +1258,7 @@
   gap: 24px;
   margin: 14px 293px 0 300px;
   border-radius: 16px;
-  background: linear-gradient(155deg, #2a2320 0%, var(--bk-ink) 100%);
+  background: linear-gradient(155deg, #2a2320 0%, var(--pp-ink) 100%);
   padding: 52px 30px;
   color: #f3ecdc;
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3);
@@ -1173,15 +1266,15 @@
 
 /* Con conclusiones largas el recuadro se ajusta más a las letras (menos
    padding arriba/abajo) en vez de mantener siempre el mismo hueco grande. */
-.bka-footer--sm {
+.ppa-footer--sm {
   padding: 38px 30px;
 }
 
-.bka-footer--xs {
+.ppa-footer--xs {
   padding: 24px 30px;
 }
 
-.bka-footer__icon {
+.ppa-footer__icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1193,24 +1286,24 @@
   flex-shrink: 0;
 }
 
-.bka-footer__icon svg {
+.ppa-footer__icon svg {
   width: 44px;
   height: 44px;
 }
 
-.bka-footer__body {
+.ppa-footer__body {
   min-width: 0;
 }
 
-.bka-footer__label {
+.ppa-footer__label {
   margin: 0 0 5px;
   font-size: 17px;
   font-weight: 800;
   letter-spacing: 0.08em;
-  color: var(--bk-orange);
+  color: var(--pp-gold);
 }
 
-.bka-footer__text {
+.ppa-footer__text {
   margin: 0;
   line-height: 1.4;
   color: #f8f4ea;
@@ -1221,22 +1314,22 @@
 
 /* Tamaño adaptado a la longitud de la conclusión, para que quepa siempre
    dentro del recuadro en vez de cortarse a media frase. */
-.bka-footer__text--lg {
+.ppa-footer__text--lg {
   font-size: 23px;
   -webkit-line-clamp: 2;
 }
 
-.bka-footer__text--md {
+.ppa-footer__text--md {
   font-size: 20px;
   -webkit-line-clamp: 3;
 }
 
-.bka-footer__text--sm {
+.ppa-footer__text--sm {
   font-size: 17px;
   -webkit-line-clamp: 3;
 }
 
-.bka-footer__text--xs {
+.ppa-footer__text--xs {
   font-size: 18px;
   -webkit-line-clamp: 4;
 }

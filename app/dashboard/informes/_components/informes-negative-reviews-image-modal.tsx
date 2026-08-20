@@ -10,10 +10,12 @@ import {
   NEGATIVE_REVIEW_RENDER_HEIGHT,
   NEGATIVE_REVIEW_RENDER_WIDTH,
 } from "@/lib/reports/negative-reviews/export-image";
+import { EDITABLE_HANDOFF_KEY } from "@/lib/templates/negative-review-alert/editable-handoff";
 import { mapReportRowToAlertTemplateProps } from "@/lib/reports/negative-reviews/templates";
 import type { NegativeReviewReportRow } from "@/lib/reports/negative-reviews/types";
 import { NegativeReviewAlertTemplate } from "@/templates/negative-review-alert";
 import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brands/burger-king-alert-template";
+import { PopeyesAlertTemplate } from "@/templates/negative-review-alert/brands/popeyes-alert-template";
 import { btnGhost, btnPrimary, card, shell } from "./ui/informes-styles";
 
 type InformesNegativeReviewsImageModalProps = {
@@ -41,6 +43,7 @@ export function InformesNegativeReviewsImageModal({
     [assetBaseUrl, row]
   );
   const isBk = row?.brand === "bk";
+  const isPopeyes = row?.brand === "pp";
 
   const generatePreview = useCallback(async () => {
     if (!row || !cardRef.current || !templateProps) return;
@@ -149,6 +152,19 @@ export function InformesNegativeReviewsImageModal({
             </button>
             <button
               type="button"
+              className={btnGhost}
+              onClick={() => {
+                window.sessionStorage.setItem(
+                  EDITABLE_HANDOFF_KEY,
+                  JSON.stringify({ data: templateProps.data })
+                );
+                window.open("/preview/negative-review-alert", "_blank");
+              }}
+            >
+              ¿No te gusta? Editar
+            </button>
+            <button
+              type="button"
               className={btnPrimary}
               disabled={!previewUrl || generating}
               onClick={() => {
@@ -174,6 +190,8 @@ export function InformesNegativeReviewsImageModal({
           >
             {isBk ? (
               <BurgerKingAlertTemplate ref={cardRef} {...templateProps} />
+            ) : isPopeyes ? (
+              <PopeyesAlertTemplate ref={cardRef} {...templateProps} />
             ) : (
               <NegativeReviewAlertTemplate ref={cardRef} {...templateProps} />
             )}
