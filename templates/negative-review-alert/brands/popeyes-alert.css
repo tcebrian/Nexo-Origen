@@ -514,7 +514,6 @@
   font-size: 28px;
   font-weight: 800;
   flex-shrink: 0;
-  box-shadow: 0 3px 6px rgba(214, 43, 31, 0.3);
 }
 
 .ppa-review__meta {
@@ -647,7 +646,6 @@
   font-size: 17.5px;
   font-weight: 800;
   letter-spacing: 0.06em;
-  box-shadow: 0 3px 6px rgba(161, 29, 20, 0.3);
   flex-shrink: 0;
   width: fit-content;
 }
@@ -672,7 +670,6 @@
   border: 1px solid var(--pp-line);
   padding: 12px;
   text-align: center;
-  box-shadow: 0 3px 6px rgba(33, 26, 19, 0.05);
 }
 
 .ppa-diagnostics__icon {
@@ -1261,7 +1258,6 @@
   background: linear-gradient(155deg, #2a2320 0%, var(--pp-ink) 100%);
   padding: 52px 30px;
   color: #f3ecdc;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
 }
 
 /* Con conclusiones largas el recuadro se ajusta más a las letras (menos
