@@ -229,21 +229,78 @@ export const SantaGloriaAlertTemplate = forwardRef<HTMLDivElement, SantaGloriaAl
     const shiftTier = isExtremeComment ? "" : commentShiftTier(fullComment.length);
 
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
-    const brandLabel = (cleanValue(data.brand_name) ?? "Santa Gloria").toUpperCase();
     const locationLabel = stripBrandPrefix(data.restaurant_name) || data.restaurant_name;
 
     return (
       <div ref={ref} className="sga-canvas" style={{ width: design.width, height: design.height }}>
-        {/*
-          TODO: faltan las fotos de producto decorativas (café, bollería...)
-          para esta marca — en cuanto se tengan, se añaden aquí igual que en
-          Burger King/Popeyes (elementos .sga-product posicionados de forma
-          absoluta, sangrando por los bordes del canvas).
-        */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-napkin.png")}
+          alt=""
+          aria-hidden
+          className="sga-product sga-product--napkin"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-coffee-2.png")}
+          alt=""
+          aria-hidden
+          className="sga-product sga-product--coffee"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-flowers.png")}
+          alt=""
+          aria-hidden
+          className="sga-product sga-product--flowers"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-flowers.png")}
+          alt=""
+          aria-hidden
+          className="sga-product sga-product--flowers-tl"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-napkin.png")}
+          alt=""
+          aria-hidden
+          className="sga-product sga-product--napkin-right"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-plate.png")}
+          alt=""
+          aria-hidden
+          className="sga-product sga-product--plate"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-crumbs.png")}
+          alt=""
+          aria-hidden
+          className="sga-product sga-product--crumbs"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-croissant.png")}
+          alt=""
+          aria-hidden
+          className="sga-product sga-product--croissant"
+        />
 
         <div className={`sga-sheet ${isExtremeComment ? "sga-sheet--extreme" : ""}`}>
           {/* Header editorial */}
           <header className="sga-header">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-logo.png")}
+              alt=""
+              aria-hidden
+              className="sga-header__wordmark"
+            />
+
             <div className="sga-header__alert">
               <div>
                 <p className="sga-header__title">
@@ -256,16 +313,9 @@ export const SantaGloriaAlertTemplate = forwardRef<HTMLDivElement, SantaGloriaAl
             </div>
 
             <div className="sga-header__restaurant">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-logo.png")}
-                alt=""
-                aria-hidden
-                className="sga-header__wordmark"
-              />
               <p className="sga-header__restaurant-location">
                 <SgIconPin />
-                {brandLabel} {locationLabel}
+                {locationLabel}
               </p>
             </div>
           </header>

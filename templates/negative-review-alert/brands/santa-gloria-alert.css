@@ -1,5 +1,7 @@
 /* Plantilla Santa Gloria — pieza editorial de marca, no un dashboard SaaS. */
 
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Montserrat:wght@600;700&family=Barlow+Condensed:wght@600;700&display=swap");
+
 .sga-canvas {
   --sg-green: #0c2a16;
   --sg-green-dark: #051208;
@@ -47,9 +49,85 @@
 
 
 /* ---------- producto: elementos editoriales, no confinados a una tarjeta ---------- */
-/* TODO: sin fotos de producto todavía para esta marca — cuando se tengan,
-   la clase base .sga-product (position:absolute, sangrando por el borde)
-   y sus modificadores por producto van aquí, igual que en BK/Popeyes. */
+
+.sga-product {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  filter: drop-shadow(0 22px 26px rgba(33, 20, 10, 0.28));
+}
+
+.sga-product--coffee {
+  bottom: -60px;
+  left: -60px;
+  width: 420px;
+  transform: rotate(-4deg);
+  z-index: 3;
+  filter: drop-shadow(0 26px 20px rgba(33, 20, 10, 0.42));
+}
+
+.sga-product--napkin {
+  bottom: -170px;
+  left: -170px;
+  width: 640px;
+  transform: rotate(28deg);
+  z-index: 2;
+}
+
+.sga-product--napkin-right {
+  bottom: -30px;
+  right: -150px;
+  width: 520px;
+  transform: rotate(-18deg);
+  z-index: 6;
+  filter: drop-shadow(0 24px 20px rgba(33, 20, 10, 0.4));
+}
+
+.sga-product--flowers {
+  bottom: -100px;
+  right: -40px;
+  width: 300px;
+  transform: rotate(-20deg);
+  z-index: 8;
+  filter: drop-shadow(0 20px 16px rgba(33, 20, 10, 0.4));
+}
+
+.sga-product--flowers-tl {
+  top: -20px;
+  left: -60px;
+  width: 230px;
+  transform: rotate(70deg);
+  z-index: 3;
+  filter: drop-shadow(0 14px 12px rgba(33, 20, 10, 0.35));
+}
+
+.sga-product--croissant {
+  bottom: 660px;
+  right: -90px;
+  width: 220px;
+  transform: rotate(-8deg);
+  z-index: 7;
+  filter: drop-shadow(0 18px 14px rgba(33, 20, 10, 0.45));
+}
+
+.sga-product--crumbs {
+  bottom: 560px;
+  right: -30px;
+  width: 260px;
+  transform: rotate(0deg);
+  z-index: 6;
+  filter: drop-shadow(0 8px 6px rgba(33, 20, 10, 0.4));
+}
+
+.sga-product--plate {
+  bottom: 580px;
+  right: -230px;
+  width: 380px;
+  transform: rotate(-5deg);
+  z-index: 6;
+  filter: drop-shadow(0 34px 22px rgba(33, 20, 10, 0.4));
+}
+
 
 .sga-sheet {
   position: relative;
@@ -82,6 +160,7 @@
 /* ---------- header editorial ---------- */
 
 .sga-header {
+  position: relative;
   display: grid;
   grid-template-columns: 620px 1fr;
   align-items: center;
@@ -96,16 +175,18 @@
 }
 
 .sga-header__alert > div {
-  margin-left: 180px;
+  margin-left: 410px;
+  margin-top: 8px;
 }
 
 .sga-header__title {
   margin: 0;
-  font-size: 50px;
-  font-weight: 600;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 62px;
+  font-weight: 700;
   line-height: 0.82;
   letter-spacing: -0.005em;
-  color: var(--sg-ink);
+  color: #1d160f;
   text-transform: uppercase;
   text-shadow: 0 2px 3px rgba(33, 26, 19, 0.18);
   -webkit-font-smoothing: antialiased;
@@ -113,14 +194,11 @@
 }
 
 .sga-header__title-neg {
-  font-size: 100px;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 85px;
   font-weight: 800;
-  color: var(--sg-red);
+  color: #1d160f;
   letter-spacing: -0.02em;
-  text-shadow:
-    0 1px 0 #ffe3b0,
-    0 4px 0 rgba(140, 25, 15, 0.55),
-    0 10px 18px rgba(33, 20, 10, 0.35);
 }
 
 .sga-header__sub {
@@ -129,6 +207,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--sg-ink-soft);
+  white-space: nowrap;
 }
 
 .sga-header__brand {
@@ -179,12 +258,12 @@
 
 .sga-header__wordmark {
   position: absolute;
-  top: -14px;
-  left: 50%;
-  transform: translateX(-50%);
-  height: 130px;
+  top: 8px;
+  left: 80px;
+  height: 155px;
   width: auto;
   object-fit: contain;
+  z-index: 4;
 }
 
 .sga-header__restaurant-location {
@@ -192,11 +271,11 @@
   align-items: center;
   gap: 6px;
   width: fit-content;
-  margin: 150px auto 0;
-  padding: 7px 18px;
-  border-radius: 8px;
-  border: 1.5px solid var(--sg-green);
-  font-size: 25px;
+  margin: 15px auto 0;
+  transform: translateX(70px);
+  padding: 6px 16px;
+  border-radius: 7px;
+  font-size: 30px;
   font-weight: 500;
   color: var(--sg-green);
   text-transform: uppercase;
@@ -208,8 +287,8 @@
 }
 
 .sga-header__restaurant-location svg {
-  width: 25px;
-  height: 25px;
+  width: 30px;
+  height: 30px;
   color: var(--sg-green);
   flex-shrink: 0;
 }
@@ -275,6 +354,7 @@
   gap: 20px;
   min-height: 0;
   align-items: start;
+  margin-left: 40px;
 }
 
 /* ---------- diseño alternativo: comentario extremadamente largo ---------- */
@@ -306,6 +386,8 @@
 }
 
 .sga-mini--extreme {
+  position: relative;
+  z-index: 7;
   width: 100%;
   margin-top: -40px;
   padding: 24px 40px;
@@ -373,6 +455,7 @@
 
 .sga-review-col {
   position: relative;
+  z-index: 5;
   min-width: 0;
   /* Altura fija (no depende de la columna de insights ni del alto de la
      reseña): ancla "Impacto en la media" (position:absolute, bottom:0 más
@@ -538,10 +621,11 @@
   margin: 0 0 17.5px;
   padding: 10.5px 21px;
   border-radius: 8px 8px 8px 0;
-  background: linear-gradient(155deg, var(--sg-green) 0%, var(--sg-green-dark) 100%);
-  color: #fff;
+  background: #0c2a16;
+  color: #fff8ee;
+  font-family: "Montserrat", sans-serif;
   font-size: 17.5px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.06em;
   flex-shrink: 0;
   width: fit-content;
@@ -562,10 +646,12 @@
 }
 
 .sga-diagnostics__item {
+  position: relative;
+  z-index: 5;
   border-radius: 14px;
   background: var(--sg-card);
   border: 1px solid var(--sg-line);
-  padding: 12px;
+  padding: 11px;
   text-align: center;
 }
 
@@ -573,16 +659,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: 999px;
   background: var(--sg-cream);
   margin-bottom: 6px;
 }
 
 .sga-diagnostics__icon svg {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
 }
 
 .sga-diagnostics__icon--high {
@@ -606,11 +692,13 @@
 
 .sga-diagnostics__label {
   margin: 0;
-  font-size: 16px;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 18px;
   font-weight: 700;
   color: var(--sg-ink-soft);
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .sga-diagnostics__value {
@@ -621,57 +709,37 @@
   overflow-wrap: anywhere;
 }
 
-/* Con Análisis Nexo ya largo (md/sm/xs), Diagnóstico se compacta un pelín
-   para dejarle más sitio a Análisis — un toque, no un cambio grande. */
-.sga-diagnostics--md .sga-diagnostics__item,
-.sga-diagnostics--sm .sga-diagnostics__item,
-.sga-diagnostics--xs .sga-diagnostics__item {
-  padding: 11px;
-}
-
-.sga-diagnostics--md .sga-diagnostics__icon,
-.sga-diagnostics--sm .sga-diagnostics__icon,
-.sga-diagnostics--xs .sga-diagnostics__icon {
-  width: 52px;
-  height: 52px;
-  margin-bottom: 6px;
-}
-
-.sga-diagnostics--md .sga-diagnostics__icon svg,
-.sga-diagnostics--sm .sga-diagnostics__icon svg,
-.sga-diagnostics--xs .sga-diagnostics__icon svg {
-  width: 30px;
-  height: 30px;
-}
-
-.sga-diagnostics--md .sga-diagnostics__label,
-.sga-diagnostics--sm .sga-diagnostics__label,
-.sga-diagnostics--xs .sga-diagnostics__label {
-  font-size: 14.5px;
-}
-
-.sga-diagnostics--md .sga-diagnostics__value,
-.sga-diagnostics--sm .sga-diagnostics__value,
-.sga-diagnostics--xs .sga-diagnostics__value {
+/* La estructura (icono, padding) de Diagnóstico Nexo se mantiene siempre
+   igual, nunca se encoge ni crece — solo el texto baja de tamaño si el
+   análisis es tan largo que hace falta sitio. */
+.sga-diagnostics--md .sga-diagnostics__label {
+  font-family: "Barlow Condensed", sans-serif;
   font-size: 20px;
+}
+
+.sga-diagnostics--md .sga-diagnostics__value {
+  font-size: 22px;
   margin-top: 5px;
 }
 
-/* xs (el caso más largo) se compacta un poco más que sm, para dejar
-   siempre un margen de seguridad y no ir justo al límite del canvas. */
-.sga-diagnostics--xs .sga-diagnostics__item {
-  padding: 9px;
+.sga-diagnostics--sm .sga-diagnostics__label {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 17px;
 }
 
-.sga-diagnostics--xs .sga-diagnostics__icon {
-  width: 46px;
-  height: 46px;
-  margin-bottom: 5px;
+.sga-diagnostics--sm .sga-diagnostics__value {
+  font-size: 19px;
+  margin-top: 5px;
 }
 
-.sga-diagnostics--xs .sga-diagnostics__icon svg {
-  width: 27px;
-  height: 27px;
+.sga-diagnostics--xs .sga-diagnostics__label {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 15px;
+}
+
+.sga-diagnostics--xs .sga-diagnostics__value {
+  font-size: 17px;
+  margin-top: 5px;
 }
 
 .sga-analysis {
@@ -687,8 +755,8 @@
 .sga-analysis li {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 11px 0;
+  gap: 14px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--sg-line);
 }
 
@@ -700,8 +768,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 70px;
-  height: 70px;
+  width: 56px;
+  height: 56px;
   border-radius: 999px;
   background: var(--sg-cream);
   color: var(--sg-gold);
@@ -710,8 +778,8 @@
 }
 
 .sga-analysis__icon svg {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
 }
 
 .sga-analysis__copy {
@@ -724,11 +792,13 @@
 
 .sga-analysis__label {
   margin: 0;
-  font-size: 20px;
-  font-weight: 800;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 23px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--sg-green);
+  white-space: nowrap;
 }
 
 .sga-analysis__value {
@@ -742,92 +812,39 @@
   overflow: hidden;
 }
 
-/* Tamaños adaptables según el volumen total de texto de análisis IA, para que nunca quede nada oculto. */
-.sga-analysis--md li {
-  gap: 14px;
-  padding: 8px 0;
-}
-
-.sga-analysis--md .sga-analysis__icon {
-  width: 56px;
-  height: 56px;
-}
-
-.sga-analysis--md .sga-analysis__icon svg {
-  width: 32px;
-  height: 32px;
-}
-
+/* La estructura (icono, gap, padding) de Análisis Nexo y Diagnóstico Nexo
+   es siempre la misma, nunca crece ni se encoge por el contenido. Solo la
+   letra baja de tamaño si el contenido es tan largo que no cabría —
+   nunca sube por encima del tamaño normal (md). */
 .sga-analysis--md .sga-analysis__label {
-  font-size: 15.5px;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 22px;
 }
 
 .sga-analysis--md .sga-analysis__value {
-  font-size: 19px;
+  font-size: 21px;
   line-height: 1.28;
-}
-
-.sga-analysis--md .sga-analysis__copy {
-  /* Icono más pequeño que en el tier base -> el texto arranca más a la
-     izquierda, así que hay más margen antes del vaso: se aprovecha. */
-  max-width: 505px;
-}
-
-.sga-analysis--sm li {
-  gap: 11px;
-  padding: 7px 0;
-}
-
-.sga-analysis--sm .sga-analysis__icon {
-  width: 46px;
-  height: 46px;
-}
-
-.sga-analysis--sm .sga-analysis__icon svg {
-  width: 26px;
-  height: 26px;
 }
 
 .sga-analysis--sm .sga-analysis__label {
-  font-size: 14px;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 19px;
 }
 
 .sga-analysis--sm .sga-analysis__value {
-  font-size: 16.5px;
+  font-size: 18px;
   line-height: 1.28;
-}
-
-.sga-analysis--sm .sga-analysis__copy {
-  max-width: 528px;
-}
-
-.sga-analysis--xs li {
-  gap: 10px;
-  padding: 4px 0;
-}
-
-.sga-analysis--xs .sga-analysis__icon {
-  width: 44px;
-  height: 44px;
-}
-
-.sga-analysis--xs .sga-analysis__icon svg {
-  width: 26px;
-  height: 26px;
 }
 
 .sga-analysis--xs .sga-analysis__label {
-  font-size: 14px;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 17px;
 }
 
 .sga-analysis--xs .sga-analysis__value {
-  font-size: 15.5px;
+  font-size: 16px;
   line-height: 1.28;
   -webkit-line-clamp: 5;
-}
-
-.sga-analysis--xs .sga-analysis__copy {
-  max-width: 538px;
 }
 
 /* ---------- fila inferior de paneles ---------- */
@@ -859,7 +876,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -60px;
+  bottom: -80px;
   z-index: 3;
   margin-left: 0;
   padding: 18px 38px;
@@ -981,10 +998,11 @@
   margin: 0 0 10px;
   padding: 6px 12px;
   border-radius: 7px 7px 7px 0;
-  background: linear-gradient(155deg, var(--sg-green) 0%, var(--sg-green-dark) 100%);
-  color: #fff;
+  background: #0c2a16;
+  color: #fff8ee;
+  font-family: "Montserrat", sans-serif;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.05em;
   width: fit-content;
 }
@@ -1151,7 +1169,7 @@
   gap: 24px;
   margin: 14px 293px 0 300px;
   border-radius: 16px;
-  background: linear-gradient(155deg, #2a2320 0%, var(--sg-ink) 100%);
+  background: linear-gradient(155deg, #4a3c2c 0%, #2f2618 100%);
   padding: 52px 30px;
   color: #f3ecdc;
 }
