@@ -59,6 +59,17 @@ export async function exportElementToPng(
 }
 
 /**
+ * Detecta iOS de verdad (no solo si el navegador soporta la Web Share API,
+ * que en escritorio también existe en Edge/Chrome/Safari y desviaba la
+ * descarga hacia la hoja de compartir del sistema en vez de guardar
+ * directamente en Descargas).
+ */
+function isIOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !("MSStream" in window);
+}
+
+/**
  * Descarga una imagen a partir de un data URL, con varias estrategias
  * según el navegador. El truco de `<a download>` con un data: URL directo
  * funciona en escritorio y en Android, pero iOS Safari IGNORA el atributo
@@ -74,10 +85,11 @@ export async function downloadDataUrl(dataUrl: string, filename: string) {
     blob = null;
   }
 
-  // Móvil (iOS y Android): la hoja de compartir nativa incluye "Guardar
-  // imagen" y es el único camino fiable en iOS Safari, donde el atributo
-  // download de <a> no dispara una descarga real.
-  if (blob && typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
+  // Solo iOS: la hoja de compartir nativa incluye "Guardar imagen" y es el
+  // único camino fiable en iOS Safari, donde el atributo download de <a>
+  // no dispara una descarga real. En escritorio y Android, aunque exista
+  // navigator.share, se prefiere el camino directo de abajo.
+  if (blob && isIOS() && typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
     try {
       const file = new File([blob], filename, { type: blob.type || "image/png" });
       if (navigator.canShare({ files: [file] })) {

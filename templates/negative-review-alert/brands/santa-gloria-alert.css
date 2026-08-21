@@ -34,6 +34,22 @@
   text-rendering: optimizeLegibility;
 }
 
+/* Textura de grano de papel, muy disimulada — un <img> normal (igual que
+   el resto de imágenes decorativas), no un background-image por CSS: la
+   captura a PNG solo espera a que carguen los <img> antes de exportar, así
+   que un fondo por CSS podía quedar sin cargar y romper la descarga. */
+.sga-grain-overlay {
+  position: absolute;
+  top: 210px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: calc(100% - 210px);
+  object-fit: cover;
+  pointer-events: none;
+}
+
 .sga-canvas,
 .sga-canvas *,
 .sga-canvas *::before,

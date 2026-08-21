@@ -235,6 +235,13 @@ export const SantaGloriaAlertTemplate = forwardRef<HTMLDivElement, SantaGloriaAl
       <div ref={ref} className="sga-canvas" style={{ width: design.width, height: design.height }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-grain.png")}
+          alt=""
+          aria-hidden
+          className="sga-grain-overlay"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-napkin.png")}
           alt=""
           aria-hidden
