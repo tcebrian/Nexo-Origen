@@ -202,3 +202,92 @@ export const SAMPLE_PP_LONG: NegativeReviewAlertData = {
   employee_mentioned: null,
   analisis_pending: false,
 };
+
+/** Datos base de layout para preview de Santa Gloria — sin análisis IA inventado. */
+const SAMPLE_NEGATIVE_REVIEW_ALERT_SG: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT,
+  brand: "sg",
+  brand_name: "Santa Gloria",
+  brand_logo_url: "/brands/santa-gloria-transparent.png",
+  restaurant_name: "SG ZARAGOZA CENTRO",
+  restaurant_location: "Zaragoza",
+  restaurant_address: "Paseo de la Independencia, 24, 50004 Zaragoza",
+};
+
+/**
+ * Fixture de prueba visual para la plantilla de Santa Gloria — con todos
+ * los campos de análisis IA rellenos (texto de ejemplo, no un caso real)
+ * para comprobar el diseño normal (comentario ≤900 caracteres) completo.
+ */
+export const SAMPLE_SG_FULL: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_SG,
+  review_author: "Elena Ferrer",
+  review_comment:
+    "Fuimos a desayunar un sábado y pedimos dos cafés con leche y un par de croissants de mantequilla, y la experiencia dejó bastante que desear para el precio que tiene el local. Los cafés tardaron casi veinte minutos en salir a pesar de que solo había dos mesas ocupadas, y cuando llegaron estaban tibios, no calientes de verdad. Los croissants no eran del día, se notaban claramente correosos por dentro, como si llevaran ya un tiempo hechos. Pedimos que nos los cambiaran y la persona que nos atendió puso bastante mala cara, como si le molestara la petición, aunque al final sí nos trajo otros que tampoco estaban recién horneados. La mesa además llevaba sin limpiar desde el cliente anterior cuando nos sentamos, tuvimos que pedir que la limpiaran nosotros mismos. Por el precio que tiene Santa Gloria esperábamos bastante más cuidado, tanto en el producto como en el trato.",
+  detected_reasons: ["Producto no fresco", "Tiempo de espera", "Atención al cliente"],
+  sentiment: "Negativo",
+  risk_level: "ALTO",
+  recommendation:
+    "Revisar la rotación de bollería para asegurar producto del día y reforzar la formación de atención al cliente en el trato ante quejas.",
+  ai_summary:
+    "Cliente reporta bollería no fresca y café tibio, con una espera larga y una atención percibida como poco amable ante la reclamación.",
+  main_motive: "Producto no fresco",
+  detected_impact: "Bajada de 0.18 puntos en la media del local en el periodo analizado.",
+  employee_mentioned: null,
+  analisis_pending: false,
+  period_label: "18 may 2025 – 24 may 2025",
+};
+
+/**
+ * Fixture de prueba visual — comentario corto (texto de ejemplo, no un caso
+ * real) para comprobar el diseño normal de Santa Gloria con un comentario breve.
+ */
+export const SAMPLE_SG_SHORT: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_SG,
+  review_author: "Marcos Iglesias",
+  review_comment:
+    "El café con leche llegó frío y el bizcocho de la vitrina estaba reseco, se notaba que no era del día. Tardaron mucho en atendernos a pesar de que el local estaba prácticamente vacío a esa hora.",
+  previous_rating: 4.52,
+  current_rating: 4.33,
+  rating_impact: -0.19,
+  review_count: 194,
+  lifetime_rating: 4.33,
+  detected_reasons: ["Producto no fresco", "Lentitud"],
+  sentiment: "Negativo",
+  risk_level: "MEDIO",
+  recommendation: "Revisar la temperatura de servicio del café y la rotación de bollería.",
+  ai_summary: "Cliente insatisfecho por café frío y bollería reseca.",
+  main_motive: "Producto no fresco",
+  detected_impact: "Posible bajada leve en la media si se repite.",
+  employee_mentioned: null,
+  analisis_pending: false,
+};
+
+/**
+ * Fixture de prueba visual — comentario > 900 caracteres (texto de ejemplo,
+ * no un caso real) para comprobar el diseño largo de Santa Gloria (centrado,
+ * solo comentario + Impacto en la media).
+ */
+export const SAMPLE_SG_LONG: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_SG,
+  review_author: "Patricia Nuño",
+  review_comment:
+    "Reservamos una mesa para merendar con mi madre y la experiencia fue de las peores que hemos tenido en esta cadena, la verdad. Para empezar, a pesar de tener la reserva confirmada por la aplicación, al llegar nos dijeron que no había mesa libre y tuvimos que esperar de pie casi veinticinco minutos en la puerta. Cuando por fin nos sentaron, pedimos una tarta de queso y dos infusiones, y la tarta llegó con la base claramente húmeda, como si hubiera estado mucho tiempo en la nevera sin protección adecuada. Una de las infusiones vino fría cuando la habíamos pedido caliente, y al avisarlo tardaron otros diez minutos en traer una nueva. La vajilla que nos pusieron además no estaba del todo limpia, con restos visibles en el borde de una de las tazas. Cuando comentamos todo esto al camarero al pagar, se limitó a disculparse de forma muy seca sin ofrecer ningún tipo de compensación por la reserva incumplida ni por el resto de incidencias. Es la segunda vez que tenemos un problema parecido en este mismo local, y cada vez nos genera menos confianza volver a repetir.",
+  previous_rating: 4.48,
+  current_rating: 4.24,
+  rating_impact: -0.24,
+  review_count: 322,
+  lifetime_rating: 4.24,
+  detected_reasons: [],
+  sentiment: "Muy negativo",
+  risk_level: "ALTO",
+  recommendation:
+    "Revisar el sistema de reservas para que se respete la disponibilidad real de mesas, reforzar la limpieza de vajilla y la conservación de la bollería y tartas refrigeradas.",
+  ai_summary:
+    "La clienta tuvo que esperar de pie pese a tener reserva confirmada, recibió una tarta con la base húmeda y una infusión fría, y la vajilla no estaba del todo limpia. Es la segunda incidencia similar en el mismo local.",
+  main_motive: "Reserva no respetada, producto en mal estado y vajilla poco limpia.",
+  detected_impact:
+    "La clienta está muy insatisfecha por la reincidencia del problema y la falta de una disculpa con compensación real, lo que afecta a su confianza en el local.",
+  employee_mentioned: null,
+  analisis_pending: false,
+};

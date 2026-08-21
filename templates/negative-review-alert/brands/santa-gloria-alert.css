@@ -1,0 +1,1227 @@
+/* Plantilla Santa Gloria — pieza editorial de marca, no un dashboard SaaS. */
+
+.sga-canvas {
+  --sg-green: #0c2a16;
+  --sg-green-dark: #051208;
+  --sg-red: #b52f24;
+  --sg-red-dark: #7a1f18;
+  --sg-gold: #dea263;
+  --sg-orange: #ce6f23;
+  --sg-brown: #9f5b20;
+  --sg-brown-dark: #632a07;
+  --sg-ink: #1c1a0f;
+  --sg-ink-soft: #6b5f4a;
+  --sg-cream: #f8e8d4;
+  --sg-cream-deep: #ecd1b0;
+  --sg-card: #f3dfc4;
+  --sg-line: rgba(28, 26, 15, 0.14);
+  --sg-line-strong: rgba(28, 26, 15, 0.22);
+  --sg-good: #1c7a4d;
+  --sg-warn: #ce6f23;
+
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 8% -10%, rgba(255, 255, 255, 0.4) 0%, transparent 45%),
+    radial-gradient(130% 100% at 100% 110%, rgba(159, 91, 32, 0.14) 0%, transparent 50%),
+    linear-gradient(160deg, #fbf1e2 0%, var(--sg-cream) 45%, var(--sg-cream-deep) 100%);
+  color: var(--sg-ink);
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.sga-canvas,
+.sga-canvas *,
+.sga-canvas *::before,
+.sga-canvas *::after {
+  box-sizing: border-box;
+}
+
+.sga-canvas img,
+.sga-canvas svg {
+  display: block;
+  max-width: 100%;
+}
+
+
+/* ---------- producto: elementos editoriales, no confinados a una tarjeta ---------- */
+/* TODO: sin fotos de producto todavía para esta marca — cuando se tengan,
+   la clase base .sga-product (position:absolute, sangrando por el borde)
+   y sus modificadores por producto van aquí, igual que en BK/Popeyes. */
+
+.sga-sheet {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 20px;
+  width: 100%;
+  height: 100%;
+  padding: 5px 150px 26px 40px;
+}
+
+.sga-sheet > .sga-header {
+  grid-row: 1;
+}
+
+.sga-sheet > .sga-body {
+  grid-row: 2;
+}
+
+.sga-sheet > .sga-footer {
+  grid-row: 4;
+}
+
+/* Diseño extremo: sin footer ni fila espaciadora, recupera esas 2 filas y
+   sus gaps (40px) para el comentario/impacto en la media. */
+.sga-sheet.sga-sheet--extreme {
+  grid-template-rows: auto 1fr;
+}
+
+/* ---------- header editorial ---------- */
+
+.sga-header {
+  display: grid;
+  grid-template-columns: 620px 1fr;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 14px;
+}
+
+.sga-header__alert {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.sga-header__alert > div {
+  margin-left: 180px;
+}
+
+.sga-header__title {
+  margin: 0;
+  font-size: 50px;
+  font-weight: 600;
+  line-height: 0.82;
+  letter-spacing: -0.005em;
+  color: var(--sg-ink);
+  text-transform: uppercase;
+  text-shadow: 0 2px 3px rgba(33, 26, 19, 0.18);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.sga-header__title-neg {
+  font-size: 100px;
+  font-weight: 800;
+  color: var(--sg-red);
+  letter-spacing: -0.02em;
+  text-shadow:
+    0 1px 0 #ffe3b0,
+    0 4px 0 rgba(140, 25, 15, 0.55),
+    0 10px 18px rgba(33, 20, 10, 0.35);
+}
+
+.sga-header__sub {
+  margin: 6px 0 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--sg-ink-soft);
+}
+
+.sga-header__brand {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 155px;
+}
+
+.sga-header__brand-logo {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(33, 26, 19, 0.16));
+}
+
+.sga-header__restaurant {
+  position: relative;
+  min-width: 0;
+  margin-left: -80px;
+}
+
+.sga-header__restaurant-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 38px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--sg-ink);
+  min-width: 0;
+  padding-right: 190px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(33, 26, 19, 0.12);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.sga-header__restaurant-name svg {
+  width: 24px;
+  height: 24px;
+  color: var(--sg-red);
+  flex-shrink: 0;
+}
+
+.sga-header__wordmark {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 130px;
+  width: auto;
+  object-fit: contain;
+}
+
+.sga-header__restaurant-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 150px auto 0;
+  padding: 7px 18px;
+  border-radius: 8px;
+  border: 1.5px solid var(--sg-green);
+  font-size: 25px;
+  font-weight: 500;
+  color: var(--sg-green);
+  text-transform: uppercase;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: none;
+}
+
+.sga-header__restaurant-location svg {
+  width: 25px;
+  height: 25px;
+  color: var(--sg-green);
+  flex-shrink: 0;
+}
+
+.sga-header__restaurant-address {
+  margin: -6px 0 0 36px;
+  padding-right: 190px;
+  font-size: 22px;
+  line-height: 1.05;
+  color: var(--sg-ink-soft);
+  white-space: normal;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.sga-header__divider {
+  position: absolute;
+  top: 48px;
+  height: 135px;
+  right: 306px;
+  width: 3px;
+  border-radius: 2px;
+  background: rgba(12, 42, 22, 0.3);
+  z-index: 3;
+}
+
+.sga-header__nexo {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sga-header__nexo-logo {
+  height: 175px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(33, 26, 19, 0.18));
+}
+
+.sga-header__extra-photo {
+  position: absolute;
+  top: 240px;
+  right: 24px;
+  z-index: 3;
+  width: 185px;
+  height: auto;
+  object-fit: contain;
+  transform: rotate(9deg);
+  filter: drop-shadow(0 10px 14px rgba(33, 26, 19, 0.2));
+}
+
+/* ---------- cuerpo: reseña + inteligencia artificial ---------- */
+
+.sga-body {
+  display: grid;
+  grid-template-columns: 48% 1fr;
+  gap: 20px;
+  min-height: 0;
+  align-items: start;
+}
+
+/* ---------- diseño alternativo: comentario extremadamente largo ---------- */
+/* Solo comentario + Impacto en la media, centrado, sin Análisis/Diagnóstico/
+   Conclusión — evita comprimir todo lo demás para que quepa un comentario
+   enorme. El padding horizontal deja libre la zona donde sangran la
+   cesta de pollo (izquierda) y el vaso/patatas (derecha). */
+.sga-body--extreme {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 10px 320px 0 330px;
+  min-height: 0;
+}
+
+.sga-review.sga-review--extreme {
+  width: 100%;
+  margin-top: 15px;
+  min-height: 720px;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.sga-quote.sga-quote--extreme {
+  min-height: 593px;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.sga-mini--extreme {
+  width: 100%;
+  margin-top: -40px;
+  padding: 24px 40px;
+}
+
+.sga-mini--extreme .sga-mini__band {
+  font-size: 18px;
+  padding: 7px 22px;
+  margin-bottom: 10px;
+}
+
+.sga-mini--extreme .sga-impact__col {
+  padding: 0 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sga-mini--extreme .sga-impact__label {
+  font-size: 17px;
+  margin: 0 0 4px;
+  height: 21px;
+  display: flex;
+  align-items: center;
+}
+
+.sga-mini--extreme .sga-impact__value {
+  margin: 0;
+  font-size: 46px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
+}
+
+.sga-mini--extreme .sga-impact__delta {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 54px;
+  gap: 6px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
+}
+
+.sga-mini--extreme .sga-impact__delta svg {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.sga-mini--extreme .sga-impact__col + .sga-impact__col::before {
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+}
+
+.sga-review-col {
+  position: relative;
+  min-width: 0;
+  /* Altura fija (no depende de la columna de insights ni del alto de la
+     reseña): ancla "Impacto en la media" (position:absolute, bottom:0 más
+     abajo) a un punto fijo casi pegado a donde sangra la cesta de pollo, sin
+     taparla. La cesta está anclada en posición fija dentro del canvas
+     (bottom:-46px), así que su borde superior siempre cae en el mismo punto
+     — este valor está calculado contra ese punto fijo. */
+  height: 653px;
+}
+
+.sga-review {
+  border-radius: 20px;
+  background: var(--sg-card);
+  border: 1px solid var(--sg-line);
+  padding: 14px 22px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sga-review__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.sga-review__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 78px;
+  height: 78px;
+  border-radius: 999px;
+  background: linear-gradient(155deg, var(--sg-gold) 0%, var(--sg-brown) 55%, var(--sg-brown-dark) 100%);
+  color: #fff;
+  font-size: 28px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.sga-review__meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.sga-review__name {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--sg-ink);
+}
+
+.sga-review__datetime {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0 0;
+  font-size: 24px;
+  color: var(--sg-ink-soft);
+}
+
+.sga-review__datetime svg {
+  width: 22px;
+  height: 22px;
+  color: var(--sg-ink-soft);
+  flex-shrink: 0;
+}
+
+.sga-review__sep {
+  color: var(--sg-line-strong);
+}
+
+.sga-review__rating {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sga-review__rating svg {
+  width: 40px;
+  height: 40px;
+}
+
+.sga-review__rating-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--sg-red);
+}
+
+.sga-quote {
+  position: relative;
+  margin-top: 12px;
+  padding: 20px 26px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--sg-line);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* Mismo alto que la reseña normal/larga (referencia) — un comentario corto
+     no encoge el cuadro, solo crece si el comentario es más largo que eso. */
+  min-height: 350px;
+}
+
+.sga-quote__mark {
+  position: absolute;
+  font-family: Georgia, serif;
+  font-size: 64px;
+  line-height: 1;
+  color: var(--sg-green);
+  opacity: 0.5;
+}
+
+.sga-quote__mark--open {
+  top: 2px;
+  left: 12px;
+}
+
+.sga-quote__mark--close {
+  bottom: 4px;
+  right: 16px;
+}
+
+.sga-quote__text {
+  margin: 0;
+  color: var(--sg-ink);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.sga-quote__text--lg {
+  font-size: 29px;
+}
+
+.sga-quote__text--md {
+  font-size: 24px;
+}
+
+.sga-quote__text--sm {
+  font-size: 19px;
+}
+
+.sga-quote__text--xs {
+  font-size: 20px;
+}
+
+.sga-quote__text--xxs {
+  font-size: 17px;
+}
+
+/* ---------- columna de IA ---------- */
+
+.sga-insights {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sga-ribbon {
+  margin: 0 0 17.5px;
+  padding: 10.5px 21px;
+  border-radius: 8px 8px 8px 0;
+  background: linear-gradient(155deg, var(--sg-green) 0%, var(--sg-green-dark) 100%);
+  color: #fff;
+  font-size: 17.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+  width: fit-content;
+}
+
+.sga-ribbon--mt {
+  margin-top: 14px;
+}
+
+.sga-diagnostics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 17.5px;
+  flex-shrink: 0;
+  /* Acerca los dos recuadros a su título "Diagnóstico Nexo" sin tocar el
+     espaciado del bloque de Análisis Nexo (comparten el mismo .sga-ribbon). */
+  margin-top: -9px;
+}
+
+.sga-diagnostics__item {
+  border-radius: 14px;
+  background: var(--sg-card);
+  border: 1px solid var(--sg-line);
+  padding: 12px;
+  text-align: center;
+}
+
+.sga-diagnostics__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: var(--sg-cream);
+  margin-bottom: 6px;
+}
+
+.sga-diagnostics__icon svg {
+  width: 34px;
+  height: 34px;
+}
+
+.sga-diagnostics__icon--high {
+  color: var(--sg-red);
+  background: rgba(181, 47, 36, 0.12);
+}
+
+.sga-diagnostics__icon--medium {
+  color: var(--sg-warn);
+  background: rgba(206, 111, 35, 0.14);
+}
+
+.sga-diagnostics__icon--low {
+  color: var(--sg-good);
+  background: rgba(28, 122, 77, 0.14);
+}
+
+.sga-diagnostics__icon--neutral {
+  color: var(--sg-ink-soft);
+}
+
+.sga-diagnostics__label {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sg-ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.sga-diagnostics__value {
+  margin: 6px 0 0;
+  font-size: 23px;
+  font-weight: 700;
+  color: var(--sg-ink);
+  overflow-wrap: anywhere;
+}
+
+/* Con Análisis Nexo ya largo (md/sm/xs), Diagnóstico se compacta un pelín
+   para dejarle más sitio a Análisis — un toque, no un cambio grande. */
+.sga-diagnostics--md .sga-diagnostics__item,
+.sga-diagnostics--sm .sga-diagnostics__item,
+.sga-diagnostics--xs .sga-diagnostics__item {
+  padding: 11px;
+}
+
+.sga-diagnostics--md .sga-diagnostics__icon,
+.sga-diagnostics--sm .sga-diagnostics__icon,
+.sga-diagnostics--xs .sga-diagnostics__icon {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 6px;
+}
+
+.sga-diagnostics--md .sga-diagnostics__icon svg,
+.sga-diagnostics--sm .sga-diagnostics__icon svg,
+.sga-diagnostics--xs .sga-diagnostics__icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.sga-diagnostics--md .sga-diagnostics__label,
+.sga-diagnostics--sm .sga-diagnostics__label,
+.sga-diagnostics--xs .sga-diagnostics__label {
+  font-size: 14.5px;
+}
+
+.sga-diagnostics--md .sga-diagnostics__value,
+.sga-diagnostics--sm .sga-diagnostics__value,
+.sga-diagnostics--xs .sga-diagnostics__value {
+  font-size: 20px;
+  margin-top: 5px;
+}
+
+/* xs (el caso más largo) se compacta un poco más que sm, para dejar
+   siempre un margen de seguridad y no ir justo al límite del canvas. */
+.sga-diagnostics--xs .sga-diagnostics__item {
+  padding: 9px;
+}
+
+.sga-diagnostics--xs .sga-diagnostics__icon {
+  width: 46px;
+  height: 46px;
+  margin-bottom: 5px;
+}
+
+.sga-diagnostics--xs .sga-diagnostics__icon svg {
+  width: 27px;
+  height: 27px;
+}
+
+.sga-analysis {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sga-analysis li {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--sg-line);
+}
+
+.sga-analysis li:last-child {
+  border-bottom: none;
+}
+
+.sga-analysis__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 70px;
+  height: 70px;
+  border-radius: 999px;
+  background: var(--sg-cream);
+  color: var(--sg-gold);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.sga-analysis__icon svg {
+  width: 40px;
+  height: 40px;
+}
+
+.sga-analysis__copy {
+  min-width: 0;
+  /* No dejar que el texto llegue hasta donde sangra el vaso de refresco
+     (bleed fijo a la derecha del canvas) — se corta antes y sigue en la
+     línea de abajo en vez de quedar tapado detrás del vaso. */
+  max-width: 485px;
+}
+
+.sga-analysis__label {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sg-green);
+}
+
+.sga-analysis__value {
+  margin: 4px 0 0;
+  font-size: 25px;
+  line-height: 1.4;
+  color: var(--sg-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Tamaños adaptables según el volumen total de texto de análisis IA, para que nunca quede nada oculto. */
+.sga-analysis--md li {
+  gap: 14px;
+  padding: 8px 0;
+}
+
+.sga-analysis--md .sga-analysis__icon {
+  width: 56px;
+  height: 56px;
+}
+
+.sga-analysis--md .sga-analysis__icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.sga-analysis--md .sga-analysis__label {
+  font-size: 15.5px;
+}
+
+.sga-analysis--md .sga-analysis__value {
+  font-size: 19px;
+  line-height: 1.28;
+}
+
+.sga-analysis--md .sga-analysis__copy {
+  /* Icono más pequeño que en el tier base -> el texto arranca más a la
+     izquierda, así que hay más margen antes del vaso: se aprovecha. */
+  max-width: 505px;
+}
+
+.sga-analysis--sm li {
+  gap: 11px;
+  padding: 7px 0;
+}
+
+.sga-analysis--sm .sga-analysis__icon {
+  width: 46px;
+  height: 46px;
+}
+
+.sga-analysis--sm .sga-analysis__icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.sga-analysis--sm .sga-analysis__label {
+  font-size: 14px;
+}
+
+.sga-analysis--sm .sga-analysis__value {
+  font-size: 16.5px;
+  line-height: 1.28;
+}
+
+.sga-analysis--sm .sga-analysis__copy {
+  max-width: 528px;
+}
+
+.sga-analysis--xs li {
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.sga-analysis--xs .sga-analysis__icon {
+  width: 44px;
+  height: 44px;
+}
+
+.sga-analysis--xs .sga-analysis__icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.sga-analysis--xs .sga-analysis__label {
+  font-size: 14px;
+}
+
+.sga-analysis--xs .sga-analysis__value {
+  font-size: 15.5px;
+  line-height: 1.28;
+  -webkit-line-clamp: 5;
+}
+
+.sga-analysis--xs .sga-analysis__copy {
+  max-width: 538px;
+}
+
+/* ---------- fila inferior de paneles ---------- */
+
+.sga-row3 {
+  display: flex;
+  justify-content: flex-start;
+  gap: 16px;
+  min-height: 0;
+}
+
+.sga-row3 .sga-mini {
+  flex: 0 1 45%;
+}
+
+.sga-mini {
+  flex: 1;
+  min-width: 0;
+  border-radius: 16px;
+  background: var(--sg-card);
+  border: 1px solid var(--sg-line);
+  padding: 20px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.sga-mini--under-quote {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -60px;
+  z-index: 3;
+  margin-left: 0;
+  padding: 18px 38px;
+}
+
+/* Con comentarios cortos (<500 caracteres) sube bastante más, ya que el
+   cuadro del comentario queda más corto y deja mucho hueco debajo. */
+.sga-mini--under-quote.sga-mini--short {
+  bottom: 0px;
+}
+
+/* Con comentarios ya bastante largos (dentro del diseño normal, ≤900
+   caracteres — por encima de eso se usa el diseño alternativo centrado) se
+   desplaza a la derecha y se compacta un poco para no quedar tapada por la
+   cesta de pollo. Con comentarios normales/cortos no se desplaza: se queda a
+   ancho completo. */
+.sga-mini--shift-sm {
+  margin-left: 140px;
+  padding: 26px;
+}
+
+.sga-mini--shift-sm .sga-mini__band {
+  font-size: 15px;
+  padding: 9px 18px;
+  margin-bottom: 14px;
+}
+
+.sga-mini--shift-sm .sga-impact__value {
+  font-size: 36px;
+  height: 44px;
+}
+
+.sga-mini--shift-sm .sga-impact__delta {
+  font-size: 33px;
+  height: 44px;
+}
+
+.sga-mini--under-quote .sga-mini__band {
+  font-size: 17.5px;
+  padding: 6px 21px;
+  margin-top: -30px;
+  margin-bottom: 5px;
+}
+
+.sga-mini--under-quote .sga-impact__col {
+  padding: 0 21px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.sga-mini--under-quote .sga-impact__label {
+  font-size: 16.5px;
+  margin: 0 0 3px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.sga-mini--under-quote .sga-impact__value {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
+}
+
+.sga-mini--under-quote .sga-impact__delta {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 52px;
+  gap: 6px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
+}
+
+.sga-mini--under-quote .sga-impact__delta svg {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.sga-mini--under-quote .sga-impact__col + .sga-impact__col::before {
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+}
+
+.sga-impact__stars {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 3px;
+}
+
+.sga-impact__stars .nra-stars {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+}
+
+.sga-impact__stars svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sga-mini__band {
+  margin: 0 0 10px;
+  padding: 6px 12px;
+  border-radius: 7px 7px 7px 0;
+  background: linear-gradient(155deg, var(--sg-green) 0%, var(--sg-green-dark) 100%);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  width: fit-content;
+}
+
+.sga-incidents {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sga-incidents li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--sg-ink);
+}
+
+.sga-incidents__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(214, 43, 31, 0.12);
+  color: var(--sg-red);
+  flex-shrink: 0;
+}
+
+.sga-impact {
+  display: flex;
+  align-items: stretch;
+}
+
+.sga-impact__col {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  padding: 0 12px;
+}
+
+.sga-impact__col + .sga-impact__col::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: var(--sg-line-strong);
+}
+
+.sga-impact__label {
+  margin: 0 0 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--sg-ink-soft);
+}
+
+.sga-impact__value {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--sg-ink);
+}
+
+.sga-impact__value--tone-good {
+  color: var(--sg-good);
+}
+
+.sga-impact__value--tone-warn {
+  color: var(--sg-warn);
+}
+
+.sga-impact__value--tone-bad {
+  color: var(--sg-red);
+}
+
+.sga-impact__value--target {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--sg-ink-soft);
+}
+
+.sga-impact__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.sga-impact__delta--down {
+  color: var(--sg-red);
+}
+
+.sga-impact__delta--up {
+  color: var(--sg-good);
+}
+
+.sga-impact__delta--flat {
+  color: var(--sg-ink-soft);
+}
+
+.sga-context {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sga-context div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--sg-line-strong);
+}
+
+.sga-context div:last-child {
+  border-bottom: none;
+}
+
+.sga-context dt {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--sg-ink-soft);
+}
+
+.sga-context dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--sg-ink);
+  text-align: right;
+}
+
+.sga-context__neg {
+  color: var(--sg-red);
+}
+
+.sga-context__pos {
+  color: var(--sg-good);
+}
+
+/* ---------- footer: conclusión / acción ---------- */
+
+.sga-footer {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin: 14px 293px 0 300px;
+  border-radius: 16px;
+  background: linear-gradient(155deg, #2a2320 0%, var(--sg-ink) 100%);
+  padding: 52px 30px;
+  color: #f3ecdc;
+}
+
+/* Con conclusiones largas el recuadro se ajusta más a las letras (menos
+   padding arriba/abajo) en vez de mantener siempre el mismo hueco grande. */
+.sga-footer--sm {
+  padding: 38px 30px;
+}
+
+.sga-footer--xs {
+  padding: 24px 30px;
+}
+
+.sga-footer__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f3ecdc;
+  flex-shrink: 0;
+}
+
+.sga-footer__icon svg {
+  width: 44px;
+  height: 44px;
+}
+
+.sga-footer__body {
+  min-width: 0;
+}
+
+.sga-footer__label {
+  margin: 0 0 5px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--sg-gold);
+}
+
+.sga-footer__text {
+  margin: 0;
+  line-height: 1.4;
+  color: #f8f4ea;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Tamaño adaptado a la longitud de la conclusión, para que quepa siempre
+   dentro del recuadro en vez de cortarse a media frase. */
+.sga-footer__text--lg {
+  font-size: 23px;
+  -webkit-line-clamp: 2;
+}
+
+.sga-footer__text--md {
+  font-size: 20px;
+  -webkit-line-clamp: 3;
+}
+
+.sga-footer__text--sm {
+  font-size: 17px;
+  -webkit-line-clamp: 3;
+}
+
+.sga-footer__text--xs {
+  font-size: 18px;
+  -webkit-line-clamp: 4;
+}

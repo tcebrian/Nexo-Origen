@@ -1,6 +1,7 @@
 import { NegativeReviewAlertTemplate } from "@/templates/negative-review-alert";
 import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brands/burger-king-alert-template";
 import { PopeyesAlertTemplate } from "@/templates/negative-review-alert/brands/popeyes-alert-template";
+import { SantaGloriaAlertTemplate } from "@/templates/negative-review-alert/brands/santa-gloria-alert-template";
 import { parseAlertFromSearchParams } from "@/lib/templates/negative-review-alert/parse-payload";
 import { SAMPLE_NEGATIVE_REVIEW_ALERT } from "@/lib/templates/negative-review-alert/sample-data";
 
@@ -28,8 +29,11 @@ export default async function NegativeReviewAlertTemplatePage({ searchParams }: 
       ? BurgerKingAlertTemplate
       : data.brand === "pp"
         ? PopeyesAlertTemplate
-        : NegativeReviewAlertTemplate;
-  const background = data.brand === "bk" || data.brand === "pp" ? "#f3ecdc" : "#e8e4dd";
+        : data.brand === "sg"
+          ? SantaGloriaAlertTemplate
+          : NegativeReviewAlertTemplate;
+  const background =
+    data.brand === "bk" || data.brand === "pp" || data.brand === "sg" ? "#f3ecdc" : "#e8e4dd";
 
   return (
     <main

@@ -15,12 +15,16 @@ import {
   SAMPLE_PP_FULL,
   SAMPLE_PP_LONG,
   SAMPLE_PP_SHORT,
+  SAMPLE_SG_FULL,
+  SAMPLE_SG_LONG,
+  SAMPLE_SG_SHORT,
 } from "@/lib/templates/negative-review-alert/sample-data";
 import { EDITABLE_HANDOFF_KEY } from "@/lib/templates/negative-review-alert/editable-handoff";
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
 import { NegativeReviewAlertTemplate } from "@/templates/negative-review-alert";
 import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brands/burger-king-alert-template";
 import { PopeyesAlertTemplate } from "@/templates/negative-review-alert/brands/popeyes-alert-template";
+import { SantaGloriaAlertTemplate } from "@/templates/negative-review-alert/brands/santa-gloria-alert-template";
 
 const REFERENCE_PATH = "/design/negative-review-alert-reference.png";
 
@@ -43,6 +47,15 @@ const BRAND_SAMPLE_VARIANTS = {
       editable: { label: "Editable", data: SAMPLE_PP_FULL },
     },
   },
+  sg: {
+    label: "Santa Gloria",
+    variants: {
+      normal: { label: "Diseño reseña media", data: SAMPLE_SG_FULL },
+      corta: { label: "Diseño corta", data: SAMPLE_SG_SHORT },
+      largo: { label: "Diseño largo", data: SAMPLE_SG_LONG },
+      editable: { label: "Editable", data: SAMPLE_SG_FULL },
+    },
+  },
 } as const;
 
 type BrandKey = keyof typeof BRAND_SAMPLE_VARIANTS;
@@ -53,10 +66,10 @@ type SampleKey = keyof (typeof BRAND_SAMPLE_VARIANTS)["bk"]["variants"];
  * selectores combinan la clase de cada marca (bka-/ppa-) para que el modo
  * editable funcione igual sea cual sea la marca activa. */
 const DRAG_TARGETS: { selector: string; label: string; isImage?: boolean }[] = [
-  { selector: ".bka-review, .ppa-review", label: "Reseña / comentario" },
-  { selector: ".bka-mini, .ppa-mini", label: "Impacto en la media" },
-  { selector: ".bka-insights, .ppa-insights", label: "Análisis + Diagnóstico" },
-  { selector: ".bka-footer, .ppa-footer", label: "Conclusión / Acción" },
+  { selector: ".bka-review, .ppa-review, .sga-review", label: "Reseña / comentario" },
+  { selector: ".bka-mini, .ppa-mini, .sga-mini", label: "Impacto en la media" },
+  { selector: ".bka-insights, .ppa-insights, .sga-insights", label: "Análisis + Diagnóstico" },
+  { selector: ".bka-footer, .ppa-footer, .sga-footer", label: "Conclusión / Acción" },
   { selector: ".bka-product--burger, .ppa-product--tenders", label: "Producto principal", isImage: true },
   { selector: ".bka-product--fries, .ppa-product--fries", label: "Patatas", isImage: true },
   { selector: ".bka-product--drink, .ppa-product--drink", label: "Bebida", isImage: true },
@@ -68,17 +81,17 @@ const RESIZE_TARGETS = DRAG_TARGETS.filter(({ isImage }) => !isImage);
 
 /** Textos cuyo tamaño de letra se puede ajustar en modo edición. */
 const FONT_TARGETS: { selector: string; label: string }[] = [
-  { selector: ".bka-review__name, .ppa-review__name", label: "Nombre autor" },
-  { selector: ".bka-review__datetime, .ppa-review__datetime", label: "Fecha / hora" },
-  { selector: ".bka-quote__text, .ppa-quote__text", label: "Comentario" },
-  { selector: ".bka-impact__value, .ppa-impact__value", label: "Impacto — valores" },
-  { selector: ".bka-impact__delta, .ppa-impact__delta", label: "Impacto — variación" },
-  { selector: ".bka-impact__label, .ppa-impact__label", label: "Impacto — etiquetas" },
-  { selector: ".bka-analysis__value, .ppa-analysis__value", label: "Análisis Nexo — texto" },
-  { selector: ".bka-analysis__label, .ppa-analysis__label", label: "Análisis Nexo — etiquetas" },
-  { selector: ".bka-diagnostics__value, .ppa-diagnostics__value", label: "Diagnóstico Nexo — texto" },
-  { selector: ".bka-diagnostics__label, .ppa-diagnostics__label", label: "Diagnóstico Nexo — etiquetas" },
-  { selector: ".bka-footer__text, .ppa-footer__text", label: "Conclusión / Acción" },
+  { selector: ".bka-review__name, .ppa-review__name, .sga-review__name", label: "Nombre autor" },
+  { selector: ".bka-review__datetime, .ppa-review__datetime, .sga-review__datetime", label: "Fecha / hora" },
+  { selector: ".bka-quote__text, .ppa-quote__text, .sga-quote__text", label: "Comentario" },
+  { selector: ".bka-impact__value, .ppa-impact__value, .sga-impact__value", label: "Impacto — valores" },
+  { selector: ".bka-impact__delta, .ppa-impact__delta, .sga-impact__delta", label: "Impacto — variación" },
+  { selector: ".bka-impact__label, .ppa-impact__label, .sga-impact__label", label: "Impacto — etiquetas" },
+  { selector: ".bka-analysis__value, .ppa-analysis__value, .sga-analysis__value", label: "Análisis Nexo — texto" },
+  { selector: ".bka-analysis__label, .ppa-analysis__label, .sga-analysis__label", label: "Análisis Nexo — etiquetas" },
+  { selector: ".bka-diagnostics__value, .ppa-diagnostics__value, .sga-diagnostics__value", label: "Diagnóstico Nexo — texto" },
+  { selector: ".bka-diagnostics__label, .ppa-diagnostics__label, .sga-diagnostics__label", label: "Diagnóstico Nexo — etiquetas" },
+  { selector: ".bka-footer__text, .ppa-footer__text, .sga-footer__text", label: "Conclusión / Acción" },
 ];
 
 export default function NegativeReviewAlertPreviewPage() {
@@ -99,6 +112,7 @@ export default function NegativeReviewAlertPreviewPage() {
   const activeData = isEditable && externalEditableData ? externalEditableData : sample.data;
   const isBk = activeData.brand === "bk";
   const isPopeyes = activeData.brand === "pp";
+  const isSantaGloria = activeData.brand === "sg";
   const renderWidth = NEGATIVE_REVIEW_RENDER_WIDTH;
   const renderHeight = NEGATIVE_REVIEW_RENDER_HEIGHT;
 
@@ -115,7 +129,7 @@ export default function NegativeReviewAlertPreviewPage() {
       const parsed = JSON.parse(raw) as { data: NegativeReviewAlertData };
       if (parsed?.data) {
         setExternalEditableData(parsed.data);
-        if (parsed.data.brand === "bk" || parsed.data.brand === "pp") {
+        if (parsed.data.brand === "bk" || parsed.data.brand === "pp" || parsed.data.brand === "sg") {
           setBrandKey(parsed.data.brand);
         }
         setSampleKey("editable");
@@ -715,6 +729,8 @@ export default function NegativeReviewAlertPreviewPage() {
                   <BurgerKingAlertTemplate ref={captureRef} data={activeData} />
                 ) : isPopeyes ? (
                   <PopeyesAlertTemplate ref={captureRef} data={activeData} />
+                ) : isSantaGloria ? (
+                  <SantaGloriaAlertTemplate ref={captureRef} data={activeData} />
                 ) : (
                   <NegativeReviewAlertTemplate ref={captureRef} data={activeData} />
                 )}

@@ -16,6 +16,7 @@ import type { NegativeReviewReportRow } from "@/lib/reports/negative-reviews/typ
 import { NegativeReviewAlertTemplate } from "@/templates/negative-review-alert";
 import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brands/burger-king-alert-template";
 import { PopeyesAlertTemplate } from "@/templates/negative-review-alert/brands/popeyes-alert-template";
+import { SantaGloriaAlertTemplate } from "@/templates/negative-review-alert/brands/santa-gloria-alert-template";
 import { btnGhost, btnPrimary, card, shell } from "./ui/informes-styles";
 
 type InformesNegativeReviewsImageModalProps = {
@@ -44,6 +45,7 @@ export function InformesNegativeReviewsImageModal({
   );
   const isBk = row?.brand === "bk";
   const isPopeyes = row?.brand === "pp";
+  const isSantaGloria = row?.brand === "sg";
 
   const generatePreview = useCallback(async () => {
     if (!row || !cardRef.current || !templateProps) return;
@@ -192,6 +194,8 @@ export function InformesNegativeReviewsImageModal({
               <BurgerKingAlertTemplate ref={cardRef} {...templateProps} />
             ) : isPopeyes ? (
               <PopeyesAlertTemplate ref={cardRef} {...templateProps} />
+            ) : isSantaGloria ? (
+              <SantaGloriaAlertTemplate ref={cardRef} {...templateProps} />
             ) : (
               <NegativeReviewAlertTemplate ref={cardRef} {...templateProps} />
             )}
