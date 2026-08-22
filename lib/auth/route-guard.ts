@@ -37,7 +37,14 @@ export function canAccessDashboardPath(rol: UserRole | null | undefined, pathnam
 
 export function isProtectedApiPath(pathname: string): boolean {
   if (!pathname.startsWith("/api/")) return false;
-  const publicPrefixes = ["/api/auth/"];
+  // Rutas que se autentican por su cuenta (token compartido en vez de sesión
+  // de usuario) porque las llaman servicios externos sin cookies: Supabase
+  // Database Webhooks y Twilio pidiendo la imagen del aviso de WhatsApp.
+  const publicPrefixes = [
+    "/api/auth/",
+    "/api/webhooks/",
+    "/api/notifications/whatsapp-alert-image",
+  ];
   return !publicPrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 

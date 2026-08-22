@@ -122,6 +122,7 @@ export function ResenasInboxList({ reviews }: ResenasInboxListProps) {
 
                   <CommentExcerpt
                     text={review.text}
+                    originalText={review.originalText}
                     reviewHref={getReviewHref(review.id)}
                     maxLength={120}
                     className="mt-3 text-[14px] leading-relaxed text-[var(--nexo-text-secondary)]"

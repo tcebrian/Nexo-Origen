@@ -14,6 +14,7 @@ import {
 } from "@/lib/reviews/media-impact";
 import { resolveBrandId } from "@/lib/restaurants/brand-resolve";
 import { toDateKey } from "@/lib/dates/period";
+import type { ResenaTranslation } from "@/lib/translate/resena-translations";
 import type { KpiRestaurantRow } from "./kpi-restaurantes";
 import type { PeriodQuery } from "./kpi-restaurantes";
 
@@ -152,6 +153,7 @@ export function mapResenaToReview(
   options?: {
     location?: string;
     catalogById?: Map<number, KpiRestaurantRow>;
+    translation?: ResenaTranslation;
   }
 ): Review {
   const resolvedMarca = catalogMarca || marca;
@@ -160,7 +162,9 @@ export function mapResenaToReview(
   const brandLabel = resolveReviewBrandLabel(brand, resolvedMarca || marca);
   const slug = restaurantSlug(restaurantName);
   const rating = row.estrellas;
-  const text = row.comentario?.trim() || "Sin comentario";
+  const originalComment = row.comentario?.trim() || "Sin comentario";
+  const translation = options?.translation;
+  const text = translation?.text.trim() || originalComment;
   const author = row.autor?.trim() || "Anónimo";
   const dateValue = row.fecha_resena ?? row.created_at;
   const date = dateValue ? new Date(dateValue) : new Date();
@@ -194,6 +198,8 @@ export function mapResenaToReview(
     brand,
     brandLabel,
     text,
+    originalText: translation ? originalComment : undefined,
+    originalLanguage: translation ? translation.detectedLanguage : undefined,
     date,
     location: options?.location ?? row.direccion ?? undefined,
     source: "google",
@@ -283,6 +289,7 @@ export function mapResenasToReviews(
   options?: {
     impactIndex?: Map<string, MediaImpactResult>;
     analisisByResenaId?: AnalisisIaIndex;
+    translationsByResenaId?: Map<string, ResenaTranslation>;
   }
 ): Review[] {
   const catalogById = buildCatalogById(catalog);
@@ -294,6 +301,7 @@ export function mapResenasToReviews(
     const analisis = options?.analisisByResenaId
       ? getAnalisisForResena(options.analisisByResenaId, row)
       : undefined;
+    const translation = options?.translationsByResenaId?.get(String(row.id));
 
     return mapResenaToReview(
       row,
@@ -302,7 +310,7 @@ export function mapResenasToReviews(
       meta.catalogEntry?.marca,
       impact,
       analisis,
-      { location: meta.location, catalogById }
+      { location: meta.location, catalogById, translation }
     );
   });
 }

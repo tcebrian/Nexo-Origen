@@ -1,15 +1,18 @@
 import { buildAlertsFromResenas } from "@/lib/alerts/build-from-resenas";
 import { loadPeriodData } from "@/lib/supabase/period-api";
+import { getTranslationsForResenas } from "@/lib/translate/resena-translations";
 import type { AlertsRepository } from "./repository";
 
 export const supabaseAlertsRepository: AlertsRepository = {
   async list(query) {
     try {
       const period = await loadPeriodData(query.start, query.end);
+      const translationsByResenaId = await getTranslationsForResenas(period.resenas);
       return buildAlertsFromResenas(
         period.resenas,
         period.aggregates.byRestaurante,
-        period.analisisByResenaId
+        period.analisisByResenaId,
+        translationsByResenaId
       );
     } catch (error) {
       console.error("[supabaseAlertsRepository.list]", error);

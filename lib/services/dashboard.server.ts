@@ -4,6 +4,7 @@ import { buildAlertsFromResenas } from "@/lib/alerts/build-from-resenas";
 import { getUrgentAlerts } from "@/lib/alerts/filters";
 import { createRestaurantsRepository } from "@/lib/restaurants/restaurants-repository-shared";
 import { loadPeriodDataServer } from "@/lib/supabase/period-api.server";
+import { getTranslationsForResenas } from "@/lib/translate/resena-translations";
 import type { DashboardOverview } from "./dashboard";
 import { buildRecentActivity } from "./dashboard";
 
@@ -19,10 +20,12 @@ export async function getDashboardOverviewServer(query: {
     loadPeriodDataServer(query.start, query.end),
   ]);
 
+  const translationsByResenaId = await getTranslationsForResenas(period.resenas);
   const alerts = buildAlertsFromResenas(
     period.resenas,
     period.aggregates.byRestaurante,
-    period.analisisByResenaId
+    period.analisisByResenaId,
+    translationsByResenaId
   );
 
   const onTarget = restaurants.filter((r) => r.status === "on_target").length;

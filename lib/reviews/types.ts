@@ -58,6 +58,10 @@ export type Review = {
   brand: BrandId;
   brandLabel: string;
   text: string;
+  /** Texto original (sin traducir) — solo presente cuando `text` es una traducción automática. */
+  originalText?: string;
+  /** Idioma detectado del original (ISO, ej. "EN") — solo presente junto a `originalText`. */
+  originalLanguage?: string | null;
   date: Date;
   location?: string;
   source: ReviewSource;

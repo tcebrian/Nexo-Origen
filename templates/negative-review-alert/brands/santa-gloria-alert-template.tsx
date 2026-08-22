@@ -277,24 +277,17 @@ export const SantaGloriaAlertTemplate = forwardRef<HTMLDivElement, SantaGloriaAl
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-plate.png")}
+          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-croissant-plate.png")}
           alt=""
           aria-hidden
-          className="sga-product sga-product--plate"
+          className="sga-product sga-product--croissant-plate"
         />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-crumbs.png")}
+          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-cookie-plate.png")}
           alt=""
           aria-hidden
-          className="sga-product sga-product--crumbs"
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={absUrl(assetBaseUrl, "/design/santa-gloria/sg-croissant.png")}
-          alt=""
-          aria-hidden
-          className="sga-product sga-product--croissant"
+          className="sga-product sga-product--cookie-plate"
         />
 
         <div className={`sga-sheet ${isExtremeComment ? "sga-sheet--extreme" : ""}`}>

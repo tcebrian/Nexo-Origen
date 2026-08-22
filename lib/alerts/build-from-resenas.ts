@@ -9,12 +9,14 @@ import type { ResenaRow } from "@/lib/supabase/resenas";
 import { resolveBrandId } from "@/lib/restaurants/brand-resolve";
 import { formatImpactSummary } from "@/lib/reviews/impact-display";
 import { buildMediaImpactIndex } from "@/lib/reviews/media-impact";
+import type { ResenaTranslation } from "@/lib/translate/resena-translations";
 import type { RestaurantAlert } from "./types";
 
 export function buildAlertsFromResenas(
   resenas: ResenaRow[],
   metricsById: Map<number, RestaurantPeriodMetrics>,
-  analisisByResenaId: AnalisisIaIndex = new Map()
+  analisisByResenaId: AnalisisIaIndex = new Map(),
+  translationsByResenaId: Map<string, ResenaTranslation> = new Map()
 ): RestaurantAlert[] {
   const uniqueResenas = dedupeResenas(resenas);
   const impactIndex = buildMediaImpactIndex(uniqueResenas);
@@ -29,7 +31,8 @@ export function buildAlertsFromResenas(
       const slug = restaurantSlug(restaurant);
       const brand =
         metrics?.brand ?? resolveBrandId(row.restaurante_id, marca, metricsById);
-      const text = row.comentario?.trim() || "Sin comentario";
+      const translation = translationsByResenaId.get(String(row.id));
+      const text = translation?.text.trim() || row.comentario?.trim() || "Sin comentario";
       const analisis = getAnalisisForResena(analisisByResenaId, row);
       const mainMotive = classifyReviewReason(row, analisis);
       const motives = mainMotive === "Otros" || mainMotive === "Sin comentario" ? [] : [mainMotive];
