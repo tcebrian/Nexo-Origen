@@ -1,0 +1,1021 @@
+/* Plantilla Ribs — pieza editorial de marca, estilo BBQ/western, no un dashboard SaaS. */
+
+@import url("https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;600;700&display=swap");
+
+.rba-canvas {
+  --rb-maroon: #4a1a1a;
+  --rb-maroon-dark: #2e0d0d;
+  --rb-red: #b5342a;
+  --rb-red-dark: #7a221b;
+  --rb-gold: #c9982f;
+  --rb-gold-dark: #96701f;
+  --rb-ink: #241209;
+  --rb-ink-soft: #6b5240;
+  --rb-cream: #f5ead9;
+  --rb-cream-deep: #ecd9bd;
+  --rb-card: #f0e0c8;
+  --rb-line: rgba(36, 18, 9, 0.14);
+  --rb-line-strong: rgba(36, 18, 9, 0.22);
+  --rb-good: #3f7d3a;
+  --rb-warn: #c9982f;
+
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 8% -10%, rgba(255, 255, 255, 0.35) 0%, transparent 45%),
+    radial-gradient(130% 100% at 100% 110%, rgba(74, 26, 26, 0.14) 0%, transparent 50%),
+    linear-gradient(160deg, #faf1e4 0%, var(--rb-cream) 45%, var(--rb-cream-deep) 100%);
+  color: var(--rb-ink);
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.rba-canvas,
+.rba-canvas *,
+.rba-canvas *::before,
+.rba-canvas *::after {
+  box-sizing: border-box;
+}
+
+.rba-canvas img,
+.rba-canvas svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* ---------- producto: elementos editoriales, no confinados a una tarjeta ---------- */
+
+.rba-product {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  filter: drop-shadow(0 20px 22px rgba(36, 18, 9, 0.3));
+}
+
+.rba-product--ribs {
+  bottom: -50px;
+  left: -170px;
+  width: 590px;
+  transform: perspective(800px) rotateX(18deg) rotate(12deg) scaleX(-1);
+  z-index: 3;
+}
+
+.rba-product--fries {
+  top: 430px;
+  right: -160px;
+  width: 440px;
+  transform: perspective(700px) rotateX(16deg) rotate(-6deg);
+  z-index: 4;
+  filter: drop-shadow(0 16px 14px rgba(36, 18, 9, 0.4)) drop-shadow(0 3px 4px rgba(36, 18, 9, 0.3));
+}
+
+.rba-product--sauce {
+  bottom: 0px;
+  right: 40px;
+  width: 250px;
+  transform: perspective(700px) rotateX(16deg) rotate(-4deg);
+  z-index: 5;
+  filter: drop-shadow(0 16px 14px rgba(36, 18, 9, 0.4)) drop-shadow(0 3px 4px rgba(36, 18, 9, 0.3));
+}
+
+.rba-product--coleslaw {
+  top: 130px;
+  right: -80px;
+  width: 320px;
+  transform: perspective(700px) rotateX(16deg) rotate(8deg);
+  z-index: 3;
+  filter: drop-shadow(0 16px 14px rgba(36, 18, 9, 0.4)) drop-shadow(0 3px 4px rgba(36, 18, 9, 0.3));
+}
+
+.rba-sheet {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 20px;
+  width: 100%;
+  height: 100%;
+  padding: 5px 150px 26px 40px;
+}
+
+.rba-sheet > .rba-header {
+  grid-row: 1;
+}
+
+.rba-sheet > .rba-body {
+  grid-row: 2;
+}
+
+.rba-sheet > .rba-footer {
+  grid-row: 4;
+}
+
+/* Diseño extremo: sin footer ni fila espaciadora, recupera esas 2 filas y
+   sus gaps (40px) para el comentario/impacto en la media. */
+.rba-sheet.rba-sheet--extreme {
+  grid-template-rows: auto 1fr;
+}
+
+/* ---------- header editorial ---------- */
+
+.rba-header {
+  position: relative;
+  display: grid;
+  grid-template-columns: 620px 1fr;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 14px;
+}
+
+.rba-header__alert {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.rba-header__alert > div {
+  margin-left: 410px;
+  margin-top: 8px;
+}
+
+.rba-header__title {
+  margin: 0;
+  font-family: "Oswald", sans-serif;
+  font-size: 52px;
+  font-weight: 600;
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  color: var(--rb-ink);
+  text-transform: uppercase;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.rba-header__title-neg {
+  display: inline-block;
+  font-family: "Anton", sans-serif;
+  font-size: 97px;
+  font-weight: 400;
+  color: var(--rb-maroon);
+  letter-spacing: 0.01em;
+  line-height: 0.95;
+  transform: scaleX(1.25);
+  transform-origin: left center;
+}
+
+.rba-header__sub {
+  margin: 6px 0 0;
+  font-family: "Oswald", sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--rb-ink-soft);
+  white-space: nowrap;
+}
+
+.rba-header__wordmark {
+  position: absolute;
+  top: 16px;
+  left: 60px;
+  height: 148px;
+  width: auto;
+  object-fit: contain;
+  z-index: 4;
+  filter: drop-shadow(0 4px 6px rgba(36, 18, 9, 0.18));
+}
+
+.rba-header__restaurant {
+  position: relative;
+  min-width: 0;
+}
+
+.rba-header__restaurant-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 15px auto 0;
+  transform: translateX(70px);
+  padding: 6px 16px;
+  border-radius: 7px;
+  font-family: "Oswald", sans-serif;
+  font-size: 32px;
+  font-weight: 500;
+  color: var(--rb-maroon);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rba-header__restaurant-location svg {
+  width: 32px;
+  height: 32px;
+  color: var(--rb-maroon);
+  flex-shrink: 0;
+}
+
+.rba-header__divider {
+  position: absolute;
+  top: 48px;
+  height: 135px;
+  right: 306px;
+  width: 3px;
+  border-radius: 2px;
+  background: rgba(74, 26, 26, 0.3);
+  z-index: 3;
+}
+
+.rba-header__nexo {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rba-header__nexo-logo {
+  height: 175px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(36, 18, 9, 0.18));
+}
+
+/* ---------- cuerpo: reseña + inteligencia artificial ---------- */
+
+.rba-body {
+  display: grid;
+  grid-template-columns: 48% 1fr;
+  gap: 20px;
+  min-height: 0;
+  align-items: start;
+  margin-left: 40px;
+}
+
+.rba-body--extreme {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 10px 320px 0 330px;
+  min-height: 0;
+}
+
+.rba-review.rba-review--extreme {
+  width: 100%;
+  margin-top: 15px;
+  min-height: 720px;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.rba-quote.rba-quote--extreme {
+  min-height: 593px;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.rba-mini--extreme {
+  position: relative;
+  z-index: 7;
+  width: 100%;
+  margin-top: -40px;
+  padding: 24px 40px;
+}
+
+.rba-mini--extreme .rba-mini__band {
+  font-size: 18px;
+  padding: 7px 22px;
+  margin-bottom: 10px;
+}
+
+.rba-mini--extreme .rba-impact__col {
+  padding: 0 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rba-mini--extreme .rba-impact__label {
+  font-size: 17px;
+  margin: 0 0 4px;
+  height: 21px;
+  display: flex;
+  align-items: center;
+}
+
+.rba-mini--extreme .rba-impact__value {
+  margin: 0;
+  font-size: 46px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.rba-mini--extreme .rba-impact__delta {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 54px;
+  gap: 6px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.rba-mini--extreme .rba-impact__delta svg {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.rba-mini--extreme .rba-impact__col + .rba-impact__col::before {
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+}
+
+.rba-review-col {
+  position: relative;
+  z-index: 5;
+  min-width: 0;
+  height: 653px;
+}
+
+.rba-review {
+  border-radius: 20px;
+  background: var(--rb-card);
+  border: 1px solid var(--rb-line);
+  padding: 14px 22px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.rba-review__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.rba-review__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 78px;
+  height: 78px;
+  border-radius: 999px;
+  background: linear-gradient(155deg, var(--rb-gold) 0%, var(--rb-maroon) 65%, var(--rb-maroon-dark) 100%);
+  color: #fff;
+  font-size: 28px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.rba-review__meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.rba-review__name {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--rb-ink);
+}
+
+.rba-review__datetime {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0 0;
+  font-size: 24px;
+  color: var(--rb-ink-soft);
+}
+
+.rba-review__datetime svg {
+  width: 22px;
+  height: 22px;
+  color: var(--rb-ink-soft);
+  flex-shrink: 0;
+}
+
+.rba-review__sep {
+  color: var(--rb-line-strong);
+}
+
+.rba-review__rating {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.rba-review__rating svg {
+  width: 40px;
+  height: 40px;
+}
+
+.rba-review__rating-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--rb-red);
+}
+
+.rba-quote {
+  position: relative;
+  margin-top: 12px;
+  padding: 20px 26px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--rb-line);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 350px;
+}
+
+.rba-quote__mark {
+  position: absolute;
+  font-family: Georgia, serif;
+  font-size: 64px;
+  line-height: 1;
+  color: var(--rb-maroon);
+  opacity: 0.5;
+}
+
+.rba-quote__mark--open {
+  top: 2px;
+  left: 12px;
+}
+
+.rba-quote__mark--close {
+  bottom: 4px;
+  right: 16px;
+}
+
+.rba-quote__text {
+  margin: 0;
+  color: var(--rb-ink);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.rba-quote__text--lg {
+  font-size: 29px;
+}
+
+.rba-quote__text--md {
+  font-size: 24px;
+}
+
+.rba-quote__text--sm {
+  font-size: 19px;
+}
+
+.rba-quote__text--xs {
+  font-size: 20px;
+}
+
+.rba-quote__text--xxs {
+  font-size: 17px;
+}
+
+/* ---------- columna de IA ---------- */
+
+.rba-insights {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.rba-ribbon {
+  margin: 0 0 17.5px;
+  padding: 10.5px 21px;
+  border-radius: 8px 8px 8px 0;
+  background: var(--rb-maroon);
+  color: #fff8ee;
+  font-family: "Oswald", sans-serif;
+  font-size: 17.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+  width: fit-content;
+}
+
+.rba-ribbon--mt {
+  margin-top: 14px;
+}
+
+.rba-diagnostics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 17.5px;
+  flex-shrink: 0;
+  margin-top: -9px;
+}
+
+.rba-diagnostics__item {
+  position: relative;
+  z-index: 5;
+  border-radius: 14px;
+  background: var(--rb-card);
+  border: 1px solid var(--rb-line);
+  padding: 11px;
+  text-align: center;
+}
+
+.rba-diagnostics__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: var(--rb-cream);
+  margin-bottom: 6px;
+}
+
+.rba-diagnostics__icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.rba-diagnostics__icon--high {
+  color: var(--rb-red);
+  background: rgba(181, 52, 42, 0.12);
+}
+
+.rba-diagnostics__icon--medium {
+  color: var(--rb-warn);
+  background: rgba(201, 152, 47, 0.14);
+}
+
+.rba-diagnostics__icon--low {
+  color: var(--rb-good);
+  background: rgba(63, 125, 58, 0.14);
+}
+
+.rba-diagnostics__icon--neutral {
+  color: var(--rb-ink-soft);
+}
+
+.rba-diagnostics__label {
+  margin: 0;
+  font-family: "Oswald", sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--rb-ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.rba-diagnostics__value {
+  margin: 6px 0 0;
+  font-size: 23px;
+  font-weight: 700;
+  color: var(--rb-ink);
+  overflow-wrap: anywhere;
+}
+
+/* La estructura (icono, padding) de Diagnóstico Nexo se mantiene siempre
+   igual, nunca se encoge ni crece — solo el texto baja de tamaño si el
+   análisis es tan largo que hace falta sitio. */
+.rba-diagnostics--md .rba-diagnostics__label {
+  font-family: "Oswald", sans-serif;
+  font-size: 20px;
+}
+
+.rba-diagnostics--md .rba-diagnostics__value {
+  font-size: 22px;
+  margin-top: 5px;
+}
+
+.rba-diagnostics--sm .rba-diagnostics__label {
+  font-family: "Oswald", sans-serif;
+  font-size: 17px;
+}
+
+.rba-diagnostics--sm .rba-diagnostics__value {
+  font-size: 19px;
+  margin-top: 5px;
+}
+
+.rba-diagnostics--xs .rba-diagnostics__label {
+  font-family: "Oswald", sans-serif;
+  font-size: 15px;
+}
+
+.rba-diagnostics--xs .rba-diagnostics__value {
+  font-size: 17px;
+  margin-top: 5px;
+}
+
+.rba-analysis {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.rba-analysis li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rb-line);
+}
+
+.rba-analysis li:last-child {
+  border-bottom: none;
+}
+
+.rba-analysis__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: var(--rb-cream);
+  color: var(--rb-gold-dark);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.rba-analysis__icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.rba-analysis__copy {
+  min-width: 0;
+  max-width: 485px;
+}
+
+.rba-analysis__label {
+  margin: 0;
+  font-family: "Oswald", sans-serif;
+  font-size: 23px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--rb-maroon);
+  white-space: nowrap;
+}
+
+.rba-analysis__value {
+  margin: 4px 0 0;
+  font-size: 25px;
+  line-height: 1.4;
+  color: var(--rb-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* La estructura (icono, gap, padding) de Análisis Nexo y Diagnóstico Nexo
+   es siempre la misma, nunca crece ni se encoge por el contenido. Solo la
+   letra baja de tamaño si el contenido es tan largo que no cabría —
+   nunca sube por encima del tamaño normal (md). */
+.rba-analysis--md .rba-analysis__label {
+  font-family: "Oswald", sans-serif;
+  font-size: 22px;
+}
+
+.rba-analysis--md .rba-analysis__value {
+  font-size: 21px;
+  line-height: 1.28;
+}
+
+.rba-analysis--sm .rba-analysis__label {
+  font-family: "Oswald", sans-serif;
+  font-size: 19px;
+}
+
+.rba-analysis--sm .rba-analysis__value {
+  font-size: 18px;
+  line-height: 1.28;
+}
+
+.rba-analysis--xs .rba-analysis__label {
+  font-family: "Oswald", sans-serif;
+  font-size: 17px;
+}
+
+.rba-analysis--xs .rba-analysis__value {
+  font-size: 16px;
+  line-height: 1.28;
+  -webkit-line-clamp: 5;
+}
+
+/* ---------- fila inferior de paneles ---------- */
+
+.rba-mini {
+  flex: 1;
+  min-width: 0;
+  border-radius: 16px;
+  background: var(--rb-card);
+  border: 1px solid var(--rb-line);
+  padding: 20px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.rba-mini--under-quote {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -80px;
+  z-index: 3;
+  margin-left: 0;
+  padding: 18px 38px;
+}
+
+.rba-mini--under-quote.rba-mini--short {
+  bottom: 0px;
+}
+
+.rba-mini--shift-sm {
+  margin-left: 140px;
+  padding: 26px;
+}
+
+.rba-mini--shift-sm .rba-mini__band {
+  font-size: 15px;
+  padding: 9px 18px;
+  margin-bottom: 14px;
+}
+
+.rba-mini--shift-sm .rba-impact__value {
+  font-size: 36px;
+  height: 44px;
+}
+
+.rba-mini--shift-sm .rba-impact__delta {
+  font-size: 33px;
+  height: 44px;
+}
+
+.rba-mini--under-quote .rba-mini__band {
+  font-size: 17.5px;
+  padding: 6px 21px;
+  margin-top: -30px;
+  margin-bottom: 5px;
+}
+
+.rba-mini--under-quote .rba-impact__col {
+  padding: 0 21px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.rba-mini--under-quote .rba-impact__label {
+  font-size: 16.5px;
+  margin: 0 0 3px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.rba-mini--under-quote .rba-impact__value {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.rba-mini--under-quote .rba-impact__delta {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 52px;
+  gap: 6px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.rba-mini--under-quote .rba-impact__delta svg {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.rba-mini--under-quote .rba-impact__col + .rba-impact__col::before {
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+}
+
+.rba-impact__stars {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 3px;
+}
+
+.rba-impact__stars .nra-stars {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+}
+
+.rba-impact__stars svg {
+  width: 18px;
+  height: 18px;
+}
+
+.rba-mini__band {
+  margin: 0 0 10px;
+  padding: 6px 12px;
+  border-radius: 7px 7px 7px 0;
+  background: var(--rb-maroon);
+  color: #fff8ee;
+  font-family: "Oswald", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  width: fit-content;
+}
+
+.rba-impact {
+  display: flex;
+  align-items: stretch;
+}
+
+.rba-impact__col {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  padding: 0 12px;
+}
+
+.rba-impact__col + .rba-impact__col::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: var(--rb-line-strong);
+}
+
+.rba-impact__label {
+  margin: 0 0 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--rb-ink-soft);
+}
+
+.rba-impact__value {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--rb-ink);
+}
+
+.rba-impact__value--tone-good {
+  color: var(--rb-good);
+}
+
+.rba-impact__value--tone-warn {
+  color: var(--rb-warn);
+}
+
+.rba-impact__value--tone-bad {
+  color: var(--rb-red);
+}
+
+.rba-impact__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.rba-impact__delta--down {
+  color: var(--rb-red);
+}
+
+.rba-impact__delta--up {
+  color: var(--rb-good);
+}
+
+.rba-impact__delta--flat {
+  color: var(--rb-ink-soft);
+}
+
+/* ---------- footer: conclusión / acción ---------- */
+
+.rba-footer {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin: 14px 293px 0 300px;
+  border-radius: 16px;
+  background: linear-gradient(155deg, #402320 0%, var(--rb-maroon-dark) 100%);
+  padding: 52px 30px;
+  color: #f3ecdc;
+}
+
+.rba-footer--sm {
+  padding: 38px 30px;
+}
+
+.rba-footer--xs {
+  padding: 24px 30px;
+}
+
+.rba-footer__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f3ecdc;
+  flex-shrink: 0;
+}
+
+.rba-footer__icon svg {
+  width: 44px;
+  height: 44px;
+}
+
+.rba-footer__body {
+  min-width: 0;
+}
+
+.rba-footer__label {
+  margin: 0 0 5px;
+  font-family: "Oswald", sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--rb-gold);
+}
+
+.rba-footer__text {
+  margin: 0;
+  line-height: 1.4;
+  color: #f8f4ea;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rba-footer__text--lg {
+  font-size: 23px;
+  -webkit-line-clamp: 2;
+}
+
+.rba-footer__text--md {
+  font-size: 20px;
+  -webkit-line-clamp: 3;
+}
+
+.rba-footer__text--sm {
+  font-size: 17px;
+  -webkit-line-clamp: 3;
+}
+
+.rba-footer__text--xs {
+  font-size: 18px;
+  -webkit-line-clamp: 4;
+}

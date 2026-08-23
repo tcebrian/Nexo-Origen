@@ -1,0 +1,1022 @@
+/* Plantilla Tim Hortons — identidad propia de marca (rojo + café), no un dashboard SaaS. */
+
+@import url("https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;600;700&display=swap");
+
+.tha-canvas {
+  --th-red: #d5011f;
+  --th-red-dark: #a10016;
+  --th-brown: #4a2c1d;
+  --th-brown-dark: #2e1a10;
+  --th-gold: #c9982f;
+  --th-gold-dark: #96701f;
+  --th-ink: #2a1810;
+  --th-ink-soft: #6b5142;
+  --th-cream: #faf3e7;
+  --th-cream-deep: #f0e2c9;
+  --th-card: #f5ead6;
+  --th-line: rgba(42, 24, 16, 0.14);
+  --th-line-strong: rgba(42, 24, 16, 0.22);
+  --th-good: #3f7d3a;
+  --th-warn: #c9982f;
+
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 8% -10%, rgba(255, 255, 255, 0.35) 0%, transparent 45%),
+    radial-gradient(130% 100% at 100% 110%, rgba(213, 1, 31, 0.1) 0%, transparent 50%),
+    linear-gradient(160deg, #fdf7ee 0%, var(--th-cream) 45%, var(--th-cream-deep) 100%);
+  color: var(--th-ink);
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.tha-canvas,
+.tha-canvas *,
+.tha-canvas *::before,
+.tha-canvas *::after {
+  box-sizing: border-box;
+}
+
+.tha-canvas img,
+.tha-canvas svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* ---------- producto: elementos editoriales, no confinados a una tarjeta ---------- */
+
+.tha-product {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  filter: drop-shadow(0 20px 22px rgba(42, 24, 16, 0.3));
+}
+
+.tha-product--coffee {
+  top: 380px;
+  right: -90px;
+  width: 390px;
+  transform: perspective(700px) rotateX(14deg) rotate(-6deg);
+  z-index: 4;
+  filter: drop-shadow(0 16px 14px rgba(42, 24, 16, 0.4)) drop-shadow(0 3px 4px rgba(42, 24, 16, 0.3));
+}
+
+.tha-product--muffin {
+  top: 800px;
+  right: -130px;
+  width: 690px;
+  transform: perspective(750px) rotateX(22deg) rotate(-5deg);
+  z-index: 4;
+  filter: drop-shadow(0 26px 22px rgba(42, 24, 16, 0.42)) drop-shadow(0 6px 6px rgba(42, 24, 16, 0.32));
+}
+
+.tha-product--donuts {
+  bottom: -40px;
+  left: -100px;
+  width: 540px;
+  transform: perspective(750px) rotateX(22deg) rotate(-8deg);
+  z-index: 3;
+  filter: drop-shadow(0 24px 20px rgba(42, 24, 16, 0.42)) drop-shadow(0 6px 6px rgba(42, 24, 16, 0.32));
+}
+
+.tha-sheet {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 20px;
+  width: 100%;
+  height: 100%;
+  padding: 5px 150px 26px 40px;
+}
+
+.tha-sheet > .tha-header {
+  grid-row: 1;
+}
+
+.tha-sheet > .tha-body {
+  grid-row: 2;
+}
+
+.tha-sheet > .tha-footer {
+  grid-row: 4;
+}
+
+/* Diseño extremo: sin footer ni fila espaciadora, recupera esas 2 filas y
+   sus gaps (40px) para el comentario/impacto en la media. */
+.tha-sheet.tha-sheet--extreme {
+  grid-template-rows: auto 1fr;
+}
+
+/* ---------- header editorial ---------- */
+
+.tha-header {
+  position: relative;
+  display: grid;
+  grid-template-columns: 620px 1fr;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 14px;
+}
+
+.tha-header__alert {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.tha-header__alert > div {
+  margin-left: 410px;
+  margin-top: 8px;
+}
+
+.tha-header__title {
+  margin: 0;
+  font-family: "Oswald", sans-serif;
+  font-size: 52px;
+  font-weight: 600;
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  color: var(--th-ink);
+  text-transform: uppercase;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.tha-header__title-neg {
+  display: inline-block;
+  font-family: "Anton", sans-serif;
+  font-size: 97px;
+  font-weight: 400;
+  color: var(--th-red);
+  letter-spacing: 0.01em;
+  line-height: 0.95;
+}
+
+.tha-header__sub {
+  margin: 6px 0 0;
+  font-family: "Oswald", sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--th-ink-soft);
+  white-space: nowrap;
+}
+
+.tha-header__wordmark {
+  position: absolute;
+  top: 16px;
+  left: 60px;
+  height: 148px;
+  width: auto;
+  object-fit: contain;
+  z-index: 4;
+  filter: drop-shadow(0 4px 6px rgba(42, 24, 16, 0.18));
+}
+
+.tha-header__restaurant {
+  position: relative;
+  min-width: 0;
+}
+
+.tha-header__restaurant-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 15px auto 0;
+  transform: translateX(40px);
+  padding: 6px 16px;
+  border-radius: 7px;
+  font-family: "Oswald", sans-serif;
+  font-size: 32px;
+  font-weight: 500;
+  color: var(--th-red);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tha-header__restaurant-location svg {
+  width: 32px;
+  height: 32px;
+  color: var(--th-red);
+  flex-shrink: 0;
+}
+
+.tha-header__maple {
+  position: absolute;
+  top: 115px;
+  right: 620px;
+  transform: translateY(-50%);
+  width: 126px;
+  height: auto;
+  z-index: 4;
+  filter: drop-shadow(0 3px 5px rgba(42, 24, 16, 0.25));
+}
+
+.tha-header__divider {
+  position: absolute;
+  top: 48px;
+  height: 135px;
+  right: 306px;
+  width: 3px;
+  border-radius: 2px;
+  background: rgba(42, 24, 16, 0.3);
+  z-index: 3;
+}
+
+.tha-header__nexo {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tha-header__nexo-logo {
+  height: 175px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(42, 24, 16, 0.18));
+}
+
+/* ---------- cuerpo: reseña + inteligencia artificial ---------- */
+
+.tha-body {
+  display: grid;
+  grid-template-columns: 48% 1fr;
+  gap: 20px;
+  min-height: 0;
+  align-items: start;
+  margin-left: 40px;
+}
+
+.tha-body--extreme {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 10px 320px 0 330px;
+  min-height: 0;
+}
+
+.tha-review.tha-review--extreme {
+  width: 100%;
+  margin-top: 15px;
+  min-height: 720px;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.tha-quote.tha-quote--extreme {
+  min-height: 593px;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.tha-mini--extreme {
+  position: relative;
+  z-index: 7;
+  width: 100%;
+  margin-top: -40px;
+  padding: 24px 40px;
+}
+
+.tha-mini--extreme .tha-mini__band {
+  font-size: 18px;
+  padding: 7px 22px;
+  margin-bottom: 10px;
+}
+
+.tha-mini--extreme .tha-impact__col {
+  padding: 0 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tha-mini--extreme .tha-impact__label {
+  font-size: 17px;
+  margin: 0 0 4px;
+  height: 21px;
+  display: flex;
+  align-items: center;
+}
+
+.tha-mini--extreme .tha-impact__value {
+  margin: 0;
+  font-size: 46px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.tha-mini--extreme .tha-impact__delta {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 54px;
+  gap: 6px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.tha-mini--extreme .tha-impact__delta svg {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.tha-mini--extreme .tha-impact__col + .tha-impact__col::before {
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+}
+
+.tha-review-col {
+  position: relative;
+  z-index: 5;
+  min-width: 0;
+  height: 653px;
+}
+
+.tha-review {
+  border-radius: 20px;
+  background: var(--th-card);
+  border: 1px solid var(--th-line);
+  padding: 14px 22px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tha-review__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.tha-review__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 78px;
+  height: 78px;
+  border-radius: 999px;
+  background: linear-gradient(155deg, var(--th-gold) 0%, var(--th-red) 65%, var(--th-red-dark) 100%);
+  color: #fff;
+  font-size: 28px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.tha-review__meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.tha-review__name {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--th-ink);
+}
+
+.tha-review__datetime {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0 0;
+  font-size: 24px;
+  color: var(--th-ink-soft);
+}
+
+.tha-review__datetime svg {
+  width: 22px;
+  height: 22px;
+  color: var(--th-ink-soft);
+  flex-shrink: 0;
+}
+
+.tha-review__sep {
+  color: var(--th-line-strong);
+}
+
+.tha-review__rating {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.tha-review__rating svg {
+  width: 40px;
+  height: 40px;
+}
+
+.tha-review__rating-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--th-red);
+}
+
+.tha-quote {
+  position: relative;
+  margin-top: 12px;
+  padding: 20px 26px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--th-line);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 350px;
+}
+
+.tha-quote__mark {
+  position: absolute;
+  font-family: Georgia, serif;
+  font-size: 64px;
+  line-height: 1;
+  color: var(--th-red);
+  opacity: 0.5;
+}
+
+.tha-quote__mark--open {
+  top: 2px;
+  left: 12px;
+}
+
+.tha-quote__mark--close {
+  bottom: 4px;
+  right: 16px;
+}
+
+.tha-quote__text {
+  margin: 0;
+  color: var(--th-ink);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.tha-quote__text--lg {
+  font-size: 29px;
+}
+
+.tha-quote__text--md {
+  font-size: 24px;
+}
+
+.tha-quote__text--sm {
+  font-size: 19px;
+}
+
+.tha-quote__text--xs {
+  font-size: 20px;
+}
+
+.tha-quote__text--xxs {
+  font-size: 17px;
+}
+
+/* ---------- columna de IA ---------- */
+
+.tha-insights {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tha-ribbon {
+  margin: 0 0 17.5px;
+  padding: 10.5px 21px;
+  border-radius: 8px 8px 8px 0;
+  background: var(--th-red);
+  color: #fff8ee;
+  font-family: "Oswald", sans-serif;
+  font-size: 17.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+  width: fit-content;
+}
+
+.tha-ribbon--mt {
+  margin-top: 14px;
+}
+
+.tha-diagnostics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 17.5px;
+  flex-shrink: 0;
+  margin-top: -9px;
+}
+
+.tha-diagnostics__item {
+  position: relative;
+  z-index: 5;
+  border-radius: 14px;
+  background: var(--th-card);
+  border: 1px solid var(--th-line);
+  padding: 11px;
+  text-align: center;
+}
+
+.tha-diagnostics__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: var(--th-cream);
+  margin-bottom: 6px;
+}
+
+.tha-diagnostics__icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.tha-diagnostics__icon--high {
+  color: var(--th-red);
+  background: rgba(213, 1, 31, 0.12);
+}
+
+.tha-diagnostics__icon--medium {
+  color: var(--th-warn);
+  background: rgba(201, 152, 47, 0.14);
+}
+
+.tha-diagnostics__icon--low {
+  color: var(--th-good);
+  background: rgba(63, 125, 58, 0.14);
+}
+
+.tha-diagnostics__icon--neutral {
+  color: var(--th-ink-soft);
+}
+
+.tha-diagnostics__label {
+  margin: 0;
+  font-family: "Oswald", sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--th-ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.tha-diagnostics__value {
+  margin: 6px 0 0;
+  font-size: 23px;
+  font-weight: 700;
+  color: var(--th-ink);
+  overflow-wrap: anywhere;
+}
+
+/* La estructura (icono, padding) de Diagnóstico Nexo se mantiene siempre
+   igual, nunca se encoge ni crece — solo el texto baja de tamaño si el
+   análisis es tan largo que hace falta sitio. */
+.tha-diagnostics--md .tha-diagnostics__label {
+  font-family: "Oswald", sans-serif;
+  font-size: 20px;
+}
+
+.tha-diagnostics--md .tha-diagnostics__value {
+  font-size: 22px;
+  margin-top: 5px;
+}
+
+.tha-diagnostics--sm .tha-diagnostics__label {
+  font-family: "Oswald", sans-serif;
+  font-size: 17px;
+}
+
+.tha-diagnostics--sm .tha-diagnostics__value {
+  font-size: 19px;
+  margin-top: 5px;
+}
+
+.tha-diagnostics--xs .tha-diagnostics__label {
+  font-family: "Oswald", sans-serif;
+  font-size: 15px;
+}
+
+.tha-diagnostics--xs .tha-diagnostics__value {
+  font-size: 17px;
+  margin-top: 5px;
+}
+
+.tha-analysis {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.tha-analysis li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--th-line);
+}
+
+.tha-analysis li:last-child {
+  border-bottom: none;
+}
+
+.tha-analysis__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: var(--th-cream);
+  color: var(--th-gold-dark);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.tha-analysis__icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.tha-analysis__copy {
+  min-width: 0;
+  max-width: 485px;
+}
+
+.tha-analysis__label {
+  margin: 0;
+  font-family: "Oswald", sans-serif;
+  font-size: 23px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--th-red);
+  white-space: nowrap;
+}
+
+.tha-analysis__value {
+  margin: 4px 0 0;
+  font-size: 25px;
+  line-height: 1.4;
+  color: var(--th-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* La estructura (icono, gap, padding) de Análisis Nexo y Diagnóstico Nexo
+   es siempre la misma, nunca crece ni se encoge por el contenido. Solo la
+   letra baja de tamaño si el contenido es tan largo que no cabría —
+   nunca sube por encima del tamaño normal (md). */
+.tha-analysis--md .tha-analysis__label {
+  font-family: "Oswald", sans-serif;
+  font-size: 22px;
+}
+
+.tha-analysis--md .tha-analysis__value {
+  font-size: 21px;
+  line-height: 1.28;
+}
+
+.tha-analysis--sm .tha-analysis__label {
+  font-family: "Oswald", sans-serif;
+  font-size: 19px;
+}
+
+.tha-analysis--sm .tha-analysis__value {
+  font-size: 18px;
+  line-height: 1.28;
+}
+
+.tha-analysis--xs .tha-analysis__label {
+  font-family: "Oswald", sans-serif;
+  font-size: 17px;
+}
+
+.tha-analysis--xs .tha-analysis__value {
+  font-size: 16px;
+  line-height: 1.28;
+  -webkit-line-clamp: 5;
+}
+
+/* ---------- fila inferior de paneles ---------- */
+
+.tha-mini {
+  flex: 1;
+  min-width: 0;
+  border-radius: 16px;
+  background: var(--th-card);
+  border: 1px solid var(--th-line);
+  padding: 20px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.tha-mini--under-quote {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -80px;
+  z-index: 3;
+  margin-left: 0;
+  padding: 18px 38px;
+}
+
+.tha-mini--under-quote.tha-mini--short {
+  bottom: -18px;
+}
+
+.tha-mini--shift-sm {
+  margin-left: 140px;
+  padding: 26px;
+}
+
+.tha-mini--shift-sm .tha-mini__band {
+  font-size: 15px;
+  padding: 9px 18px;
+  margin-bottom: 14px;
+}
+
+.tha-mini--shift-sm .tha-impact__value {
+  font-size: 36px;
+  height: 44px;
+}
+
+.tha-mini--shift-sm .tha-impact__delta {
+  font-size: 33px;
+  height: 44px;
+}
+
+.tha-mini--under-quote .tha-mini__band {
+  font-size: 17.5px;
+  padding: 6px 21px;
+  margin-top: -30px;
+  margin-bottom: 5px;
+}
+
+.tha-mini--under-quote .tha-impact__col {
+  padding: 0 21px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.tha-mini--under-quote .tha-impact__label {
+  font-size: 16.5px;
+  margin: 0 0 3px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.tha-mini--under-quote .tha-impact__value {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.tha-mini--under-quote .tha-impact__delta {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 52px;
+  gap: 6px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.tha-mini--under-quote .tha-impact__delta svg {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.tha-mini--under-quote .tha-impact__col + .tha-impact__col::before {
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+}
+
+.tha-impact__stars {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 3px;
+}
+
+.tha-impact__stars .nra-stars {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+}
+
+.tha-impact__stars svg {
+  width: 18px;
+  height: 18px;
+}
+
+.tha-mini__band {
+  margin: 0 0 10px;
+  padding: 6px 12px;
+  border-radius: 7px 7px 7px 0;
+  background: var(--th-red);
+  color: #fff8ee;
+  font-family: "Oswald", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  width: fit-content;
+}
+
+.tha-impact {
+  display: flex;
+  align-items: stretch;
+}
+
+.tha-impact__col {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  padding: 0 12px;
+}
+
+.tha-impact__col + .tha-impact__col::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: var(--th-line-strong);
+}
+
+.tha-impact__label {
+  margin: 0 0 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--th-ink-soft);
+}
+
+.tha-impact__value {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--th-ink);
+}
+
+.tha-impact__value--tone-good {
+  color: var(--th-good);
+}
+
+.tha-impact__value--tone-warn {
+  color: var(--th-warn);
+}
+
+.tha-impact__value--tone-bad {
+  color: var(--th-red);
+}
+
+.tha-impact__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.tha-impact__delta--down {
+  color: var(--th-red);
+}
+
+.tha-impact__delta--up {
+  color: var(--th-good);
+}
+
+.tha-impact__delta--flat {
+  color: var(--th-ink-soft);
+}
+
+/* ---------- footer: conclusión / acción ---------- */
+
+.tha-footer {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin: 14px 293px 0 300px;
+  border-radius: 16px;
+  background: linear-gradient(155deg, #3a1f14 0%, var(--th-brown-dark) 100%);
+  padding: 36px 30px;
+  color: #f3ecdc;
+}
+
+.tha-footer--sm {
+  padding: 38px 30px;
+}
+
+.tha-footer--xs {
+  padding: 24px 30px;
+}
+
+.tha-footer__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f3ecdc;
+  flex-shrink: 0;
+}
+
+.tha-footer__icon svg {
+  width: 44px;
+  height: 44px;
+}
+
+.tha-footer__body {
+  min-width: 0;
+}
+
+.tha-footer__label {
+  margin: 0 0 5px;
+  font-family: "Oswald", sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--th-gold);
+}
+
+.tha-footer__text {
+  margin: 0;
+  line-height: 1.4;
+  color: #f8f4ea;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tha-footer__text--lg {
+  font-size: 23px;
+  -webkit-line-clamp: 2;
+}
+
+.tha-footer__text--md {
+  font-size: 20px;
+  -webkit-line-clamp: 3;
+}
+
+.tha-footer__text--sm {
+  font-size: 17px;
+  -webkit-line-clamp: 3;
+}
+
+.tha-footer__text--xs {
+  font-size: 18px;
+  -webkit-line-clamp: 4;
+}
