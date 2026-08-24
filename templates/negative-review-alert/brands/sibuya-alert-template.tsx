@@ -230,6 +230,13 @@ export const SibuyaAlertTemplate = forwardRef<HTMLDivElement, SibuyaAlertTemplat
           aria-hidden
           className="sba-product sba-product--soy"
         />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/sibuya/sb-sushi2.png")}
+          alt=""
+          aria-hidden
+          className="sba-product sba-product--sushi2"
+        />
 
         <div className={`sba-sheet ${isExtremeComment ? "sba-sheet--extreme" : ""}`}>
           {/* Header editorial */}

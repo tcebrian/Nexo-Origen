@@ -33,7 +33,7 @@ export function mapReportRowToAlertTemplateProps(
   };
 }
 
-export const SUPPORTED_NEGATIVE_REVIEW_BRANDS: BrandId[] = ["bk", "pp", "sg", "th", "ribs", "sibuya", "tv"];
+export const SUPPORTED_NEGATIVE_REVIEW_BRANDS: BrandId[] = ["bk", "pp", "sg", "th", "ribs", "sibuya", "tv", "vault"];
 
 export { NegativeReviewAlertTemplate } from "@/templates/negative-review-alert";
 export { mapReportRowToAlertData } from "@/lib/templates/negative-review-alert/map-from-report-row";

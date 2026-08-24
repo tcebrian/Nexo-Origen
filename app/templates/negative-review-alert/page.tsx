@@ -5,6 +5,8 @@ import { SantaGloriaAlertTemplate } from "@/templates/negative-review-alert/bran
 import { RibsAlertTemplate } from "@/templates/negative-review-alert/brands/ribs-alert-template";
 import { TimHortonsAlertTemplate } from "@/templates/negative-review-alert/brands/tim-hortons-alert-template";
 import { SibuyaAlertTemplate } from "@/templates/negative-review-alert/brands/sibuya-alert-template";
+import { TabernaVolapieAlertTemplate } from "@/templates/negative-review-alert/brands/taberna-volapie-alert-template";
+import { VaultAlertTemplate } from "@/templates/negative-review-alert/brands/vault-alert-template";
 import { parseAlertFromSearchParams } from "@/lib/templates/negative-review-alert/parse-payload";
 import { SAMPLE_NEGATIVE_REVIEW_ALERT } from "@/lib/templates/negative-review-alert/sample-data";
 
@@ -40,14 +42,20 @@ export default async function NegativeReviewAlertTemplatePage({ searchParams }: 
               ? TimHortonsAlertTemplate
               : data.brand === "sibuya"
                 ? SibuyaAlertTemplate
-                : NegativeReviewAlertTemplate;
+                : data.brand === "tv"
+                  ? TabernaVolapieAlertTemplate
+                  : data.brand === "vault"
+                    ? VaultAlertTemplate
+                    : NegativeReviewAlertTemplate;
   const background =
     data.brand === "bk" ||
     data.brand === "pp" ||
     data.brand === "sg" ||
     data.brand === "ribs" ||
     data.brand === "th" ||
-    data.brand === "sibuya"
+    data.brand === "sibuya" ||
+    data.brand === "tv" ||
+    data.brand === "vault"
       ? "#f3ecdc"
       : "#e8e4dd";
 

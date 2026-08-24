@@ -15,7 +15,7 @@ const CAPTURE_SCALE_FACTOR = 3;
 // brands/*.tsx) — hay que listarlos todos aquí o Playwright espera
 // indefinidamente al buscar un selector que no existe en esa plantilla.
 const CANVAS_SELECTOR =
-  ".nra-canvas, .bka-canvas, .ppa-canvas, .sga-canvas, .rba-canvas, .tha-canvas, .sba-canvas";
+  ".nra-canvas, .bka-canvas, .ppa-canvas, .sga-canvas, .rba-canvas, .tha-canvas, .sba-canvas, .tva-canvas, .vaa-canvas";
 
 async function waitForRender(page: import("playwright").Page): Promise<void> {
   await page.waitForSelector(CANVAS_SELECTOR);

@@ -470,6 +470,185 @@ export const SAMPLE_SIBUYA_LONG: NegativeReviewAlertData = {
   analisis_pending: false,
 };
 
+/** Datos base de layout para preview de Taberna Volapié — sin análisis IA inventado. */
+const SAMPLE_NEGATIVE_REVIEW_ALERT_TV: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT,
+  brand: "tv",
+  brand_name: "Taberna Volapié",
+  brand_logo_url: "/brands/taberna-volapie-transparent.png",
+  restaurant_name: "TABERNA VOLAPIÉ MADRID",
+  restaurant_location: "Madrid",
+  restaurant_address: "Calle de la Cava Baja, 24, 28005 Madrid",
+};
+
+/**
+ * Fixture de prueba visual para la plantilla de Taberna Volapié — con todos
+ * los campos de análisis IA rellenos (texto de ejemplo, no un caso real)
+ * para comprobar el diseño normal (comentario ≤900 caracteres) completo.
+ */
+export const SAMPLE_TV_FULL: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_TV,
+  review_author: "Marta Solís",
+  review_comment:
+    "Fuimos a cenar un sábado por la noche y pedimos varias raciones para compartir, y la experiencia dejó bastante que desear para el precio que tiene el local. La tabla de ibéricos venía con muy poca cantidad para lo que se paga, y las croquetas estaban frías por dentro, como si hubieran salido de la nevera hacía poco. Tardaron más de cuarenta minutos en traer el segundo plato a pesar de que el local no estaba especialmente lleno esa noche. Cuando avisamos de que las croquetas estaban frías, la persona que nos atendió se limitó a decir que así se sirven y no ofreció cambiarlas. El vino sí estaba bien elegido, todo hay que decirlo, pero entre la espera y la comida fría la experiencia general fue bastante decepcionante para lo que cuesta.",
+  detected_reasons: ["Comida fría", "Tiempo de espera", "Calidad producto"],
+  sentiment: "Negativo",
+  risk_level: "ALTO",
+  recommendation:
+    "Revisar las raciones de la tabla de ibéricos y el mantenimiento de temperatura de las croquetas, y reforzar la formación de sala para gestionar quejas con una disculpa o compensación real.",
+  ai_summary:
+    "Cliente reporta croquetas frías y raciones escasas para el precio, con una espera larga y una atención percibida como poco resolutiva.",
+  main_motive: "Comida fría",
+  detected_impact: "Bajada de 0.18 puntos en la media del local en el periodo analizado.",
+  employee_mentioned: null,
+  analisis_pending: false,
+  period_label: "18 may 2025 – 24 may 2025",
+};
+
+/**
+ * Fixture de prueba visual — comentario corto (texto de ejemplo, no un caso
+ * real) para comprobar el diseño normal de Taberna Volapié con un
+ * comentario breve.
+ */
+export const SAMPLE_TV_SHORT: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_TV,
+  review_author: "Ricardo Peña",
+  review_comment:
+    "Las croquetas llegaron frías y tuvimos que esperar más de cuarenta minutos aunque el local estaba medio vacío. Por el precio que tiene, esperaba bastante más.",
+  previous_rating: 4.33,
+  current_rating: 4.15,
+  rating_impact: -0.18,
+  review_count: 189,
+  lifetime_rating: 4.15,
+  detected_reasons: ["Comida fría", "Lentitud"],
+  sentiment: "Negativo",
+  risk_level: "MEDIO",
+  recommendation: "Revisar los tiempos de servicio y la temperatura de entrega de las croquetas.",
+  ai_summary: "Cliente insatisfecho por croquetas frías y atención lenta.",
+  main_motive: "Comida fría",
+  detected_impact: "Posible bajada leve en la media si se repite.",
+  employee_mentioned: null,
+  analisis_pending: false,
+};
+
+/**
+ * Fixture de prueba visual — comentario > 900 caracteres (texto de ejemplo,
+ * no un caso real) para comprobar el diseño largo de Taberna Volapié
+ * (centrado, solo comentario + Impacto en la media).
+ */
+export const SAMPLE_TV_LONG: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_TV,
+  review_author: "Fernando Casas",
+  review_comment:
+    "Fuimos a celebrar un cumpleaños en grupo y reservamos con antelación, y la experiencia fue de las peores que hemos tenido en esta taberna. Para empezar, a pesar de la reserva confirmada, al llegar nos dijeron que la mesa no estaba lista y tuvimos que esperar de pie casi veinte minutos en la entrada. Cuando por fin nos sentaron, pedimos varias raciones para compartir y una tabla de quesos, y la mitad de los platos llegaron fríos mientras el resto seguía en cocina, así que unos empezaron a comer mientras otros esperaban todavía su plato. Una de las raciones de croquetas venía con bastante menos cantidad de la habitual, y al comentarlo nos dijeron que así había salido esa ración sin ofrecer completarla. El vino llegó correcto, eso hay que decirlo, pero entre la espera y la comida fría la experiencia general fue bastante decepcionante justo en un cumpleaños que se suponía especial. Cuando pedimos hablar con alguien responsable, tardaron otros quince minutos en atendernos y la respuesta fue bastante seca, sin ninguna compensación. Es la segunda vez que tenemos un problema parecido en este mismo local, y cada vez nos genera menos confianza volver a repetir.",
+  previous_rating: 4.19,
+  current_rating: 3.98,
+  rating_impact: -0.21,
+  review_count: 231,
+  lifetime_rating: 3.98,
+  detected_reasons: [],
+  sentiment: "Muy negativo",
+  risk_level: "ALTO",
+  recommendation:
+    "Revisar el sistema de reservas para grupos, coordinar la salida conjunta de platos en cocina y reforzar la formación de sala para resolver incidencias con una compensación real.",
+  ai_summary:
+    "El cliente tuvo que esperar pese a tener reserva, los platos llegaron descoordinados y fríos, una ración de croquetas venía incompleta y la gestión de la queja fue lenta y sin compensación. Es la segunda incidencia similar en el mismo local.",
+  main_motive: "Reserva no respetada, platos descoordinados y producto por debajo de lo esperado.",
+  detected_impact:
+    "El cliente está muy insatisfecho por la reincidencia del problema y la falta de una disculpa con compensación real, lo que afecta a su confianza en el local.",
+  employee_mentioned: null,
+  analisis_pending: false,
+};
+
+/** Datos base de layout para preview de Vault — sin análisis IA inventado. */
+const SAMPLE_NEGATIVE_REVIEW_ALERT_VAULT: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT,
+  brand: "vault",
+  brand_name: "Vault",
+  brand_logo_url: "/brands/vault.svg",
+  restaurant_name: "VAULT MADRID",
+  restaurant_location: "Madrid",
+  restaurant_address: "Calle de Fuencarral, 45, 28004 Madrid",
+};
+
+/**
+ * Fixture de prueba visual para la plantilla de Vault — con todos los
+ * campos de análisis IA rellenos (texto de ejemplo, no un caso real) para
+ * comprobar el diseño normal (comentario ≤900 caracteres) completo.
+ */
+export const SAMPLE_VAULT_FULL: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_VAULT,
+  review_author: "Diego Herrero",
+  review_comment:
+    "Pedimos una hamburguesa doble y una ración de patatas, y la experiencia dejó bastante que desear para el precio que tiene el local. La hamburguesa venía prácticamente fría por dentro, como si hubiera salido de la nevera hacía poco y no la hubieran vuelto a calentar del todo, y el pan estaba bastante duro. Tardaron casi veinticinco minutos en traer el pedido a pesar de que el local no estaba lleno esa noche. Cuando avisamos de que la carne estaba fría, la persona que nos atendió se limitó a decir que así se sirve y no ofreció cambiarla ni ningún tipo de disculpa. Las patatas sí estaban bien, todo hay que decirlo, pero entre la espera y la carne fría la experiencia general fue bastante decepcionante para lo que cuesta.",
+  detected_reasons: ["Comida fría", "Tiempo de espera", "Atención al cliente"],
+  sentiment: "Negativo",
+  risk_level: "ALTO",
+  recommendation:
+    "Revisar el mantenimiento de temperatura de las hamburguesas en el punto de calor y reforzar la formación de sala para gestionar quejas con una disculpa o compensación real.",
+  ai_summary:
+    "Cliente reporta hamburguesa fría y pan duro, con una espera larga y una atención percibida como poco resolutiva.",
+  main_motive: "Comida fría",
+  detected_impact: "Bajada de 0.2 puntos en la media del local en el periodo analizado.",
+  employee_mentioned: null,
+  analisis_pending: false,
+  period_label: "18 may 2025 – 24 may 2025",
+};
+
+/**
+ * Fixture de prueba visual — comentario corto (texto de ejemplo, no un caso
+ * real) para comprobar el diseño normal de Vault con un comentario breve.
+ */
+export const SAMPLE_VAULT_SHORT: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_VAULT,
+  review_author: "Sonia Blázquez",
+  review_comment:
+    "La hamburguesa llegó fría y tuvimos que esperar más de veinticinco minutos aunque el local estaba medio vacío. Por el precio que tiene, esperaba bastante más rapidez.",
+  previous_rating: 4.33,
+  current_rating: 4.13,
+  rating_impact: -0.2,
+  review_count: 204,
+  lifetime_rating: 4.13,
+  detected_reasons: ["Comida fría", "Lentitud"],
+  sentiment: "Negativo",
+  risk_level: "MEDIO",
+  recommendation: "Revisar los tiempos de servicio y la temperatura de entrega de las hamburguesas.",
+  ai_summary: "Cliente insatisfecho por hamburguesa fría y atención lenta.",
+  main_motive: "Comida fría",
+  detected_impact: "Posible bajada leve en la media si se repite.",
+  employee_mentioned: null,
+  analisis_pending: false,
+};
+
+/**
+ * Fixture de prueba visual — comentario > 900 caracteres (texto de ejemplo,
+ * no un caso real) para comprobar el diseño largo de Vault (centrado, solo
+ * comentario + Impacto en la media).
+ */
+export const SAMPLE_VAULT_LONG: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_VAULT,
+  review_author: "Álvaro Nieto",
+  review_comment:
+    "Fuimos a celebrar un cumpleaños en grupo y reservamos con antelación, y la experiencia fue de las peores que hemos tenido en esta cadena. Para empezar, a pesar de la reserva confirmada, al llegar nos dijeron que la mesa no estaba lista y tuvimos que esperar de pie casi veinte minutos en la entrada. Cuando por fin nos sentaron, pedimos varias hamburguesas y una ración de patatas para compartir, y la mitad de los platos llegaron fríos mientras el resto seguía en cocina, así que unos empezaron a comer mientras otros esperaban todavía su plato. Una de las hamburguesas venía con bastante menos carne de lo habitual, y al comentarlo nos dijeron que así había salido esa pieza sin ofrecer cambiarla. Las patatas llegaron frías y grasientas, como si llevaran tiempo hechas. Cuando pedimos hablar con alguien responsable para comentar todo esto, tardaron otros quince minutos en atendernos y la respuesta fue bastante seca, sin ninguna compensación por una reserva de cumpleaños que se suponía especial. Es la segunda vez que tenemos un problema parecido en este mismo local, y cada vez nos genera menos confianza volver a repetir.",
+  previous_rating: 4.19,
+  current_rating: 3.96,
+  rating_impact: -0.23,
+  review_count: 268,
+  lifetime_rating: 3.96,
+  detected_reasons: [],
+  sentiment: "Muy negativo",
+  risk_level: "ALTO",
+  recommendation:
+    "Revisar el sistema de reservas para grupos, coordinar la salida conjunta de platos en cocina y reforzar la formación de sala para resolver incidencias con una compensación real.",
+  ai_summary:
+    "El cliente tuvo que esperar pese a tener reserva, los platos llegaron descoordinados y fríos, una hamburguesa venía con poca carne y la gestión de la queja fue lenta y sin compensación. Es la segunda incidencia similar en el mismo local.",
+  main_motive: "Reserva no respetada, platos descoordinados y producto por debajo de lo esperado.",
+  detected_impact:
+    "El cliente está muy insatisfecho por la reincidencia del problema y la falta de una disculpa con compensación real, lo que afecta a su confianza en el local.",
+  employee_mentioned: null,
+  analisis_pending: false,
+};
+
 /** Datos base de layout para preview de Tim Hortons — sin análisis IA inventado. */
 const SAMPLE_NEGATIVE_REVIEW_ALERT_TH: NegativeReviewAlertData = {
   ...SAMPLE_NEGATIVE_REVIEW_ALERT,
