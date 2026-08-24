@@ -1,6 +1,6 @@
 import { dedupeResenas } from "@/lib/review-metrics";
 import { REPUTATION_TARGET } from "@/lib/review-metrics";
-import type { ResenaRow } from "@/lib/supabase/resenas";
+import { getResenaActivityDateValue, type ResenaRow } from "@/lib/supabase/resenas";
 import { computeNegativesTolerance } from "@/lib/prevent/calculate";
 import { getTargetProgress } from "./reputation-math";
 
@@ -31,12 +31,11 @@ export function computeNpsFromResenas(resenas: ResenaRow[]): number {
   return Math.round(((promoters - detractors) / rows.length) * 100);
 }
 
-export function sortResenasByDateDesc<
-  T extends { fecha_resena?: string | null; created_at?: string | null },
->(rows: T[]): T[] {
+/** Orden de más reciente a más antigua por fecha de actividad (edición si la hay, si no la original). */
+export function sortResenasByDateDesc<T extends ResenaRow>(rows: T[]): T[] {
   return [...rows].sort((a, b) => {
-    const da = a.fecha_resena ?? a.created_at ?? "";
-    const db = b.fecha_resena ?? b.created_at ?? "";
+    const da = getResenaActivityDateValue(a) ?? "";
+    const db = getResenaActivityDateValue(b) ?? "";
     return db.localeCompare(da);
   });
 }

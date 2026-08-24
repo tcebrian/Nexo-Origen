@@ -560,6 +560,7 @@
   letter-spacing: 0.06em;
   flex-shrink: 0;
   width: fit-content;
+  white-space: nowrap;
 }
 
 .bka-ribbon--mt {
@@ -998,6 +999,7 @@
   font-weight: 800;
   letter-spacing: 0.05em;
   width: fit-content;
+  white-space: nowrap;
 }
 
 .bka-incidents {

@@ -229,6 +229,7 @@ export function createRestaurantsRepository(loadPeriod: PeriodLoader): Restauran
                     ? ("positive" as const)
                     : ("neutral" as const),
               motive: review.motiveLabel,
+              editada: review.editada,
             };
           }),
           reportHref: "/dashboard/informes",

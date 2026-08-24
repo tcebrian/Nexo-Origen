@@ -27,6 +27,10 @@ export type ResenaRow = {
   comentario?: string | null;
   autor?: string | null;
   fecha_resena?: string | null;
+  /** true si la reseña fue editada tras su publicación original. */
+  editada?: boolean | null;
+  /** Fecha/hora de la última edición (solo relevante si editada === true). */
+  fecha_ultima_edicion?: string | null;
   restaurante_nombre?: string | null;
   restaurante?: string | null;
   marca?: string | null;
@@ -35,6 +39,17 @@ export type ResenaRow = {
   empleado?: string | null;
   nombre_empleado?: string | null;
 };
+
+/**
+ * Fecha de actividad de una reseña: si fue editada y tiene fecha de última
+ * edición, esa; si no, la fecha original (o created_at como último recurso).
+ * Se usa para decidir en qué periodo cae la reseña y para ordenarla — la
+ * fecha original (fecha_resena) se conserva siempre para mostrarla.
+ */
+export function getResenaActivityDateValue(row: ResenaRow): string | null {
+  if (row.editada === true && row.fecha_ultima_edicion) return row.fecha_ultima_edicion;
+  return row.fecha_resena ?? row.created_at ?? null;
+}
 
 function getInitials(author: string): string {
   const parts = author.trim().split(/\s+/).filter(Boolean);
@@ -168,6 +183,9 @@ export function mapResenaToReview(
   const author = row.autor?.trim() || "Anónimo";
   const dateValue = row.fecha_resena ?? row.created_at;
   const date = dateValue ? new Date(dateValue) : new Date();
+  const editada = row.editada === true;
+  const activityDateValue = getResenaActivityDateValue(row);
+  const activityDate = activityDateValue ? new Date(activityDateValue) : date;
 
   const mediaBefore = mediaImpact?.mediaBefore ?? null;
   const mediaAfter = mediaImpact?.mediaAfter ?? null;
@@ -201,6 +219,8 @@ export function mapResenaToReview(
     originalText: translation ? originalComment : undefined,
     originalLanguage: translation ? translation.detectedLanguage : undefined,
     date,
+    activityDate,
+    editada,
     location: options?.location ?? row.direccion ?? undefined,
     source: "google",
     sentiment: iaFields.iaPending ? operationalSentiment : iaFields.sentiment,

@@ -62,7 +62,12 @@ export type Review = {
   originalText?: string;
   /** Idioma detectado del original (ISO, ej. "EN") — solo presente junto a `originalText`. */
   originalLanguage?: string | null;
+  /** Fecha original de la reseña — se conserva aunque haya sido editada. */
   date: Date;
+  /** Fecha de última edición si editada === true, si no igual a `date`. Úsala para ordenar. */
+  activityDate: Date;
+  /** true si la reseña fue editada tras su publicación original. */
+  editada: boolean;
   location?: string;
   source: ReviewSource;
   sentiment: ReviewSentiment;

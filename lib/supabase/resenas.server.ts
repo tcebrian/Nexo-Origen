@@ -12,8 +12,6 @@ import { SUPABASE_TABLES } from "@/lib/supabase/tables";
 import type { PeriodQuery } from "./kpi-restaurantes";
 import type { ResenaRow } from "./resenas";
 
-const DATE_FILTER_COLUMNS = ["fecha_resena", "created_at"] as const;
-
 function toNumber(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
@@ -42,6 +40,8 @@ function normalizeResena(row: Record<string, unknown>): ResenaRow {
     comentario: pickString(row, "comentario", "texto", "text", "review_text"),
     autor: pickString(row, "autor", "author", "nombre_autor"),
     fecha_resena: pickString(row, "fecha_resena", "fecha", "review_date") ?? (row.created_at ? String(row.created_at) : null),
+    editada: row.editada === true,
+    fecha_ultima_edicion: row.fecha_ultima_edicion ? String(row.fecha_ultima_edicion) : null,
     restaurante_nombre: restauranteNombre,
     restaurante: restauranteNombre,
     marca: pickString(row, "marca", "brand"),
@@ -52,14 +52,27 @@ function normalizeResena(row: Record<string, unknown>): ResenaRow {
   };
 }
 
+/**
+ * Una reseña pertenece al periodo si su fecha original (fecha_resena, o
+ * created_at como último recurso si fecha_resena está vacío) cae dentro del
+ * rango, O si fue editada dentro del rango (fecha_ultima_edicion). Cualquiera
+ * de las dos condiciones basta — no hace falta que se cumplan ambas.
+ */
+function isResenaInPeriod(row: ResenaRow, queryBounds: QueryDateBounds): boolean {
+  const originalDate = row.fecha_resena ?? row.created_at;
+  if (isTimestampInQueryRange(originalDate, queryBounds)) return true;
+  if (row.editada === true && isTimestampInQueryRange(row.fecha_ultima_edicion, queryBounds)) {
+    return true;
+  }
+  return false;
+}
+
 function filterResenaRows(
   rows: ResenaRow[],
   queryBounds: QueryDateBounds,
   options?: { restaurantSlug?: string; restauranteId?: number }
 ): ResenaRow[] {
-  let filtered = rows.filter((row) =>
-    isTimestampInQueryRange(row.fecha_resena ?? row.created_at, queryBounds)
-  );
+  let filtered = rows.filter((row) => isResenaInPeriod(row, queryBounds));
 
   if (options?.restauranteId != null) {
     filtered = filtered.filter((row) => row.restaurante_id === options.restauranteId);
@@ -72,25 +85,36 @@ function filterResenaRows(
     });
   }
 
+  // Cada fila física cuenta una sola vez aunque cumpla la condición de fecha
+  // por partida doble (creada Y editada dentro del mismo periodo) — el OR de
+  // Supabase ya devuelve cada fila una vez, esto es solo la red de seguridad
+  // habitual por review_id/contenido.
   return dedupeResenas(filtered);
 }
 
-async function fetchResenasWithDateColumn(
+/**
+ * Trae reseñas cuya fecha_resena (o created_at si fecha_resena es null) O
+ * fecha_ultima_edicion caigan en el rango — un único query con OR a nivel de
+ * SQL, así cada fila se devuelve como máximo una vez (sin duplicados).
+ */
+async function fetchResenasInPeriod(
   client: Awaited<ReturnType<typeof getSupabaseDataClientForServer>>,
-  dateColumn: string,
   queryBounds: QueryDateBounds,
   options?: {
     restaurantSlug?: string;
     restauranteId?: number;
     restauranteNombreIlike?: string;
   }
-): Promise<{ rows: ResenaRow[]; columnMissing: boolean }> {
-  let builder = client
-    .from("resenas")
-    .select("*")
-    .gte(dateColumn, queryBounds.startIso)
-    .lt(dateColumn, queryBounds.endExclusiveIso)
-    .order(dateColumn, { ascending: false });
+): Promise<{ rows: ResenaRow[]; error: boolean }> {
+  const { startIso, endExclusiveIso } = queryBounds;
+  const inRange = (column: string) => `${column}.gte.${startIso},${column}.lt.${endExclusiveIso}`;
+  const orFilter = [
+    `and(${inRange("fecha_resena")})`,
+    `and(${inRange("fecha_ultima_edicion")})`,
+    `and(fecha_resena.is.null,${inRange("created_at")})`,
+  ].join(",");
+
+  let builder = client.from("resenas").select("*").or(orFilter);
 
   if (options?.restauranteId != null) {
     builder = builder.eq("restaurante_id", options.restauranteId);
@@ -104,15 +128,12 @@ async function fetchResenasWithDateColumn(
   const { data, error } = await builder;
 
   if (error) {
-    if (error.code === "42703") {
-      return { rows: [], columnMissing: true };
-    }
-    console.error(`[fetchResenasForPeriodServer] Error (${dateColumn}):`, error.message, error);
-    return { rows: [], columnMissing: false };
+    console.error("[fetchResenasForPeriodServer] Error:", error.message, error);
+    return { rows: [], error: true };
   }
 
   const rows = (data ?? []).map((row) => normalizeResena(row as Record<string, unknown>));
-  return { rows, columnMissing: false };
+  return { rows, error: false };
 }
 
 async function queryResenasForPeriod(
@@ -124,36 +145,17 @@ async function queryResenasForPeriod(
     restauranteNombreIlike?: string;
   }
 ): Promise<ResenaRow[]> {
-  let bestRows: ResenaRow[] = [];
+  const { rows, error } = await fetchResenasInPeriod(client, queryBounds, options);
+  if (error) return [];
 
-  for (const dateColumn of DATE_FILTER_COLUMNS) {
-    const { rows, columnMissing } = await fetchResenasWithDateColumn(
-      client,
-      dateColumn,
-      queryBounds,
-      options
+  const filtered = filterResenaRows(rows, queryBounds, options);
+  if (filtered.length === 0) {
+    console.warn(
+      `[fetchResenasForPeriodServer] 0 reseñas entre ${queryBounds.startKey} y ${queryBounds.endKey}. ` +
+        "Prueba ampliar el rango de fechas en el calendario del dashboard."
     );
-
-    if (columnMissing) continue;
-
-    const filtered = filterResenaRows(rows, queryBounds, options);
-    if (filtered.length > bestRows.length) {
-      bestRows = filtered;
-    }
-    if (filtered.length > 0) {
-      return filtered;
-    }
   }
-
-  if (bestRows.length > 0) {
-    return bestRows;
-  }
-
-  console.warn(
-    `[fetchResenasForPeriodServer] 0 reseñas entre ${queryBounds.startKey} y ${queryBounds.endKey}. ` +
-      "Prueba ampliar el rango de fechas en el calendario del dashboard."
-  );
-  return [];
+  return filtered;
 }
 
 /** Lectura en servidor con service role / RLS. */

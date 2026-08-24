@@ -4,6 +4,7 @@ import { PopeyesAlertTemplate } from "@/templates/negative-review-alert/brands/p
 import { SantaGloriaAlertTemplate } from "@/templates/negative-review-alert/brands/santa-gloria-alert-template";
 import { RibsAlertTemplate } from "@/templates/negative-review-alert/brands/ribs-alert-template";
 import { TimHortonsAlertTemplate } from "@/templates/negative-review-alert/brands/tim-hortons-alert-template";
+import { SibuyaAlertTemplate } from "@/templates/negative-review-alert/brands/sibuya-alert-template";
 import { parseAlertFromSearchParams } from "@/lib/templates/negative-review-alert/parse-payload";
 import { SAMPLE_NEGATIVE_REVIEW_ALERT } from "@/lib/templates/negative-review-alert/sample-data";
 
@@ -37,13 +38,16 @@ export default async function NegativeReviewAlertTemplatePage({ searchParams }: 
             ? RibsAlertTemplate
             : data.brand === "th"
               ? TimHortonsAlertTemplate
-              : NegativeReviewAlertTemplate;
+              : data.brand === "sibuya"
+                ? SibuyaAlertTemplate
+                : NegativeReviewAlertTemplate;
   const background =
     data.brand === "bk" ||
     data.brand === "pp" ||
     data.brand === "sg" ||
     data.brand === "ribs" ||
-    data.brand === "th"
+    data.brand === "th" ||
+    data.brand === "sibuya"
       ? "#f3ecdc"
       : "#e8e4dd";
 

@@ -381,6 +381,95 @@ export const SAMPLE_RIBS_LONG: NegativeReviewAlertData = {
   analisis_pending: false,
 };
 
+/** Datos base de layout para preview de Sibuya — sin análisis IA inventado. */
+const SAMPLE_NEGATIVE_REVIEW_ALERT_SIBUYA: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT,
+  brand: "sibuya",
+  brand_name: "Sibuya",
+  brand_logo_url: "/brands/sibuya-transparent.png",
+  restaurant_name: "SIBUYA MADRID",
+  restaurant_location: "Madrid",
+  restaurant_address: "Calle de Velázquez, 12, 28001 Madrid",
+};
+
+/**
+ * Fixture de prueba visual para la plantilla de Sibuya — con todos los
+ * campos de análisis IA rellenos (texto de ejemplo, no un caso real) para
+ * comprobar el diseño normal (comentario ≤900 caracteres) completo.
+ */
+export const SAMPLE_SIBUYA_FULL: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_SIBUYA,
+  review_author: "Adrián Torres",
+  review_comment:
+    "Pedimos un surtido de sushi para compartir y un ramen, y la experiencia dejó bastante que desear para el precio que tiene el local. El ramen llegó templado, casi frío, como si llevara un rato hecho antes de servirlo, y varias piezas de nigiri venían con el arroz duro y frío por dentro. Tardaron más de treinta y cinco minutos en traer el pedido a pesar de que el local no estaba lleno esa noche. Cuando avisamos de que el ramen estaba frío, la persona que nos atendió se limitó a decir que lo sentía y no ofreció cambiarlo ni ningún tipo de compensación. El maki de salmón sí estaba bien, todo hay que decirlo, pero entre la espera y la comida fría la experiencia general fue bastante decepcionante.",
+  detected_reasons: ["Comida fría", "Tiempo de espera", "Atención al cliente"],
+  sentiment: "Negativo",
+  risk_level: "ALTO",
+  recommendation:
+    "Revisar el mantenimiento de temperatura del ramen y el arroz en cocina, y reforzar la formación de sala para gestionar quejas con una disculpa o compensación real.",
+  ai_summary:
+    "Cliente reporta ramen templado y arroz frío en varias piezas de nigiri, con una espera larga y una atención percibida como poco resolutiva.",
+  main_motive: "Comida fría",
+  detected_impact: "Bajada de 0.19 puntos en la media del local en el periodo analizado.",
+  employee_mentioned: null,
+  analisis_pending: false,
+  period_label: "18 may 2025 – 24 may 2025",
+};
+
+/**
+ * Fixture de prueba visual — comentario corto (texto de ejemplo, no un caso
+ * real) para comprobar el diseño normal de Sibuya con un comentario breve.
+ */
+export const SAMPLE_SIBUYA_SHORT: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_SIBUYA,
+  review_author: "Nuria Campos",
+  review_comment:
+    "El ramen llegó templado y tuvimos que esperar más de media hora aunque el local estaba medio vacío. Por el precio que tiene, esperaba bastante más.",
+  previous_rating: 4.33,
+  current_rating: 4.14,
+  rating_impact: -0.19,
+  review_count: 176,
+  lifetime_rating: 4.14,
+  detected_reasons: ["Comida fría", "Lentitud"],
+  sentiment: "Negativo",
+  risk_level: "MEDIO",
+  recommendation: "Revisar los tiempos de servicio y la temperatura de entrega del ramen.",
+  ai_summary: "Cliente insatisfecho por ramen templado y atención lenta.",
+  main_motive: "Comida fría",
+  detected_impact: "Posible bajada leve en la media si se repite.",
+  employee_mentioned: null,
+  analisis_pending: false,
+};
+
+/**
+ * Fixture de prueba visual — comentario > 900 caracteres (texto de ejemplo,
+ * no un caso real) para comprobar el diseño largo de Sibuya (centrado, solo
+ * comentario + Impacto en la media).
+ */
+export const SAMPLE_SIBUYA_LONG: NegativeReviewAlertData = {
+  ...SAMPLE_NEGATIVE_REVIEW_ALERT_SIBUYA,
+  review_author: "Marcos Iglesias",
+  review_comment:
+    "Fuimos a celebrar un cumpleaños en grupo y reservamos con antelación, y la experiencia fue de las peores que hemos tenido en esta cadena. Para empezar, a pesar de la reserva confirmada, al llegar nos dijeron que la mesa no estaba lista y tuvimos que esperar de pie casi veinte minutos en la entrada. Cuando por fin nos sentaron, pedimos varios surtidos de sushi y un par de ramen para compartir, y la mitad de los platos llegaron fríos mientras el resto seguía en cocina, así que unos empezaron a comer mientras otros esperaban todavía su plato. Uno de los surtidos venía con bastante menos piezas de las que indicaba la carta, y al comentarlo nos dijeron que así había salido ese pedido sin ofrecer completarlo. El ramen llegó templado y con los fideos pasados, como si llevara tiempo hecho. Cuando pedimos hablar con alguien responsable para comentar todo esto, tardaron otros quince minutos en atendernos y la respuesta fue bastante seca, sin ninguna compensación por una reserva de cumpleaños que se suponía especial. Es la segunda vez que tenemos un problema parecido en este mismo local, y cada vez nos genera menos confianza volver a repetir.",
+  previous_rating: 4.19,
+  current_rating: 3.97,
+  rating_impact: -0.22,
+  review_count: 243,
+  lifetime_rating: 3.97,
+  detected_reasons: [],
+  sentiment: "Muy negativo",
+  risk_level: "ALTO",
+  recommendation:
+    "Revisar el sistema de reservas para grupos, coordinar la salida conjunta de platos en cocina y reforzar la formación de sala para resolver incidencias con una compensación real.",
+  ai_summary:
+    "El cliente tuvo que esperar pese a tener reserva, los platos llegaron descoordinados y fríos, un surtido venía incompleto y la gestión de la queja fue lenta y sin compensación. Es la segunda incidencia similar en el mismo local.",
+  main_motive: "Reserva no respetada, platos descoordinados y producto por debajo de lo esperado.",
+  detected_impact:
+    "El cliente está muy insatisfecho por la reincidencia del problema y la falta de una disculpa con compensación real, lo que afecta a su confianza en el local.",
+  employee_mentioned: null,
+  analisis_pending: false,
+};
+
 /** Datos base de layout para preview de Tim Hortons — sin análisis IA inventado. */
 const SAMPLE_NEGATIVE_REVIEW_ALERT_TH: NegativeReviewAlertData = {
   ...SAMPLE_NEGATIVE_REVIEW_ALERT,

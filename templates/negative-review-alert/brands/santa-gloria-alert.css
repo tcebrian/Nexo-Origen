@@ -637,6 +637,7 @@
   letter-spacing: 0.06em;
   flex-shrink: 0;
   width: fit-content;
+  white-space: nowrap;
 }
 
 .sga-ribbon--mt {
@@ -1013,6 +1014,7 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   width: fit-content;
+  white-space: nowrap;
 }
 
 .sga-incidents {

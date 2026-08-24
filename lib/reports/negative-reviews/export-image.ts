@@ -32,6 +32,15 @@ export async function exportElementToPng(
   const height = NEGATIVE_REVIEW_RENDER_HEIGHT;
   const pixelRatio = _options.pixelRatio ?? 3;
 
+  // skipFonts evita que html-to-image intente reincrustar las fuentes de
+  // Google Fonts (falla por CORS) — pero eso significa que el lienzo clonado
+  // para la captura puede no tener aún la fuente aplicada si el navegador
+  // no ha terminado de cargarla, y el texto se mide con una de reserva más
+  // ancha (rompe badges de una sola línea como "IMPACTO EN LA MEDIA").
+  if (typeof document !== "undefined" && document.fonts?.ready) {
+    await document.fonts.ready;
+  }
+
   const capture = (ratio: number) =>
     toPng(target, {
       cacheBust: true,

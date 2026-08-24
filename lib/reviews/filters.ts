@@ -44,7 +44,7 @@ export function sortReviewsByPriority(reviews: Review[]) {
   return [...reviews].sort((a, b) => {
     const scoreDiff = getPrioritySortScore(a) - getPrioritySortScore(b);
     if (scoreDiff !== 0) return scoreDiff;
-    return b.date.getTime() - a.date.getTime();
+    return b.activityDate.getTime() - a.activityDate.getTime();
   });
 }
 
@@ -54,13 +54,13 @@ export function sortReviews(reviews: Review[], sortBy: ReviewSort) {
   sorted.sort((a, b) => {
     switch (sortBy) {
       case "rating-desc":
-        return b.rating - a.rating || b.date.getTime() - a.date.getTime();
+        return b.rating - a.rating || b.activityDate.getTime() - a.activityDate.getTime();
       case "rating-asc":
-        return a.rating - b.rating || b.date.getTime() - a.date.getTime();
+        return a.rating - b.rating || b.activityDate.getTime() - a.activityDate.getTime();
       case "priority":
         return sortReviewsByPriority([a, b])[0] === a ? -1 : 1;
       default:
-        return b.date.getTime() - a.date.getTime();
+        return b.activityDate.getTime() - a.activityDate.getTime();
     }
   });
 

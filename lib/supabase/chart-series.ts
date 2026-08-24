@@ -1,7 +1,7 @@
 import { dedupeResenas } from "@/lib/review-metrics";
 import type { KpiDiarioRow, DailyNetworkPoint } from "./kpi-diario";
 import { buildDailyNetworkSeries, getRestaurantDailySeries } from "./kpi-diario";
-import type { ResenaRow } from "./resenas";
+import { getResenaActivityDateValue, type ResenaRow } from "./resenas";
 
 export type RestaurantChartSeries = {
   labels: string[];
@@ -17,8 +17,9 @@ function formatDayLabel(dateKey: string) {
   });
 }
 
+/** Día (YYYY-MM-DD) en el que se cuenta la reseña en las gráficas: fecha de actividad. */
 export function getResenaDateKey(row: ResenaRow): string {
-  const raw = row.fecha_resena ?? row.created_at;
+  const raw = getResenaActivityDateValue(row);
   if (!raw) return "";
   return raw.slice(0, 10);
 }

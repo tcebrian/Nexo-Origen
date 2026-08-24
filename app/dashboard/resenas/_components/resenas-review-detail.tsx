@@ -7,7 +7,7 @@ import type { Review } from "@/lib/reviews/types";
 import { RestaurantBrandLine } from "../../_components/restaurant-brand-line";
 import { ReviewAiSection } from "./review-ai-section";
 import { btnOutline, panelChrome, sectionPad, surfaceDetail, textKicker } from "./ui/resenas-styles";
-import { GoogleBadge, MetaBlock, SentimentBadge, StarRating, avatarTone } from "./ui/review-primitives";
+import { EditedBadge, GoogleBadge, MetaBlock, SentimentBadge, StarRating, avatarTone } from "./ui/review-primitives";
 import { IconSparkle } from "./ui/icons";
 
 type ResenasReviewDetailProps = {
@@ -114,7 +114,10 @@ export function ResenasReviewDetail({
 
           <div className="mt-6 grid grid-cols-2 gap-3">
             <MetaBlock label="Fecha">
-              <time className="text-[13px] capitalize text-[var(--nexo-text)]">{formatReviewDate(review.date)}</time>
+              <div className="flex items-center gap-2">
+                <time className="text-[13px] capitalize text-[var(--nexo-text)]">{formatReviewDate(review.date)}</time>
+                {review.editada && <EditedBadge />}
+              </div>
             </MetaBlock>
             <MetaBlock label="Valoración">
               <div className="flex items-center gap-2">

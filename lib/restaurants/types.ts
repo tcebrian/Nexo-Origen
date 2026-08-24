@@ -60,6 +60,7 @@ export type RestaurantReview = {
   text: string;
   sentiment: "positive" | "negative" | "neutral";
   motive?: string;
+  editada?: boolean;
 };
 
 export type ActivityEventType = "alert" | "warning" | "success" | "info";

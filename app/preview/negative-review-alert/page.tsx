@@ -24,6 +24,9 @@ import {
   SAMPLE_TH_FULL,
   SAMPLE_TH_LONG,
   SAMPLE_TH_SHORT,
+  SAMPLE_SIBUYA_FULL,
+  SAMPLE_SIBUYA_LONG,
+  SAMPLE_SIBUYA_SHORT,
 } from "@/lib/templates/negative-review-alert/sample-data";
 import { EDITABLE_HANDOFF_KEY } from "@/lib/templates/negative-review-alert/editable-handoff";
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
@@ -33,6 +36,7 @@ import { PopeyesAlertTemplate } from "@/templates/negative-review-alert/brands/p
 import { SantaGloriaAlertTemplate } from "@/templates/negative-review-alert/brands/santa-gloria-alert-template";
 import { RibsAlertTemplate } from "@/templates/negative-review-alert/brands/ribs-alert-template";
 import { TimHortonsAlertTemplate } from "@/templates/negative-review-alert/brands/tim-hortons-alert-template";
+import { SibuyaAlertTemplate } from "@/templates/negative-review-alert/brands/sibuya-alert-template";
 
 const REFERENCE_PATH = "/design/negative-review-alert-reference.png";
 
@@ -82,6 +86,15 @@ const BRAND_SAMPLE_VARIANTS = {
       editable: { label: "Editable", data: SAMPLE_TH_FULL },
     },
   },
+  sibuya: {
+    label: "Sibuya",
+    variants: {
+      normal: { label: "Diseño reseña media", data: SAMPLE_SIBUYA_FULL },
+      corta: { label: "Diseño corta", data: SAMPLE_SIBUYA_SHORT },
+      largo: { label: "Diseño largo", data: SAMPLE_SIBUYA_LONG },
+      editable: { label: "Editable", data: SAMPLE_SIBUYA_FULL },
+    },
+  },
 } as const;
 
 type BrandKey = keyof typeof BRAND_SAMPLE_VARIANTS;
@@ -92,10 +105,10 @@ type SampleKey = keyof (typeof BRAND_SAMPLE_VARIANTS)["bk"]["variants"];
  * selectores combinan la clase de cada marca (bka-/ppa-) para que el modo
  * editable funcione igual sea cual sea la marca activa. */
 const DRAG_TARGETS: { selector: string; label: string; isImage?: boolean }[] = [
-  { selector: ".bka-review, .ppa-review, .sga-review, .rba-review, .tha-review", label: "Reseña / comentario" },
-  { selector: ".bka-mini, .ppa-mini, .sga-mini, .rba-mini, .tha-mini", label: "Impacto en la media" },
-  { selector: ".bka-insights, .ppa-insights, .sga-insights, .rba-insights, .tha-insights", label: "Análisis + Diagnóstico" },
-  { selector: ".bka-footer, .ppa-footer, .sga-footer, .rba-footer, .tha-footer", label: "Conclusión / Acción" },
+  { selector: ".bka-review, .ppa-review, .sga-review, .rba-review, .tha-review, .sba-review", label: "Reseña / comentario" },
+  { selector: ".bka-mini, .ppa-mini, .sga-mini, .rba-mini, .tha-mini, .sba-mini", label: "Impacto en la media" },
+  { selector: ".bka-insights, .ppa-insights, .sga-insights, .rba-insights, .tha-insights, .sba-insights", label: "Análisis + Diagnóstico" },
+  { selector: ".bka-footer, .ppa-footer, .sga-footer, .rba-footer, .tha-footer, .sba-footer", label: "Conclusión / Acción" },
   { selector: ".bka-product--burger, .ppa-product--tenders", label: "Producto principal", isImage: true },
   { selector: ".bka-product--fries, .ppa-product--fries", label: "Patatas", isImage: true },
   { selector: ".bka-product--drink, .ppa-product--drink", label: "Bebida", isImage: true },
@@ -107,17 +120,17 @@ const RESIZE_TARGETS = DRAG_TARGETS.filter(({ isImage }) => !isImage);
 
 /** Textos cuyo tamaño de letra se puede ajustar en modo edición. */
 const FONT_TARGETS: { selector: string; label: string }[] = [
-  { selector: ".bka-review__name, .ppa-review__name, .sga-review__name, .rba-review__name, .tha-review__name", label: "Nombre autor" },
-  { selector: ".bka-review__datetime, .ppa-review__datetime, .sga-review__datetime, .rba-review__datetime, .tha-review__datetime", label: "Fecha / hora" },
-  { selector: ".bka-quote__text, .ppa-quote__text, .sga-quote__text, .rba-quote__text, .tha-quote__text", label: "Comentario" },
-  { selector: ".bka-impact__value, .ppa-impact__value, .sga-impact__value, .rba-impact__value, .tha-impact__value", label: "Impacto — valores" },
-  { selector: ".bka-impact__delta, .ppa-impact__delta, .sga-impact__delta, .rba-impact__delta, .tha-impact__delta", label: "Impacto — variación" },
-  { selector: ".bka-impact__label, .ppa-impact__label, .sga-impact__label, .rba-impact__label, .tha-impact__label", label: "Impacto — etiquetas" },
-  { selector: ".bka-analysis__value, .ppa-analysis__value, .sga-analysis__value, .rba-analysis__value, .tha-analysis__value", label: "Análisis Nexo — texto" },
-  { selector: ".bka-analysis__label, .ppa-analysis__label, .sga-analysis__label, .rba-analysis__label, .tha-analysis__label", label: "Análisis Nexo — etiquetas" },
-  { selector: ".bka-diagnostics__value, .ppa-diagnostics__value, .sga-diagnostics__value, .rba-diagnostics__value, .tha-diagnostics__value", label: "Diagnóstico Nexo — texto" },
-  { selector: ".bka-diagnostics__label, .ppa-diagnostics__label, .sga-diagnostics__label, .rba-diagnostics__label, .tha-diagnostics__label", label: "Diagnóstico Nexo — etiquetas" },
-  { selector: ".bka-footer__text, .ppa-footer__text, .sga-footer__text, .rba-footer__text, .tha-footer__text", label: "Conclusión / Acción" },
+  { selector: ".bka-review__name, .ppa-review__name, .sga-review__name, .rba-review__name, .tha-review__name, .sba-review__name", label: "Nombre autor" },
+  { selector: ".bka-review__datetime, .ppa-review__datetime, .sga-review__datetime, .rba-review__datetime, .tha-review__datetime, .sba-review__datetime", label: "Fecha / hora" },
+  { selector: ".bka-quote__text, .ppa-quote__text, .sga-quote__text, .rba-quote__text, .tha-quote__text, .sba-quote__text", label: "Comentario" },
+  { selector: ".bka-impact__value, .ppa-impact__value, .sga-impact__value, .rba-impact__value, .tha-impact__value, .sba-impact__value", label: "Impacto — valores" },
+  { selector: ".bka-impact__delta, .ppa-impact__delta, .sga-impact__delta, .rba-impact__delta, .tha-impact__delta, .sba-impact__delta", label: "Impacto — variación" },
+  { selector: ".bka-impact__label, .ppa-impact__label, .sga-impact__label, .rba-impact__label, .tha-impact__label, .sba-impact__label", label: "Impacto — etiquetas" },
+  { selector: ".bka-analysis__value, .ppa-analysis__value, .sga-analysis__value, .rba-analysis__value, .tha-analysis__value, .sba-analysis__value", label: "Análisis Nexo — texto" },
+  { selector: ".bka-analysis__label, .ppa-analysis__label, .sga-analysis__label, .rba-analysis__label, .tha-analysis__label, .sba-analysis__label", label: "Análisis Nexo — etiquetas" },
+  { selector: ".bka-diagnostics__value, .ppa-diagnostics__value, .sga-diagnostics__value, .rba-diagnostics__value, .tha-diagnostics__value, .sba-diagnostics__value", label: "Diagnóstico Nexo — texto" },
+  { selector: ".bka-diagnostics__label, .ppa-diagnostics__label, .sga-diagnostics__label, .rba-diagnostics__label, .tha-diagnostics__label, .sba-diagnostics__label", label: "Diagnóstico Nexo — etiquetas" },
+  { selector: ".bka-footer__text, .ppa-footer__text, .sga-footer__text, .rba-footer__text, .tha-footer__text, .sba-footer__text", label: "Conclusión / Acción" },
 ];
 
 export default function NegativeReviewAlertPreviewPage() {
@@ -141,6 +154,7 @@ export default function NegativeReviewAlertPreviewPage() {
   const isSantaGloria = activeData.brand === "sg";
   const isRibs = activeData.brand === "ribs";
   const isTimHortons = activeData.brand === "th";
+  const isSibuya = activeData.brand === "sibuya";
   const renderWidth = NEGATIVE_REVIEW_RENDER_WIDTH;
   const renderHeight = NEGATIVE_REVIEW_RENDER_HEIGHT;
 
@@ -162,7 +176,8 @@ export default function NegativeReviewAlertPreviewPage() {
           parsed.data.brand === "pp" ||
           parsed.data.brand === "sg" ||
           parsed.data.brand === "ribs" ||
-          parsed.data.brand === "th"
+          parsed.data.brand === "th" ||
+          parsed.data.brand === "sibuya"
         ) {
           setBrandKey(parsed.data.brand);
         }
@@ -351,6 +366,7 @@ export default function NegativeReviewAlertPreviewPage() {
           handle.style.opacity = "0.85";
           handle.style.zIndex = "50";
           handle.style.cursor = spec.cursor;
+          handle.dataset.nraHandle = "true";
           Object.assign(handle.style, spec.style);
 
           const onHandlePointerDown = (e: PointerEvent) => {
@@ -461,11 +477,44 @@ export default function NegativeReviewAlertPreviewPage() {
     }
   }
 
+  /**
+   * En modo Editable, los bloques llevan un contorno discontinuo morado y
+   * tiradores de redimensionado (elementos reales en el DOM) para poder
+   * ajustarlos a mano — pero eso es solo guía visual del editor, nunca debe
+   * aparecer en el PNG final. Se ocultan justo antes de capturar y se
+   * restauran después, tanto si la captura tuvo éxito como si falló.
+   */
+  function hideEditorChrome(root: HTMLElement): () => void {
+    const outlined: { el: HTMLElement; outline: string; outlineOffset: string }[] = [];
+    for (const { selector } of DRAG_TARGETS) {
+      root.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+        outlined.push({ el, outline: el.style.outline, outlineOffset: el.style.outlineOffset });
+        el.style.outline = "";
+        el.style.outlineOffset = "";
+      });
+    }
+    const handles: { el: HTMLElement; display: string }[] = [];
+    root.querySelectorAll<HTMLElement>("[data-nra-handle]").forEach((el) => {
+      handles.push({ el, display: el.style.display });
+      el.style.display = "none";
+    });
+    return () => {
+      outlined.forEach(({ el, outline, outlineOffset }) => {
+        el.style.outline = outline;
+        el.style.outlineOffset = outlineOffset;
+      });
+      handles.forEach(({ el, display }) => {
+        el.style.display = display;
+      });
+    };
+  }
+
   async function downloadClientPng() {
     const node = captureRef.current;
     if (!node) return;
     setLoading(true);
     setStatus(null);
+    const restoreEditorChrome = hideEditorChrome(node);
     try {
       const dataUrl = await toPng(node, {
         cacheBust: true,
@@ -489,6 +538,7 @@ export default function NegativeReviewAlertPreviewPage() {
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "No se pudo generar la imagen.");
     } finally {
+      restoreEditorChrome();
       setLoading(false);
     }
   }
@@ -769,6 +819,8 @@ export default function NegativeReviewAlertPreviewPage() {
                   <RibsAlertTemplate ref={captureRef} data={activeData} />
                 ) : isTimHortons ? (
                   <TimHortonsAlertTemplate ref={captureRef} data={activeData} />
+                ) : isSibuya ? (
+                  <SibuyaAlertTemplate ref={captureRef} data={activeData} />
                 ) : (
                   <NegativeReviewAlertTemplate ref={captureRef} data={activeData} />
                 )}

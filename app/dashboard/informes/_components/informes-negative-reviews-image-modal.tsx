@@ -19,6 +19,7 @@ import { PopeyesAlertTemplate } from "@/templates/negative-review-alert/brands/p
 import { SantaGloriaAlertTemplate } from "@/templates/negative-review-alert/brands/santa-gloria-alert-template";
 import { RibsAlertTemplate } from "@/templates/negative-review-alert/brands/ribs-alert-template";
 import { TimHortonsAlertTemplate } from "@/templates/negative-review-alert/brands/tim-hortons-alert-template";
+import { SibuyaAlertTemplate } from "@/templates/negative-review-alert/brands/sibuya-alert-template";
 import { btnGhost, btnPrimary, card, shell } from "./ui/informes-styles";
 
 type InformesNegativeReviewsImageModalProps = {
@@ -50,6 +51,7 @@ export function InformesNegativeReviewsImageModal({
   const isSantaGloria = row?.brand === "sg";
   const isRibs = row?.brand === "ribs";
   const isTimHortons = row?.brand === "th";
+  const isSibuya = row?.brand === "sibuya";
 
   const generatePreview = useCallback(async () => {
     if (!row || !cardRef.current || !templateProps) return;
@@ -204,6 +206,8 @@ export function InformesNegativeReviewsImageModal({
               <RibsAlertTemplate ref={cardRef} {...templateProps} />
             ) : isTimHortons ? (
               <TimHortonsAlertTemplate ref={cardRef} {...templateProps} />
+            ) : isSibuya ? (
+              <SibuyaAlertTemplate ref={cardRef} {...templateProps} />
             ) : (
               <NegativeReviewAlertTemplate ref={cardRef} {...templateProps} />
             )}

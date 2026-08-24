@@ -8,7 +8,7 @@ import { formatReviewDate } from "@/lib/reviews/format";
 import { getReviewHref } from "@/lib/text/excerpt";
 import type { Review } from "@/lib/reviews/types";
 import { inboxCard, textKicker } from "./ui/resenas-styles";
-import { SentimentBadge, StarRating, avatarTone } from "./ui/review-primitives";
+import { EditedBadge, SentimentBadge, StarRating, avatarTone } from "./ui/review-primitives";
 
 type ResenasInboxListProps = {
   reviews: Review[];
@@ -92,6 +92,7 @@ export function ResenasInboxList({ reviews }: ResenasInboxListProps) {
                             Crítica
                           </span>
                         )}
+                        {review.editada && <EditedBadge />}
                         {!review.reviewed && (
                           <span className="h-1.5 w-1.5 rounded-full bg-[var(--nexo-accent)]" />
                         )}
