@@ -138,6 +138,14 @@ export async function captureNegativeReviewAlertViaUrl(
           clip: { x: 0, y: 0, width: design.width, height: design.height },
         });
     return optimizeAlertPng(Buffer.from(screenshot), data.aspect_ratio);
+  } catch (err) {
+    if (isServerless) {
+      const mem = process.memoryUsage();
+      const diag = `rss=${Math.round(mem.rss / 1e6)}MB heapUsed=${Math.round(mem.heapUsed / 1e6)}MB heapTotal=${Math.round(mem.heapTotal / 1e6)}MB external=${Math.round(mem.external / 1e6)}MB`;
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`${msg}\n[diag] ${diag}`);
+    }
+    throw err;
   } finally {
     await browser.close();
     if (userDataDir) {
