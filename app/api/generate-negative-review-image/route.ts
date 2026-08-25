@@ -3,6 +3,10 @@ import { SAMPLE_NEGATIVE_REVIEW_ALERT } from "@/lib/templates/negative-review-al
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// El arranque en frío de Chromium (extraer y lanzar el binario de
+// @sparticuz/chromium) puede tardar bastante más que el timeout por
+// defecto de una función de Vercel.
+export const maxDuration = 60;
 
 function buildFilename(data: NegativeReviewAlertData): string {
   const slug = data.restaurant_name

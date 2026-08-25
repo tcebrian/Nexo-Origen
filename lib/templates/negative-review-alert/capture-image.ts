@@ -76,6 +76,11 @@ export async function captureNegativeReviewAlertViaUrl(
   const browser = isServerless
     ? await (async () => {
         const { default: sparticuzChromium } = await import("@sparticuz/chromium");
+        // Nuestras plantillas son HTML/CSS estático, sin WebGL ni canvas 3D
+        // — desactivar el modo gráfico evita extraer swiftshader.tar.br
+        // (renderizador WebGL por software) y reduce notablemente el
+        // arranque en frío y el consumo de memoria de la función.
+        sparticuzChromium.setGraphicsMode = false;
         return chromium.launch({
           headless: true,
           executablePath: await sparticuzChromium.executablePath(),

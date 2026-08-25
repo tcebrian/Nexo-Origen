@@ -2,6 +2,7 @@ import { buildAlertDataForResena } from "@/lib/notifications/build-alert-for-res
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 /**
  * Genera el PNG de una alerta a partir de un resena_id, para que Twilio lo

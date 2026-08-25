@@ -1,4 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "app/api/generate-negative-review-image/route.ts": {
+      "memory": 3009,
+      "maxDuration": 60
+    },
+    "app/api/notifications/whatsapp-alert-image/route.ts": {
+      "memory": 3009,
+      "maxDuration": 60
+    }
+  }
 }
