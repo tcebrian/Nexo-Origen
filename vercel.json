@@ -3,11 +3,11 @@
   "framework": "nextjs",
   "functions": {
     "app/api/generate-negative-review-image/route.ts": {
-      "memory": 3009,
+      "memory": 1769,
       "maxDuration": 60
     },
     "app/api/notifications/whatsapp-alert-image/route.ts": {
-      "memory": 3009,
+      "memory": 1769,
       "maxDuration": 60
     }
   }
