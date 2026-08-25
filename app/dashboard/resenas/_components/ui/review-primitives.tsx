@@ -49,9 +49,12 @@ export function StarRating({ rating, size = "sm" }: { rating: number; size?: "sm
 }
 
 /** Etiqueta discreta para reseñas editadas tras su publicación original. */
-export function EditedBadge() {
+export function EditedBadge({ title }: { title?: string }) {
   return (
-    <span className="rounded-md border border-[var(--nexo-border)] bg-[var(--nexo-inset)] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.08em] text-[var(--nexo-text-tertiary)]">
+    <span
+      title={title}
+      className="rounded-md border border-[var(--nexo-border)] bg-[var(--nexo-inset)] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.08em] text-[var(--nexo-text-tertiary)]"
+    >
       Editada
     </span>
   );

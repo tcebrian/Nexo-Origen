@@ -61,6 +61,8 @@ export type RestaurantReview = {
   sentiment: "positive" | "negative" | "neutral";
   motive?: string;
   editada?: boolean;
+  /** Fecha de última edición — solo presente cuando editada === true. */
+  editedAt?: Date;
 };
 
 export type ActivityEventType = "alert" | "warning" | "success" | "info";

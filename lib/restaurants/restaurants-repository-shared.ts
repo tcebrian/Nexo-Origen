@@ -230,6 +230,7 @@ export function createRestaurantsRepository(loadPeriod: PeriodLoader): Restauran
                     : ("neutral" as const),
               motive: review.motiveLabel,
               editada: review.editada,
+              editedAt: review.editada ? review.activityDate : undefined,
             };
           }),
           reportHref: "/dashboard/informes",

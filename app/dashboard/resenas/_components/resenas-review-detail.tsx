@@ -114,10 +114,15 @@ export function ResenasReviewDetail({
 
           <div className="mt-6 grid grid-cols-2 gap-3">
             <MetaBlock label="Fecha">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <time className="text-[13px] capitalize text-[var(--nexo-text)]">{formatReviewDate(review.date)}</time>
                 {review.editada && <EditedBadge />}
               </div>
+              {review.editada ? (
+                <p className="mt-1.5 text-[11px] text-[var(--nexo-text-tertiary)]">
+                  Editada el {formatReviewDate(review.activityDate)}
+                </p>
+              ) : null}
             </MetaBlock>
             <MetaBlock label="Valoración">
               <div className="flex items-center gap-2">

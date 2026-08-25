@@ -92,7 +92,9 @@ export function ResenasInboxList({ reviews }: ResenasInboxListProps) {
                             Crítica
                           </span>
                         )}
-                        {review.editada && <EditedBadge />}
+                        {review.editada && (
+                          <EditedBadge title={`Editada el ${formatReviewDate(review.activityDate)}`} />
+                        )}
                         {!review.reviewed && (
                           <span className="h-1.5 w-1.5 rounded-full bg-[var(--nexo-accent)]" />
                         )}
