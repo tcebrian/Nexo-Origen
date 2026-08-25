@@ -1,7 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { rm } from "node:fs/promises";
+import { readdir, rm } from "node:fs/promises";
 
 import { resolveDesignCanvasSize } from "@/lib/templates/negative-review-alert/dimensions";
 import { optimizeAlertPng } from "@/lib/templates/negative-review-alert/optimize-png";
@@ -83,11 +83,27 @@ export async function captureNegativeReviewAlertViaUrl(
   const userDataDir = isServerless ? `/tmp/pw-${randomUUID()}` : null;
   const browser = isServerless
     ? await (async () => {
+        // Barrido defensivo: si una invocación anterior en esta misma
+        // función "caliente" murió a media captura (timeout, OOM…), su
+        // finally no llegó a ejecutarse y su carpeta /tmp/pw-* quedó
+        // huérfana. Limpiarlas aquí evita que /tmp se vaya llenando entre
+        // invocaciones hasta que Chromium falle con
+        // net::ERR_INSUFFICIENT_RESOURCES.
+        const entries = await readdir("/tmp").catch(() => [] as string[]);
+        await Promise.all(
+          entries
+            .filter((name) => name.startsWith("pw-"))
+            .map((name) => rm(`/tmp/${name}`, { recursive: true, force: true }).catch(() => {}))
+        );
+
         const { default: sparticuzChromium } = await import("@sparticuz/chromium");
         // No usamos WebGL/canvas 3D en estas plantillas — desactivarlo evita
         // problemas de inicialización de swiftshader en el sandbox de Vercel.
         sparticuzChromium.setGraphicsMode = false;
-        // OJO: aparte de --user-data-dir (necesario, ver arriba), se pasan
+        // OJO: aparte de --user-data-dir (necesario, ver arriba) y
+        // --disable-dev-shm-usage (el /dev/shm de estos contenedores es
+        // minúsculo; sin este flag Chromium intenta usarlo igualmente y
+        // acaba fallando con net::ERR_INSUFFICIENT_RESOURCES), se pasan
         // solo los args recomendados por @sparticuz/chromium, tal cual su
         // ejemplo oficial para Playwright, sin forzar `headless` — chromium.args
         // ya trae su propio `--headless='shell'` y flags que chocan con los
@@ -96,7 +112,11 @@ export async function captureNegativeReviewAlertViaUrl(
         // context or browser has been closed").
         return chromium.launch({
           executablePath: await sparticuzChromium.executablePath(),
-          args: [...sparticuzChromium.args, `--user-data-dir=${userDataDir}`],
+          args: [
+            ...sparticuzChromium.args,
+            `--user-data-dir=${userDataDir}`,
+            "--disable-dev-shm-usage",
+          ],
         });
       })()
     : await chromium.launch({
