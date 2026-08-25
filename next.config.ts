@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["puppeteer", "playwright", "sharp"],
+  serverExternalPackages: ["puppeteer", "playwright", "sharp", "@sparticuz/chromium"],
   images: {
     formats: ["image/avif", "image/webp"],
     qualities: [75, 90],

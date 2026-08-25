@@ -63,10 +63,23 @@ export async function captureNegativeReviewAlertViaUrl(
     );
   }
 
-  const browser = await chromium.launch({
-    headless: true,
-    args: ["--font-render-hinting=full", "--force-color-profile=srgb"],
-  });
+  // En Vercel (y cualquier entorno serverless) no hay un Chromium
+  // instalado vía `npx playwright install` — el binario que trae el
+  // paquete "playwright" solo existe en la máquina de desarrollo. Ahí
+  // usamos el Chromium empaquetado de @sparticuz/chromium, pensado para
+  // correr dentro de una función serverless.
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  const launchArgs = ["--font-render-hinting=full", "--force-color-profile=srgb"];
+  const browser = isServerless
+    ? await (async () => {
+        const { default: sparticuzChromium } = await import("@sparticuz/chromium");
+        return chromium.launch({
+          headless: true,
+          executablePath: await sparticuzChromium.executablePath(),
+          args: [...sparticuzChromium.args, ...launchArgs],
+        });
+      })()
+    : await chromium.launch({ headless: true, args: launchArgs });
   try {
     const page = await browser.newPage({
       viewport: { width: design.width, height: design.height },
