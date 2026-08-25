@@ -1,6 +1,6 @@
 /* Plantilla Ribs — pieza editorial de marca, estilo BBQ/western, no un dashboard SaaS. */
 
-@import url("https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;600;700&display=swap");
+@import url("../fonts.css");
 
 .rba-canvas {
   --rb-maroon: #4a1a1a;

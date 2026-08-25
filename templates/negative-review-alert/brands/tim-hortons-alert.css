@@ -1,6 +1,6 @@
 /* Plantilla Tim Hortons — identidad propia de marca (rojo + café), no un dashboard SaaS. */
 
-@import url("https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;600;700&display=swap");
+@import url("../fonts.css");
 
 .tha-canvas {
   --th-red: #d5011f;

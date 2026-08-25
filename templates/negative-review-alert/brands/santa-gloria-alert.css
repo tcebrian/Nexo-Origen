@@ -1,6 +1,6 @@
 /* Plantilla Santa Gloria — pieza editorial de marca, no un dashboard SaaS. */
 
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Montserrat:wght@600;700&family=Barlow+Condensed:wght@600;700&display=swap");
+@import url("../fonts.css");
 
 .sga-canvas {
   --sg-green: #0c2a16;

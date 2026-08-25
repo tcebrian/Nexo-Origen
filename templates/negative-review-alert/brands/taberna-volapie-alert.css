@@ -1,6 +1,6 @@
 /* Plantilla Taberna Volapié — identidad propia de marca (verde salvia + vino, taberna clásica), no un dashboard SaaS. */
 
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Oswald:wght@500;600;700&display=swap");
+@import url("../fonts.css");
 
 .tva-canvas {
   --tv-green: #535b46;

@@ -1,6 +1,6 @@
 /* Plantilla Vault — identidad propia de marca (negro + amarillo, hamburguesería "top secret"), no un dashboard SaaS. */
 
-@import url("https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;600;700&display=swap");
+@import url("../fonts.css");
 
 .vaa-canvas {
   --va-ink: #17161a;

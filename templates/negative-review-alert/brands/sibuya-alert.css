@@ -1,6 +1,6 @@
 /* Plantilla Sibuya — identidad propia de marca (grafito + crema, sushi minimal), no un dashboard SaaS. */
 
-@import url("https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;600;700&display=swap");
+@import url("../fonts.css");
 
 .sba-canvas {
   --sb-ink: #2b2e33;
@@ -86,8 +86,8 @@
 
 .sba-product--sushi2 {
   bottom: -30px;
-  left: -60px;
-  width: 420px;
+  left: -150px;
+  width: 700px;
   transform: perspective(750px) rotateX(14deg) rotate(6deg);
   z-index: 3;
   filter: drop-shadow(0 22px 20px rgba(43, 46, 51, 0.4)) drop-shadow(0 4px 5px rgba(43, 46, 51, 0.3));
@@ -139,7 +139,7 @@
 }
 
 .sba-header__alert > div {
-  margin-left: 410px;
+  margin-left: 210px;
   margin-top: 8px;
 }
 
@@ -178,8 +178,8 @@
 
 .sba-header__wordmark {
   position: absolute;
-  top: -30px;
-  right: 215px;
+  top: -25px;
+  right: 480px;
   height: 240px;
   width: auto;
   object-fit: contain;
@@ -197,8 +197,8 @@
   align-items: center;
   gap: 6px;
   width: fit-content;
-  margin: 148px auto 0;
-  transform: translateX(-20px);
+  margin: 50px auto 0;
+  transform: translateX(60px);
   padding: 6px 16px;
   border-radius: 7px;
   font-family: "Oswald", sans-serif;
