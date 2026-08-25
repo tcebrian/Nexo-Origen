@@ -17,7 +17,7 @@ const CAPTURE_SCALE_FACTOR = 3;
 const CANVAS_SELECTOR =
   ".nra-canvas, .bka-canvas, .ppa-canvas, .sga-canvas, .rba-canvas, .tha-canvas, .sba-canvas, .tva-canvas, .vaa-canvas";
 
-async function waitForRender(page: import("playwright").Page): Promise<void> {
+async function waitForRender(page: import("playwright-core").Page): Promise<void> {
   await page.waitForSelector(CANVAS_SELECTOR);
   await page.evaluate(async () => {
     await document.fonts.ready;
@@ -54,12 +54,15 @@ export async function captureNegativeReviewAlertViaUrl(
   const design = resolveDesignCanvasSize(data.aspect_ratio);
   const deviceScaleFactor = options.deviceScaleFactor ?? CAPTURE_SCALE_FACTOR;
 
-  let chromium: typeof import("playwright").chromium;
+  // playwright-core (a diferencia del paquete "playwright" completo) no
+  // trae el instalador de navegadores ni el runner de tests — es más
+  // ligero y evita problemas de empaquetado al desplegar en Vercel.
+  let chromium: typeof import("playwright-core").chromium;
   try {
-    ({ chromium } = await import("playwright"));
-  } catch {
+    ({ chromium } = await import("playwright-core"));
+  } catch (err) {
     throw new Error(
-      "Playwright no está instalado. Ejecuta: npm install playwright && npx playwright install chromium"
+      `No se pudo cargar playwright-core: ${err instanceof Error ? err.message : String(err)}`
     );
   }
 
