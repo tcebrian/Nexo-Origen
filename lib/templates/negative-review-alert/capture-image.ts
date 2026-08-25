@@ -152,9 +152,18 @@ export async function captureNegativeReviewAlertViaUrl(
     }
     throw err;
   } finally {
-    await closeBrowser();
+    // @sparticuz/chromium avisa en su FAQ de que el cierre de Chromium a
+    // veces se queda colgado. Si eso pasa aquí, NO queremos bloquear para
+    // siempre la respuesta al usuario aunque la imagen ya esté lista en
+    // memoria — se le da un margen corto al cierre y, si no llega a
+    // tiempo, se continúa igualmente (el contenedor serverless se destruye
+    // solo poco después de responder).
+    await Promise.race([
+      closeBrowser().catch(() => {}),
+      new Promise((resolve) => setTimeout(resolve, 5000)),
+    ]);
     if (userDataDir) {
-      await rm(userDataDir, { recursive: true, force: true }).catch(() => {});
+      rm(userDataDir, { recursive: true, force: true }).catch(() => {});
     }
   }
 }
