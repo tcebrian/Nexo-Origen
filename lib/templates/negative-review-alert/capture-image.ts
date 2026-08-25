@@ -1,5 +1,8 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+import { rm } from "node:fs/promises";
+
 import { resolveDesignCanvasSize } from "@/lib/templates/negative-review-alert/dimensions";
 import { optimizeAlertPng } from "@/lib/templates/negative-review-alert/optimize-png";
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
@@ -72,21 +75,28 @@ export async function captureNegativeReviewAlertViaUrl(
   // usamos el Chromium empaquetado de @sparticuz/chromium, pensado para
   // correr dentro de una función serverless.
   const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  // Un directorio de perfil de Chromium propio y único por petición. En un
+  // Lambda/función "caliente" (reutilizada entre peticiones), Playwright no
+  // limpia solo su user-data-dir por defecto — /tmp se va llenando y, tras
+  // varias invocaciones seguidas, Chromium empieza a fallar con
+  // net::ERR_INSUFFICIENT_RESOURCES. Se borra en el finally de abajo.
+  const userDataDir = isServerless ? `/tmp/pw-${randomUUID()}` : null;
   const browser = isServerless
     ? await (async () => {
         const { default: sparticuzChromium } = await import("@sparticuz/chromium");
         // No usamos WebGL/canvas 3D en estas plantillas — desactivarlo evita
         // problemas de inicialización de swiftshader en el sandbox de Vercel.
         sparticuzChromium.setGraphicsMode = false;
-        // OJO: se pasan SOLO los args recomendados por @sparticuz/chromium,
-        // tal cual su ejemplo oficial para Playwright, y sin forzar
-        // `headless` — chromium.args ya trae su propio `--headless='shell'`
-        // y flags que chocan con los nuestros (p.ej. --font-render-hinting).
-        // Mezclar flags propios aquí hizo que Chromium se cerrase nada más
-        // arrancar ("Target page, context or browser has been closed").
+        // OJO: aparte de --user-data-dir (necesario, ver arriba), se pasan
+        // solo los args recomendados por @sparticuz/chromium, tal cual su
+        // ejemplo oficial para Playwright, sin forzar `headless` — chromium.args
+        // ya trae su propio `--headless='shell'` y flags que chocan con los
+        // nuestros (p.ej. --font-render-hinting). Mezclar flags propios aquí
+        // hizo que Chromium se cerrase nada más arrancar ("Target page,
+        // context or browser has been closed").
         return chromium.launch({
           executablePath: await sparticuzChromium.executablePath(),
-          args: sparticuzChromium.args,
+          args: [...sparticuzChromium.args, `--user-data-dir=${userDataDir}`],
         });
       })()
     : await chromium.launch({
@@ -110,5 +120,8 @@ export async function captureNegativeReviewAlertViaUrl(
     return optimizeAlertPng(Buffer.from(screenshot), data.aspect_ratio);
   } finally {
     await browser.close();
+    if (userDataDir) {
+      await rm(userDataDir, { recursive: true, force: true }).catch(() => {});
+    }
   }
 }
