@@ -2,14 +2,22 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["puppeteer", "playwright", "playwright-core", "sharp", "@sparticuz/chromium"],
-  // El binario de Chromium de @sparticuz/chromium (carpeta bin/*.br) no se
-  // detecta con el análisis estático normal de rutas usadas por Vercel para
-  // decidir qué incluir en cada función — hay que declararlo a mano o la
-  // función se despliega sin el navegador y captureNegativeReviewAlertPng
-  // falla en producción aunque funcione en local.
+  // El análisis estático de Next para decidir qué archivos incluir en cada
+  // función serverless no detecta bien los `require()` con rutas dinámicas
+  // que usan playwright-core (p. ej. browsers.json) ni el binario de
+  // Chromium de @sparticuz/chromium (carpeta bin/*.br) — sin esto la
+  // función se despliega incompleta y captureNegativeReviewAlertPng falla
+  // en producción aunque funcione en local. playwright-core pesa ~13 MB,
+  // así que se incluye entero en vez de perseguir archivo a archivo.
   outputFileTracingIncludes: {
-    "/api/generate-negative-review-image": ["./node_modules/@sparticuz/chromium/bin/**/*"],
-    "/api/notifications/whatsapp-alert-image": ["./node_modules/@sparticuz/chromium/bin/**/*"],
+    "/api/generate-negative-review-image": [
+      "./node_modules/playwright-core/**/*",
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
+    "/api/notifications/whatsapp-alert-image": [
+      "./node_modules/playwright-core/**/*",
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
   },
   images: {
     formats: ["image/avif", "image/webp"],
