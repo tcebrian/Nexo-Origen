@@ -4,24 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   buildNegativeReviewFilename,
   downloadDataUrl,
-  exportElementToPng,
   NEGATIVE_REVIEW_CARD_HEIGHT,
   NEGATIVE_REVIEW_CARD_WIDTH,
-  NEGATIVE_REVIEW_RENDER_HEIGHT,
-  NEGATIVE_REVIEW_RENDER_WIDTH,
 } from "@/lib/reports/negative-reviews/export-image";
 import { EDITABLE_HANDOFF_KEY } from "@/lib/templates/negative-review-alert/editable-handoff";
 import { mapReportRowToAlertTemplateProps } from "@/lib/reports/negative-reviews/templates";
 import type { NegativeReviewReportRow } from "@/lib/reports/negative-reviews/types";
-import { NegativeReviewAlertTemplate } from "@/templates/negative-review-alert";
-import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brands/burger-king-alert-template";
-import { PopeyesAlertTemplate } from "@/templates/negative-review-alert/brands/popeyes-alert-template";
-import { SantaGloriaAlertTemplate } from "@/templates/negative-review-alert/brands/santa-gloria-alert-template";
-import { RibsAlertTemplate } from "@/templates/negative-review-alert/brands/ribs-alert-template";
-import { TimHortonsAlertTemplate } from "@/templates/negative-review-alert/brands/tim-hortons-alert-template";
-import { SibuyaAlertTemplate } from "@/templates/negative-review-alert/brands/sibuya-alert-template";
-import { TabernaVolapieAlertTemplate } from "@/templates/negative-review-alert/brands/taberna-volapie-alert-template";
-import { VaultAlertTemplate } from "@/templates/negative-review-alert/brands/vault-alert-template";
 import { btnGhost, btnPrimary, card, shell } from "./ui/informes-styles";
 
 type InformesNegativeReviewsImageModalProps = {
@@ -29,14 +17,24 @@ type InformesNegativeReviewsImageModalProps = {
   onClose: () => void;
 };
 
+/**
+ * La imagen SIEMPRE se genera en el servidor (Playwright), nunca en el
+ * dispositivo del usuario. Antes se generaba con html-to-image en el propio
+ * navegador — funcionaba en escritorio, pero en Safari/Chrome de móvil el
+ * lienzo de 1600×1200 a escala 3x (4800×3600 px) supera límites de memoria
+ * de canvas de WebKit y el renderizado de <foreignObject> es poco fiable,
+ * así que la imagen salía descuadrada o la generación se quedaba colgada.
+ * Generándola siempre en el servidor, el resultado es idéntico byte a byte
+ * sin importar desde qué móvil u ordenador se pida.
+ */
 export function InformesNegativeReviewsImageModal({
   row,
   onClose,
 }: InformesNegativeReviewsImageModalProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
 
   // assetBaseUrl must be resolved client-side only to avoid hydration mismatch.
   const [assetBaseUrl, setAssetBaseUrl] = useState<string | undefined>(undefined);
@@ -48,43 +46,30 @@ export function InformesNegativeReviewsImageModal({
     () => (row ? mapReportRowToAlertTemplateProps(row, assetBaseUrl) : null),
     [assetBaseUrl, row]
   );
-  const isBk = row?.brand === "bk";
-  const isPopeyes = row?.brand === "pp";
-  const isSantaGloria = row?.brand === "sg";
-  const isRibs = row?.brand === "ribs";
-  const isTimHortons = row?.brand === "th";
-  const isSibuya = row?.brand === "sibuya";
-  const isTabernaVolapie = row?.brand === "tv";
-  const isVault = row?.brand === "vault";
 
   const generatePreview = useCallback(async () => {
-    if (!row || !cardRef.current || !templateProps) return;
+    if (!row || !templateProps) return;
 
     setGenerating(true);
     setError(null);
 
     try {
-      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+      const response = await fetch("/api/generate-negative-review-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(templateProps.data),
+      });
 
-      const images = cardRef.current.querySelectorAll("img");
-      await Promise.all(
-        Array.from(images).map(
-          (img) =>
-            new Promise<void>((resolve) => {
-              if (img.complete) {
-                resolve();
-                return;
-              }
-              img.onload = () => resolve();
-              img.onerror = () => resolve();
-            })
-        )
-      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? `Error ${response.status}`);
+      }
 
-      await new Promise((resolve) => setTimeout(resolve, 120));
-
-      const dataUrl = await exportElementToPng(cardRef.current);
-      setPreviewUrl(dataUrl);
+      const blob = await response.blob();
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+      const url = URL.createObjectURL(blob);
+      objectUrlRef.current = url;
+      setPreviewUrl(url);
     } catch (err) {
       console.error("[InformesNegativeReviewsImageModal]", err);
       setError("No se pudo generar la imagen. Inténtalo de nuevo.");
@@ -98,6 +83,12 @@ export function InformesNegativeReviewsImageModal({
     setPreviewUrl(null);
     void generatePreview();
   }, [assetBaseUrl, generatePreview, row, templateProps]);
+
+  useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -186,39 +177,6 @@ export function InformesNegativeReviewsImageModal({
             >
               Descargar PNG
             </button>
-          </div>
-
-          {/* Render off-screen a tamaño real para la captura PNG */}
-          <div
-            aria-hidden
-            className="pointer-events-none fixed overflow-hidden"
-            style={{
-              left: -20000,
-              top: 0,
-              width: NEGATIVE_REVIEW_RENDER_WIDTH,
-              height: NEGATIVE_REVIEW_RENDER_HEIGHT,
-              opacity: 0,
-            }}
-          >
-            {isBk ? (
-              <BurgerKingAlertTemplate ref={cardRef} {...templateProps} />
-            ) : isPopeyes ? (
-              <PopeyesAlertTemplate ref={cardRef} {...templateProps} />
-            ) : isSantaGloria ? (
-              <SantaGloriaAlertTemplate ref={cardRef} {...templateProps} />
-            ) : isRibs ? (
-              <RibsAlertTemplate ref={cardRef} {...templateProps} />
-            ) : isTimHortons ? (
-              <TimHortonsAlertTemplate ref={cardRef} {...templateProps} />
-            ) : isSibuya ? (
-              <SibuyaAlertTemplate ref={cardRef} {...templateProps} />
-            ) : isTabernaVolapie ? (
-              <TabernaVolapieAlertTemplate ref={cardRef} {...templateProps} />
-            ) : isVault ? (
-              <VaultAlertTemplate ref={cardRef} {...templateProps} />
-            ) : (
-              <NegativeReviewAlertTemplate ref={cardRef} {...templateProps} />
-            )}
           </div>
         </div>
       </div>
