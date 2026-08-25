@@ -79,55 +79,60 @@ export async function captureNegativeReviewAlertViaUrl(
   // Lambda/función "caliente" (reutilizada entre peticiones), Playwright no
   // limpia solo su user-data-dir por defecto — /tmp se va llenando y, tras
   // varias invocaciones seguidas, Chromium empieza a fallar con
-  // net::ERR_INSUFFICIENT_RESOURCES. Se borra en el finally de abajo.
+  // net::ERR_INSUFFICIENT_RESOURCES.
   const userDataDir = isServerless ? `/tmp/pw-${randomUUID()}` : null;
-  const browser = isServerless
-    ? await (async () => {
-        // Barrido defensivo: si una invocación anterior en esta misma
-        // función "caliente" murió a media captura (timeout, OOM…), su
-        // finally no llegó a ejecutarse y su carpeta /tmp/pw-* quedó
-        // huérfana. Limpiarlas aquí evita que /tmp se vaya llenando entre
-        // invocaciones hasta que Chromium falle con
-        // net::ERR_INSUFFICIENT_RESOURCES.
-        const entries = await readdir("/tmp").catch(() => [] as string[]);
-        await Promise.all(
-          entries
-            .filter((name) => name.startsWith("pw-"))
-            .map((name) => rm(`/tmp/${name}`, { recursive: true, force: true }).catch(() => {}))
-        );
 
-        const { default: sparticuzChromium } = await import("@sparticuz/chromium");
-        // No usamos WebGL/canvas 3D en estas plantillas — desactivarlo evita
-        // problemas de inicialización de swiftshader en el sandbox de Vercel.
-        sparticuzChromium.setGraphicsMode = false;
-        // OJO: aparte de --user-data-dir (necesario, ver arriba) y
-        // --disable-dev-shm-usage (el /dev/shm de estos contenedores es
-        // minúsculo; sin este flag Chromium intenta usarlo igualmente y
-        // acaba fallando con net::ERR_INSUFFICIENT_RESOURCES), se pasan
-        // solo los args recomendados por @sparticuz/chromium, tal cual su
-        // ejemplo oficial para Playwright, sin forzar `headless` — chromium.args
-        // ya trae su propio `--headless='shell'` y flags que chocan con los
-        // nuestros (p.ej. --font-render-hinting). Mezclar flags propios aquí
-        // hizo que Chromium se cerrase nada más arrancar ("Target page,
-        // context or browser has been closed").
-        return chromium.launch({
-          executablePath: await sparticuzChromium.executablePath(),
-          args: [
-            ...sparticuzChromium.args,
-            `--user-data-dir=${userDataDir}`,
-            "--disable-dev-shm-usage",
-          ],
-        });
-      })()
-    : await chromium.launch({
-        headless: true,
-        args: ["--font-render-hinting=full", "--force-color-profile=srgb"],
-      });
-  try {
-    const page = await browser.newPage({
+  // Playwright NO deja pasar --user-data-dir dentro de `args` en
+  // chromium.launch() (lanza "Pass userDataDir parameter to
+  // launchPersistentContext" en cuanto lo detecta) — a diferencia de
+  // Puppeteer, que sí lo permite tal cual muestra el ejemplo oficial de
+  // @sparticuz/chromium. Para fijar un perfil propio con Playwright hay que
+  // usar `launchPersistentContext`, que devuelve un contexto con su propia
+  // página ya en vez de un Browser al que pedirle newPage().
+  let page: import("playwright-core").Page;
+  let closeBrowser: () => Promise<void>;
+  if (isServerless) {
+    // Barrido defensivo: si una invocación anterior en esta misma función
+    // "caliente" murió a media captura (timeout, OOM…), su cierre no llegó
+    // a ejecutarse y su carpeta /tmp/pw-* quedó huérfana. Limpiarlas aquí
+    // evita que /tmp se vaya llenando hasta agotar recursos.
+    const entries = await readdir("/tmp").catch(() => [] as string[]);
+    await Promise.all(
+      entries
+        .filter((name) => name.startsWith("pw-"))
+        .map((name) => rm(`/tmp/${name}`, { recursive: true, force: true }).catch(() => {}))
+    );
+
+    const { default: sparticuzChromium } = await import("@sparticuz/chromium");
+    // No usamos WebGL/canvas 3D en estas plantillas — desactivarlo evita
+    // problemas de inicialización de swiftshader en el sandbox de Vercel.
+    sparticuzChromium.setGraphicsMode = false;
+    const context = await chromium.launchPersistentContext(userDataDir as string, {
+      executablePath: await sparticuzChromium.executablePath(),
+      // --disable-dev-shm-usage: el /dev/shm de estos contenedores es
+      // minúsculo; sin este flag Chromium puede fallar con
+      // net::ERR_INSUFFICIENT_RESOURCES. El resto son solo los args
+      // recomendados por @sparticuz/chromium — mezclar flags propios aquí
+      // (headless, font-render-hinting…) hizo que Chromium se cerrase nada
+      // más arrancar en pruebas anteriores.
+      args: [...sparticuzChromium.args, "--disable-dev-shm-usage"],
       viewport: { width: design.width, height: design.height },
       deviceScaleFactor,
     });
+    page = context.pages()[0] ?? (await context.newPage());
+    closeBrowser = () => context.close();
+  } else {
+    const browser = await chromium.launch({
+      headless: true,
+      args: ["--font-render-hinting=full", "--force-color-profile=srgb"],
+    });
+    page = await browser.newPage({
+      viewport: { width: design.width, height: design.height },
+      deviceScaleFactor,
+    });
+    closeBrowser = () => browser.close();
+  }
+  try {
     await page.goto(templateUrl, { waitUntil: "networkidle" });
     await waitForRender(page);
     const canvasHandle = await page.$(CANVAS_SELECTOR);
@@ -147,7 +152,7 @@ export async function captureNegativeReviewAlertViaUrl(
     }
     throw err;
   } finally {
-    await browser.close();
+    await closeBrowser();
     if (userDataDir) {
       await rm(userDataDir, { recursive: true, force: true }).catch(() => {});
     }
