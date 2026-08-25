@@ -72,22 +72,27 @@ export async function captureNegativeReviewAlertViaUrl(
   // usamos el Chromium empaquetado de @sparticuz/chromium, pensado para
   // correr dentro de una función serverless.
   const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-  const launchArgs = ["--font-render-hinting=full", "--force-color-profile=srgb"];
   const browser = isServerless
     ? await (async () => {
         const { default: sparticuzChromium } = await import("@sparticuz/chromium");
-        // Nuestras plantillas son HTML/CSS estático, sin WebGL ni canvas 3D
-        // — desactivar el modo gráfico evita extraer swiftshader.tar.br
-        // (renderizador WebGL por software) y reduce notablemente el
-        // arranque en frío y el consumo de memoria de la función.
+        // No usamos WebGL/canvas 3D en estas plantillas — desactivarlo evita
+        // problemas de inicialización de swiftshader en el sandbox de Vercel.
         sparticuzChromium.setGraphicsMode = false;
+        // OJO: se pasan SOLO los args recomendados por @sparticuz/chromium,
+        // tal cual su ejemplo oficial para Playwright, y sin forzar
+        // `headless` — chromium.args ya trae su propio `--headless='shell'`
+        // y flags que chocan con los nuestros (p.ej. --font-render-hinting).
+        // Mezclar flags propios aquí hizo que Chromium se cerrase nada más
+        // arrancar ("Target page, context or browser has been closed").
         return chromium.launch({
-          headless: true,
           executablePath: await sparticuzChromium.executablePath(),
-          args: [...sparticuzChromium.args, ...launchArgs],
+          args: sparticuzChromium.args,
         });
       })()
-    : await chromium.launch({ headless: true, args: launchArgs });
+    : await chromium.launch({
+        headless: true,
+        args: ["--font-render-hinting=full", "--force-color-profile=srgb"],
+      });
   try {
     const page = await browser.newPage({
       viewport: { width: design.width, height: design.height },
