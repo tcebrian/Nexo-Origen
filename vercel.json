@@ -9,6 +9,10 @@
     "app/api/notifications/whatsapp-alert-image/route.ts": {
       "memory": 1769,
       "maxDuration": 60
+    },
+    "app/api/generate-network-summary-image/route.ts": {
+      "memory": 1769,
+      "maxDuration": 60
     }
   }
 }

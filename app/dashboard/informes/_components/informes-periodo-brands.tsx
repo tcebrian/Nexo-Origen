@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import type { ReportPeriodSlug } from "@/lib/reports/period-ranges";
 import { REPORT_PERIOD_LABELS } from "@/lib/reports/period-ranges";
+import type { NetworkReportGroupId } from "@/lib/reports/network-summary/brand-groups";
 import { card, shell, textKicker, textTitle } from "./ui/informes-styles";
+import { NetworkSummaryImageModal } from "./network-summary-image-modal";
 
 type InformesPeriodoBrandsProps = {
   periodo: ReportPeriodSlug;
@@ -17,18 +20,19 @@ type InformesPeriodoBrandsProps = {
  * siendo uno por marca (restaurante a restaurante), sin tocar cómo funciona
  * hoy.
  */
-const REPORT_GROUPS = [
-  { label: "Burger King", pdfBrands: ["Burger King"] },
-  { label: "Popeyes", pdfBrands: ["Popeyes"] },
-  { label: "Santa Gloria", pdfBrands: ["Santa Gloria"] },
-  { label: "Tim Hortons", pdfBrands: ["Tim Hortons"] },
+const REPORT_GROUPS: { id: NetworkReportGroupId; label: string; sublabel?: string; pdfBrands: string[] }[] = [
+  { id: "bk", label: "Burger King", pdfBrands: ["Burger King"] },
+  { id: "pp", label: "Popeyes", pdfBrands: ["Popeyes"] },
+  { id: "sg", label: "Santa Gloria", pdfBrands: ["Santa Gloria"] },
+  { id: "th", label: "Tim Hortons", pdfBrands: ["Tim Hortons"] },
   {
+    id: "hambar",
     label: "Grupo Hámbar",
     sublabel: "Ribs · Sibuya · Volapié",
     pdfBrands: ["Ribs", "Sibuya", "Taberna Volapié"],
   },
-  { label: "Vault", pdfBrands: ["Vault"] },
-] as const;
+  { id: "vault", label: "Vault", pdfBrands: ["Vault"] },
+];
 
 function DocumentIcon({ className = "" }: { className?: string }) {
   return (
@@ -51,6 +55,8 @@ function ImageIcon({ className = "" }: { className?: string }) {
 }
 
 export function InformesPeriodoBrands({ periodo, rangeLabel }: InformesPeriodoBrandsProps) {
+  const [pngGroup, setPngGroup] = useState<{ id: NetworkReportGroupId; label: string } | null>(null);
+
   return (
     <div className="relative flex min-h-0 flex-col gap-6 pb-10">
       <header className="mb-2 shrink-0 border-b border-[var(--nexo-border)] pb-5">
@@ -113,12 +119,11 @@ export function InformesPeriodoBrands({ periodo, rangeLabel }: InformesPeriodoBr
                   ))}
                   <button
                     type="button"
-                    disabled
-                    title="Próximamente"
-                    className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2 text-[13px] font-medium text-gray-500"
+                    onClick={() => setPngGroup({ id: group.id, label: group.label })}
+                    className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-500/15 px-3.5 py-2 text-[13px] font-medium text-emerald-100 transition hover:border-emerald-300/40 hover:bg-emerald-500/25 hover:text-white"
                   >
                     <ImageIcon className="h-4 w-4" />
-                    PNG · Próximamente
+                    PNG
                   </button>
                 </div>
               </div>
@@ -126,6 +131,8 @@ export function InformesPeriodoBrands({ periodo, rangeLabel }: InformesPeriodoBr
           </div>
         </div>
       </section>
+
+      <NetworkSummaryImageModal periodo={periodo} grupo={pngGroup} onClose={() => setPngGroup(null)} />
     </div>
   );
 }

@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
       "./node_modules/playwright-core/**/*",
       "./node_modules/@sparticuz/chromium/bin/**/*",
     ],
+    "/api/generate-network-summary-image": [
+      "./node_modules/playwright-core/**/*",
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+    ],
   },
   images: {
     formats: ["image/avif", "image/webp"],
