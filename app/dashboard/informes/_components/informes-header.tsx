@@ -36,11 +36,10 @@ export function InformesHeader({ periodLabel }: InformesHeaderProps) {
             Informes visuales
           </p>
           <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-[var(--nexo-text)] lg:text-[28px]">
-            Reseñas negativas
+            Informes
           </h1>
           <p className="mt-2 text-[14px] leading-relaxed text-[var(--nexo-text-secondary)]">
-            Genera imágenes ejecutivas de reseñas ≤3★ para compartir por WhatsApp o incluir en informes.
-            Disponible para Burger King.
+            Genera informes automáticos por marca: semanales, mensuales y trimestrales.
           </p>
         </div>
 

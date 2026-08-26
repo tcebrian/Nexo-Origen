@@ -3,7 +3,7 @@ import { InformesPage } from "./_components/informes-page";
 
 export const metadata: Metadata = {
   title: "Informes | Nexo Origen",
-  description: "Genera informes visuales de reseñas negativas para compartir con tu equipo.",
+  description: "Genera informes automáticos por marca: semanales, mensuales y trimestrales.",
 };
 
 export default function Page() {
