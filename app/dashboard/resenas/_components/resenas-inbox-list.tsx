@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CommentExcerpt } from "@/app/dashboard/_components/comment-excerpt";
@@ -9,6 +10,7 @@ import { getReviewHref } from "@/lib/text/excerpt";
 import type { Review } from "@/lib/reviews/types";
 import { inboxCard, textKicker } from "./ui/resenas-styles";
 import { EditedBadge, SentimentBadge, StarRating, avatarTone } from "./ui/review-primitives";
+import { ReviewImageModal } from "./review-image-modal";
 
 type ResenasInboxListProps = {
   reviews: Review[];
@@ -30,6 +32,7 @@ function MotiveBadge({ label }: { label: string }) {
 
 export function ResenasInboxList({ reviews }: ResenasInboxListProps) {
   const router = useRouter();
+  const [imageReview, setImageReview] = useState<Review | null>(null);
 
   if (reviews.length === 0) {
     return (
@@ -140,7 +143,17 @@ export function ResenasInboxList({ reviews }: ResenasInboxListProps) {
               </div>
             </div>
 
-            <div className="relative mt-4 flex justify-end border-t border-[var(--nexo-border)] pt-3">
+            <div className="relative mt-4 flex items-center justify-end gap-4 border-t border-[var(--nexo-border)] pt-3">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setImageReview(review);
+                }}
+                className="text-[12px] font-medium text-[var(--nexo-text-secondary)] transition hover:text-[var(--nexo-text)]"
+              >
+                Generar imagen
+              </button>
               <Link
                 href={href}
                 onClick={(event) => event.stopPropagation()}
@@ -152,6 +165,8 @@ export function ResenasInboxList({ reviews }: ResenasInboxListProps) {
           </article>
         );
       })}
+
+      <ReviewImageModal review={imageReview} onClose={() => setImageReview(null)} />
     </div>
   );
 }

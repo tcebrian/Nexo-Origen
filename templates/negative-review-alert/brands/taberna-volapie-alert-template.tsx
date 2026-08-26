@@ -209,6 +209,34 @@ export const TabernaVolapieAlertTemplate = forwardRef<HTMLDivElement, TabernaVol
 
     return (
       <div ref={ref} className="tva-canvas" style={{ width: design.width, height: design.height }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/taberna-volapie/tv-product1.png")}
+          alt=""
+          aria-hidden
+          className="tva-product tva-product--1"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/taberna-volapie/tv-product2.png")}
+          alt=""
+          aria-hidden
+          className="tva-product tva-product--2"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/taberna-volapie/tv-product3.png")}
+          alt=""
+          aria-hidden
+          className="tva-product tva-product--3"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={absUrl(assetBaseUrl, "/design/taberna-volapie/tv-product5.png")}
+          alt=""
+          aria-hidden
+          className="tva-product tva-product--5"
+        />
         <div className={`tva-sheet ${isExtremeComment ? "tva-sheet--extreme" : ""}`}>
           {/* Header editorial */}
           <header className="tva-header">
@@ -237,6 +265,14 @@ export const TabernaVolapieAlertTemplate = forwardRef<HTMLDivElement, TabernaVol
                 {locationLabel}
               </p>
             </div>
+
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={absUrl(assetBaseUrl, "/design/taberna-volapie/tv-product3.png")}
+              alt=""
+              aria-hidden
+              className="tva-product tva-product--4"
+            />
           </header>
 
           <span className="tva-header__divider" aria-hidden />

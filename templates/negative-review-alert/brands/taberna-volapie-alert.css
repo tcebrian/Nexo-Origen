@@ -45,6 +45,58 @@
   max-width: 100%;
 }
 
+.tva-product {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  filter: drop-shadow(0 20px 22px rgba(44, 42, 34, 0.3));
+}
+
+.tva-product--1 {
+  bottom: -30px;
+  left: -100px;
+  width: 790px;
+  z-index: 3;
+  transform: perspective(900px) rotateX(10deg) rotate(-2deg);
+  filter: drop-shadow(0 26px 26px rgba(44, 42, 34, 0.45)) drop-shadow(0 6px 8px rgba(44, 42, 34, 0.35));
+}
+
+.tva-product--2 {
+  bottom: -55px;
+  right: -150px;
+  width: 600px;
+  z-index: 3;
+  transform: perspective(900px) rotateX(16deg) rotate(3deg);
+  filter: drop-shadow(0 34px 30px rgba(44, 42, 34, 0.5)) drop-shadow(0 8px 10px rgba(44, 42, 34, 0.4));
+}
+
+.tva-product--5 {
+  top: -20px;
+  left: -90px;
+  width: 320px;
+  z-index: 4;
+  transform: rotate(0deg);
+  filter: drop-shadow(0 14px 14px rgba(44, 42, 34, 0.4));
+}
+
+.tva-product--4 {
+  top: -10px;
+  left: 890px;
+  width: 130px;
+  z-index: 4;
+  transform: rotate(0deg);
+  filter: drop-shadow(0 10px 10px rgba(44, 42, 34, 0.4));
+}
+
+.tva-product--3 {
+  top: 0px;
+  right: -60px;
+  width: 240px;
+  z-index: 4;
+  transform: perspective(900px) rotateX(4deg) rotate(0deg);
+  filter: drop-shadow(0 26px 24px rgba(44, 42, 34, 0.45)) drop-shadow(0 6px 8px rgba(44, 42, 34, 0.35));
+}
+
 /* ---------- producto: elementos editoriales, no confinados a una tarjeta ---------- */
 
 .tva-product {
@@ -100,7 +152,7 @@
 }
 
 .tva-header__alert > div {
-  margin-left: 410px;
+  margin-left: 440px;
   margin-top: 8px;
 }
 
@@ -141,8 +193,8 @@
 .tva-header__wordmark {
   position: absolute;
   top: 36px;
-  left: 60px;
-  height: 105px;
+  left: 40px;
+  height: 112px;
   width: auto;
   object-fit: contain;
   z-index: 4;
@@ -196,7 +248,7 @@
   position: absolute;
   top: 24px;
   right: 24px;
-  z-index: 3;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;
