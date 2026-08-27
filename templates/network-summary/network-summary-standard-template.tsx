@@ -69,6 +69,7 @@ export function NetworkSummaryStandardTemplate({ data, visual, periodoAdjective,
               </svg>
               {data.groupSublabel ?? "Red de Restaurantes"}
             </p>
+            <p className="nws-header__date">{data.periodLabel}</p>
           </div>
         </div>
 
