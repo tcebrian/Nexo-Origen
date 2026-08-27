@@ -312,6 +312,48 @@
   grid-template-columns: 0.85fr 1.1fr 0.75fr 0.7fr 0.9fr 1.1fr;
 }
 
+/* Cuantos más locales, más compacta la fila — así siempre caben todos sin
+   que la tarjeta (altura fija) los corte por su overflow:hidden. */
+.nws-table--tier-md .nws-table__row {
+  padding: 4px 0;
+  font-size: 11px;
+}
+
+.nws-table--tier-sm .nws-table__row {
+  padding: 2.5px 0;
+  font-size: 10px;
+  gap: 6px;
+}
+
+.nws-table--tier-xs .nws-table__row {
+  padding: 1.5px 0;
+  font-size: 9px;
+  gap: 5px;
+}
+
+.nws-table--tier-md .nws-table__status,
+.nws-table--tier-md .nws-table__motive {
+  font-size: 10px;
+}
+
+.nws-table--tier-sm .nws-table__status,
+.nws-table--tier-sm .nws-table__motive {
+  font-size: 9px;
+  gap: 4px;
+}
+
+.nws-table--tier-xs .nws-table__status,
+.nws-table--tier-xs .nws-table__motive {
+  font-size: 8px;
+  gap: 3px;
+}
+
+.nws-table--tier-sm .nws-dot,
+.nws-table--tier-xs .nws-dot {
+  width: 6px;
+  height: 6px;
+}
+
 .nws-table__brand {
   font-size: 11px;
   font-weight: 700;

@@ -24,6 +24,21 @@ function StatusDot({ status }: { status: NetworkSummaryData["locations"][number]
   return <span className="nws-dot" style={{ background: color }} aria-hidden />;
 }
 
+/**
+ * La tarjeta de la tabla tiene una altura fija (el lienzo entero es
+ * 1536×1024) — con más de ~11 restaurantes las filas dejaban de caber y se
+ * cortaban silenciosamente por el overflow:hidden de la tarjeta (pasó de
+ * verdad con Burger King: 13 locales, faltaban los 2 últimos). En vez de
+ * eso, la fila se hace más compacta cuantos más locales haya, para que
+ * siempre quepan todos.
+ */
+function locationsTier(count: number): "lg" | "md" | "sm" | "xs" {
+  if (count <= 11) return "lg";
+  if (count <= 15) return "md";
+  if (count <= 20) return "sm";
+  return "xs";
+}
+
 export function NetworkSummaryStandardTemplate({ data, visual, periodoAdjective, assetBaseUrl }: Props) {
   const style = {
     "--nws-ink": visual.ink,
@@ -137,7 +152,9 @@ export function NetworkSummaryStandardTemplate({ data, visual, periodoAdjective,
       <section className="nws-body">
         <div className="nws-table-card">
           <p className="nws-section-title">Tabla de locales</p>
-          <div className={`nws-table ${visual.showBrandColumn ? "nws-table--with-brand" : ""}`}>
+          <div
+            className={`nws-table nws-table--tier-${locationsTier(data.locations.length)} ${visual.showBrandColumn ? "nws-table--with-brand" : ""}`}
+          >
             <div className="nws-table__row nws-table__row--head">
               {visual.showBrandColumn ? <span>Marca</span> : null}
               <span>Local</span>
