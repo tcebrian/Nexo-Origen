@@ -50,8 +50,6 @@ export function NetworkSummaryStandardTemplate({ data, visual, periodoAdjective,
     "--nws-wordmark-font": visual.wordmarkFont,
   } as React.CSSProperties;
 
-  const capitalizedAdjective = periodoAdjective.charAt(0).toUpperCase() + periodoAdjective.slice(1);
-
   const headerStyle = visual.headerBackgroundImage
     ? {
         backgroundImage: `url(${absUrl(assetBaseUrl, visual.headerBackgroundImage)})`,
@@ -101,15 +99,6 @@ export function NetworkSummaryStandardTemplate({ data, visual, periodoAdjective,
           <p className="nws-header__nexo-tag">Analizamos cada reseña para seguir mejorando.</p>
         </div>
       </header>
-
-      <p className="nws-period-banner">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="3" y="5" width="18" height="16" rx="2" />
-          <path d="M8 3v4M16 3v4M3 10h18" />
-        </svg>
-        {capitalizedAdjective === "Semanal" ? "Semana analizada" : capitalizedAdjective === "Mensual" ? "Mes analizado" : "Trimestre analizado"}
-        <span className="nws-period-banner__value">{data.periodLabel}</span>
-      </p>
 
       <section className="nws-kpis">
         <div className="nws-kpi-card">
