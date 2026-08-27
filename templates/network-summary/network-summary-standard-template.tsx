@@ -52,9 +52,17 @@ export function NetworkSummaryStandardTemplate({ data, visual, periodoAdjective,
 
   const capitalizedAdjective = periodoAdjective.charAt(0).toUpperCase() + periodoAdjective.slice(1);
 
+  const headerStyle = visual.headerBackgroundImage
+    ? {
+        backgroundImage: `url(${absUrl(assetBaseUrl, visual.headerBackgroundImage)})`,
+        backgroundSize: "cover",
+        backgroundPosition: "right center",
+      }
+    : undefined;
+
   return (
     <div className="nws-canvas" style={style}>
-      <header className="nws-header">
+      <header className={`nws-header ${visual.headerBackgroundImage ? "nws-header--photo" : ""}`} style={headerStyle}>
         <div className="nws-header__brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={absUrl(assetBaseUrl, visual.logo)} alt="" aria-hidden className="nws-header__logo" />

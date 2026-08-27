@@ -5,6 +5,12 @@ export type NetworkSummaryGroupVisual = {
   heroImage: string | null;
   /** Varias fotos en la cabecera en vez de una sola (informes multi-marca como Grupo Hámbar). */
   heroImages?: string[];
+  /**
+   * Foto de fondo de toda la cabecera en vez del degradado de color — la
+   * propia foto trae su fondo oscuro y la comida ya compuesta (pensada para
+   * esto), así que sustituye tanto al degradado como a `heroImage`.
+   */
+  headerBackgroundImage?: string;
   /** Muestra la columna "Marca" en la tabla de locales (informes multi-marca). */
   showBrandColumn?: boolean;
   ink: string;
@@ -22,7 +28,8 @@ export type NetworkSummaryGroupVisual = {
 export const NETWORK_SUMMARY_GROUP_VISUALS: Record<NetworkReportGroupId, NetworkSummaryGroupVisual> = {
   bk: {
     logo: "/brands/burger-king-transparent.png",
-    heroImage: "/design/burger-king/bk-burger.png",
+    heroImage: null,
+    headerBackgroundImage: "/design/burger-king/bk-network-header.png",
     ink: "#1a1108",
     accent: "#e4720d",
     accentDark: "#a11d14",
