@@ -58,14 +58,19 @@ function resolveShortLocation(location: string | undefined): string {
   return segments[0] ?? "—";
 }
 
+/**
+ * Para Burger King, el título de la imagen es "BK {localidad}" — pero la
+ * localidad NO se saca de la dirección (texto libre; a veces solo trae la
+ * provincia, ej. "Zaragoza", no el pueblo exacto — así salió mal "BK
+ * Zaragoza" en vez de "BK Calatayud" para una reseña de Calatayud). Se saca
+ * del propio nombre del restaurante en el catálogo (ej. "BK Calatayud"),
+ * que sí es siempre la localidad exacta — solo hay que quitarle el prefijo
+ * de marca.
+ */
 function resolveRestaurantTitle(review: Review): string {
   if (review.brand === "bk") {
-    const city = resolveShortLocation(review.location).split(",")[0]?.trim() ?? "";
-    const label = city
-      .split(" ")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-      .join(" ");
-    return label ? `BK ${label}`.toUpperCase() : review.restaurant.toUpperCase();
+    const city = review.restaurant.replace(/^\s*(bk|burger\s*king)\s+/i, "").trim();
+    return city ? `BK ${city}`.toUpperCase() : review.restaurant.toUpperCase();
   }
   return review.restaurant.toUpperCase();
 }
