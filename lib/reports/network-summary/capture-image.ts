@@ -40,9 +40,10 @@ async function waitForRender(page: import("playwright-core").Page): Promise<void
 export async function captureNetworkSummaryPng(
   periodo: ReportPeriodSlug,
   grupo: NetworkReportGroupId,
-  assetBaseUrl: string
+  assetBaseUrl: string,
+  offset: number = 0
 ): Promise<Buffer> {
-  const templateUrl = `${assetBaseUrl.replace(/\/$/, "")}/templates/network-summary/${periodo}/${grupo}`;
+  const templateUrl = `${assetBaseUrl.replace(/\/$/, "")}/templates/network-summary/${periodo}/${grupo}?offset=${offset}`;
 
   let chromium: typeof import("playwright-core").chromium;
   try {

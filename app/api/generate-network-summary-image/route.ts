@@ -14,6 +14,8 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const periodo = searchParams.get("periodo") ?? "";
   const grupo = searchParams.get("grupo") ?? "";
+  const offsetParam = searchParams.get("offset");
+  const offset = offsetParam ? Number.parseInt(offsetParam, 10) : 0;
 
   if (!isReportPeriodSlug(periodo)) {
     return Response.json({ error: "Parámetro periodo inválido" }, { status: 400 });
@@ -23,7 +25,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const png = await captureNetworkSummaryPng(periodo, grupo, origin);
+    const png = await captureNetworkSummaryPng(periodo, grupo, origin, Number.isFinite(offset) ? offset : 0);
     const group = NETWORK_REPORT_GROUPS[grupo];
     const slug = group.label
       .toLowerCase()

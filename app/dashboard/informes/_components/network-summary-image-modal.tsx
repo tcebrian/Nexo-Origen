@@ -8,6 +8,8 @@ import { btnGhost, btnPrimary, card, shell } from "./ui/informes-styles";
 
 type NetworkSummaryImageModalProps = {
   periodo: ReportPeriodSlug;
+  offset: number;
+  rangeLabel: string;
   grupo: { id: NetworkReportGroupId; label: string } | null;
   onClose: () => void;
 };
@@ -19,7 +21,7 @@ type NetworkSummaryImageModalProps = {
  * la misma razón que ReviewImageModal — evita que `position: fixed` quede
  * anclado a un ancestro con transform en vez de a la pantalla.
  */
-export function NetworkSummaryImageModal({ periodo, grupo, onClose }: NetworkSummaryImageModalProps) {
+export function NetworkSummaryImageModal({ periodo, offset, rangeLabel, grupo, onClose }: NetworkSummaryImageModalProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +33,9 @@ export function NetworkSummaryImageModal({ periodo, grupo, onClose }: NetworkSum
     setError(null);
 
     try {
-      const response = await fetch(`/api/generate-network-summary-image?periodo=${periodo}&grupo=${grupo.id}`);
+      const response = await fetch(
+        `/api/generate-network-summary-image?periodo=${periodo}&grupo=${grupo.id}&offset=${offset}`
+      );
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as { error?: string } | null;
         throw new Error(payload?.error ?? `Error ${response.status}`);
@@ -47,14 +51,14 @@ export function NetworkSummaryImageModal({ periodo, grupo, onClose }: NetworkSum
     } finally {
       setGenerating(false);
     }
-  }, [grupo, periodo]);
+  }, [grupo, periodo, offset]);
 
   useEffect(() => {
     if (!grupo) return;
     setPreviewUrl(null);
     void generatePreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grupo, periodo]);
+  }, [grupo, periodo, offset]);
 
   useEffect(() => {
     return () => {
@@ -83,6 +87,7 @@ export function NetworkSummaryImageModal({ periodo, grupo, onClose }: NetworkSum
                 Vista previa
               </p>
               <h3 className="mt-1 truncate text-lg font-semibold text-[var(--nexo-text)]">{grupo.label}</h3>
+              <p className="mt-1 text-[13px] text-[var(--nexo-text-secondary)]">Periodo: {rangeLabel}</p>
             </div>
             <button type="button" onClick={onClose} className={`${btnGhost} shrink-0`}>
               Cerrar

@@ -5,6 +5,7 @@ import { InformesPeriodoBrands } from "../_components/informes-periodo-brands";
 
 type PageProps = {
   params: Promise<{ periodo: string }>;
+  searchParams: Promise<{ offset?: string }>;
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -13,11 +14,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return { title: `${REPORT_PERIOD_LABELS[periodo]} | Nexo Origen` };
 }
 
-export default async function Page({ params }: PageProps) {
+export default async function Page({ params, searchParams }: PageProps) {
   const { periodo } = await params;
+  const { offset: offsetParam } = await searchParams;
   if (!isReportPeriodSlug(periodo)) notFound();
 
-  const range = resolveReportPeriodRange(periodo);
+  const parsedOffset = offsetParam ? Number.parseInt(offsetParam, 10) : 0;
+  const offset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+  const range = resolveReportPeriodRange(periodo, offset);
 
-  return <InformesPeriodoBrands periodo={periodo} rangeLabel={range.label} />;
+  return <InformesPeriodoBrands periodo={periodo} offset={offset} rangeLabel={range.label} />;
 }

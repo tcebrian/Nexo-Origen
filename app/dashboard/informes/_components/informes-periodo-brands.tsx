@@ -10,7 +10,14 @@ import { NetworkSummaryImageModal } from "./network-summary-image-modal";
 
 type InformesPeriodoBrandsProps = {
   periodo: ReportPeriodSlug;
+  offset: number;
   rangeLabel: string;
+};
+
+const PERIODO_UNIT_LABEL: Record<ReportPeriodSlug, string> = {
+  semanal: "semana",
+  mensual: "mes",
+  trimestral: "trimestre",
 };
 
 /**
@@ -54,8 +61,17 @@ function ImageIcon({ className = "" }: { className?: string }) {
   );
 }
 
-export function InformesPeriodoBrands({ periodo, rangeLabel }: InformesPeriodoBrandsProps) {
+function ChevronIcon({ direction, className = "" }: { direction: "left" | "right"; className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d={direction === "left" ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function InformesPeriodoBrands({ periodo, offset, rangeLabel }: InformesPeriodoBrandsProps) {
   const [pngGroup, setPngGroup] = useState<{ id: NetworkReportGroupId; label: string } | null>(null);
+  const unit = PERIODO_UNIT_LABEL[periodo];
 
   return (
     <div className="relative flex min-h-0 flex-col gap-6 pb-10">
@@ -78,9 +94,35 @@ export function InformesPeriodoBrands({ periodo, rangeLabel }: InformesPeriodoBr
         <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-[var(--nexo-text)] lg:text-[28px]">
           {REPORT_PERIOD_LABELS[periodo]}
         </h1>
-        <p className="mt-2 text-[14px] leading-relaxed text-[var(--nexo-text-secondary)]">
-          Periodo analizado: {rangeLabel}
-        </p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <div className="inline-flex items-center gap-1 rounded-xl border border-[var(--nexo-border)] bg-[var(--nexo-card)] p-1">
+            <Link
+              href={`/dashboard/informes/${periodo}?offset=${offset + 1}`}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--nexo-text-secondary)] transition hover:bg-[var(--nexo-inset)] hover:text-[var(--nexo-text)]"
+              title={`${unit.charAt(0).toUpperCase() + unit.slice(1)} anterior`}
+            >
+              <ChevronIcon direction="left" className="h-4 w-4" />
+            </Link>
+            <span className="px-2 text-[13px] font-medium text-[var(--nexo-text)]">{rangeLabel}</span>
+            {offset > 0 ? (
+              <Link
+                href={`/dashboard/informes/${periodo}?offset=${offset - 1}`}
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--nexo-text-secondary)] transition hover:bg-[var(--nexo-inset)] hover:text-[var(--nexo-text)]"
+                title={`${unit.charAt(0).toUpperCase() + unit.slice(1)} siguiente`}
+              >
+                <ChevronIcon direction="right" className="h-4 w-4" />
+              </Link>
+            ) : (
+              <span className="flex h-7 w-7 items-center justify-center text-[var(--nexo-text-tertiary)] opacity-30">
+                <ChevronIcon direction="right" className="h-4 w-4" />
+              </span>
+            )}
+          </div>
+          <p className="text-[13px] text-[var(--nexo-text-secondary)]">
+            {offset === 0 ? `Última ${unit} completa` : `${offset + 1} ${unit}s atrás`}
+          </p>
+        </div>
       </header>
 
       <section className={shell}>
@@ -132,7 +174,13 @@ export function InformesPeriodoBrands({ periodo, rangeLabel }: InformesPeriodoBr
         </div>
       </section>
 
-      <NetworkSummaryImageModal periodo={periodo} grupo={pngGroup} onClose={() => setPngGroup(null)} />
+      <NetworkSummaryImageModal
+        periodo={periodo}
+        offset={offset}
+        rangeLabel={rangeLabel}
+        grupo={pngGroup}
+        onClose={() => setPngGroup(null)}
+      />
     </div>
   );
 }
