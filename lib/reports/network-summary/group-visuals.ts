@@ -27,7 +27,7 @@ export type NetworkSummaryGroupVisual = {
 
 export const NETWORK_SUMMARY_GROUP_VISUALS: Record<NetworkReportGroupId, NetworkSummaryGroupVisual> = {
   bk: {
-    logo: "/brands/burger-king-transparent.png",
+    logo: "/design/burger-king/bk-logo.png",
     heroImage: null,
     headerBackgroundImage: "/design/burger-king/bk-network-header.png",
     ink: "#1a1108",
@@ -42,8 +42,9 @@ export const NETWORK_SUMMARY_GROUP_VISUALS: Record<NetworkReportGroupId, Network
     footerTagline: "Cada reseña es una oportunidad para mejorar el servicio.",
   },
   pp: {
-    logo: "/brands/popeyes-transparent.png",
+    logo: "/design/popeyes/pp-logo.png",
     heroImage: "/design/popeyes/pp-tenders.png",
+    headerBackgroundImage: "/design/popeyes/pp-network-header.png",
     ink: "#2b1206",
     accent: "#d9531e",
     accentDark: "#7c2410",
@@ -55,7 +56,7 @@ export const NETWORK_SUMMARY_GROUP_VISUALS: Record<NetworkReportGroupId, Network
     brandSubtitle: "EXPERIENCIA DEL CLIENTE",
     footerTagline: "Analizamos cada reseña para seguir mejorando.",
   },
-  sg: {
+  "sg-es": {
     logo: "/brands/santa-gloria-transparent.png",
     heroImage: "/design/santa-gloria/sg-croissant-plate.png",
     ink: "#2c2016",
@@ -66,7 +67,21 @@ export const NETWORK_SUMMARY_GROUP_VISUALS: Record<NetworkReportGroupId, Network
     card: "#ffffff",
     wordmarkFont: '"Playfair Display", serif',
     brandTitle: "SANTA GLORIA",
-    brandSubtitle: "EXPERIENCIA DEL CLIENTE",
+    brandSubtitle: "ESPAÑA",
+    footerTagline: "Pasión por el buen café y los detalles.",
+  },
+  "sg-ad": {
+    logo: "/brands/santa-gloria-transparent.png",
+    heroImage: "/design/santa-gloria/sg-croissant-plate.png",
+    ink: "#2c2016",
+    accent: "#8a5a34",
+    accentDark: "#5c3a1f",
+    cream: "#faf5ec",
+    creamDeep: "#efe3cf",
+    card: "#ffffff",
+    wordmarkFont: '"Playfair Display", serif',
+    brandTitle: "SANTA GLORIA",
+    brandSubtitle: "ANDORRA",
     footerTagline: "Pasión por el buen café y los detalles.",
   },
   th: {

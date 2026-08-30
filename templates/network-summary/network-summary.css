@@ -1,15 +1,23 @@
 @import url("../negative-review-alert/fonts.css");
 
+/*
+ * Lienzo a 1920×1080 (Full HD, 16:9). Medidas fijas reajustadas respecto al
+ * diseño original de 1536×1024 (3:2): factor horizontal ×1.25, factor
+ * vertical ×1.0547, y ×1.148 (media geométrica) para lo no direccional
+ * (tipografía, iconos cuadrados, radios de borde) — igual que en
+ * network-summary-bk.css.
+ */
+
 .nws-canvas {
   position: relative;
-  width: 1536px;
-  height: 1024px;
+  width: 1920px;
+  height: 1080px;
   overflow: hidden;
   box-sizing: border-box;
-  padding: 28px;
+  padding: 30px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   background: var(--nws-cream);
   color: var(--nws-ink);
   font-family: "Inter", system-ui, sans-serif;
@@ -34,10 +42,11 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 20px;
-  height: 220px;
-  border-radius: 20px;
-  padding: 22px 28px;
+  gap: 25px;
+  height: 359px;
+  margin: -30px 225px 0 -30px;
+  border-radius: 0 0 23px 23px;
+  padding: 23px 35px;
   background: linear-gradient(120deg, var(--nws-accent-dark) 0%, var(--nws-accent) 100%);
   color: #fff;
   overflow: hidden;
@@ -48,13 +57,13 @@
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 20px;
   min-width: 0;
   flex-shrink: 0;
 }
 
 .nws-header__logo {
-  height: 110px;
+  height: 116px;
   width: auto;
   object-fit: contain;
   filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
@@ -62,7 +71,7 @@
 
 .nws-header__kicker {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -72,7 +81,7 @@
 .nws-header__title {
   margin: 2px 0 0;
   font-family: var(--nws-wordmark-font);
-  font-size: 52px;
+  font-size: 60px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.01em;
@@ -83,7 +92,7 @@
 
 .nws-header__subtitle {
   margin: 4px 0 0;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -94,15 +103,15 @@
   margin: 8px 0 0;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 14px;
+  gap: 7px;
+  font-size: 16px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.85);
 }
 
 .nws-header__date {
-  margin: 4px 0 0 22px;
-  font-size: 12.5px;
+  margin: 4px 0 0 27px;
+  font-size: 14px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.7);
 }
@@ -113,7 +122,7 @@
   flex: 1;
   height: 100%;
   width: auto;
-  max-width: 480px;
+  max-width: 600px;
   object-fit: contain;
   margin: 0 auto;
   filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.4));
@@ -129,7 +138,7 @@
   flex: 1;
   height: 100%;
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: stretch;
   justify-content: center;
   min-width: 0;
@@ -141,35 +150,36 @@
   width: auto;
   min-width: 0;
   object-fit: cover;
-  border-radius: 14px;
+  border-radius: 16px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
 }
 
 .nws-header__nexo {
-  position: relative;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
   z-index: 2;
-  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: 9px;
   text-align: right;
-  max-width: 180px;
+  width: 190px;
 }
 
 .nws-header__nexo-logo {
-  height: 44px;
+  height: 46px;
   width: auto;
   object-fit: contain;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 .nws-header__nexo-tag {
   margin: 0;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.35;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.85);
+  color: color-mix(in srgb, var(--nws-ink) 65%, transparent);
 }
 
 /* ---------- period banner ---------- */
@@ -178,15 +188,15 @@
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   width: fit-content;
-  padding: 9px 18px;
-  border-radius: 10px;
+  padding: 9px 23px;
+  border-radius: 11px;
   /* Siempre un fondo oscuro de verdad (no --nws-ink: en paletas invertidas
      como Vault, ink es un color claro pensado para texto, no para fondos). */
   background: var(--nws-accent-dark);
   color: #fff;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -200,20 +210,20 @@
 .nws-kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
+  gap: 16px;
 }
 
 .nws-kpi-card {
-  border-radius: 16px;
+  border-radius: 18px;
   background: var(--nws-card);
   border: 1px solid var(--nws-cream-deep);
-  padding: 14px 16px;
+  padding: 15px 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .nws-kpi-card__label {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -222,7 +232,7 @@
 
 .nws-kpi-card__hint {
   margin: 4px 0 0;
-  font-size: 11px;
+  font-size: 13px;
   color: color-mix(in srgb, var(--nws-ink) 60%, transparent);
 }
 
@@ -234,7 +244,7 @@
 }
 
 .nws-kpi-card__value {
-  font-size: 34px;
+  font-size: 39px;
   font-weight: 800;
   line-height: 1;
   color: var(--nws-ink);
@@ -249,7 +259,7 @@
 }
 
 .nws-kpi-card__icon {
-  font-size: 20px;
+  font-size: 23px;
   color: var(--nws-accent);
 }
 
@@ -263,7 +273,7 @@
 
 .nws-kpi-card__foot {
   margin: 6px 0 0;
-  font-size: 11.5px;
+  font-size: 13px;
   color: color-mix(in srgb, var(--nws-ink) 65%, transparent);
   line-height: 1.4;
 }
@@ -279,13 +289,13 @@
   flex: 1;
   display: grid;
   grid-template-columns: 1.55fr 1fr;
-  gap: 14px;
+  gap: 16px;
   min-height: 0;
 }
 
 .nws-section-title {
-  margin: 0 0 10px;
-  font-size: 15px;
+  margin: 0 0 11px;
+  font-size: 17px;
   font-weight: 800;
   letter-spacing: 0.02em;
   color: var(--nws-ink);
@@ -293,10 +303,10 @@
 
 .nws-table-card,
 .nws-donut-card {
-  border-radius: 16px;
+  border-radius: 18px;
   background: var(--nws-card);
   border: 1px solid var(--nws-cream-deep);
-  padding: 16px 18px;
+  padding: 18px 21px;
   overflow: hidden;
 }
 
@@ -309,10 +319,10 @@
   display: grid;
   grid-template-columns: 1.3fr 0.85fr 0.8fr 1fr 1.2fr;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 7px 0;
   border-bottom: 1px solid var(--nws-cream-deep);
-  font-size: 12.5px;
+  font-size: 14px;
 }
 
 .nws-table--with-brand .nws-table__row {
@@ -323,46 +333,46 @@
    que la tarjeta (altura fija) los corte por su overflow:hidden. */
 .nws-table--tier-md .nws-table__row {
   padding: 4px 0;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .nws-table--tier-sm .nws-table__row {
   padding: 2.5px 0;
-  font-size: 10px;
-  gap: 6px;
+  font-size: 11px;
+  gap: 7px;
 }
 
 .nws-table--tier-xs .nws-table__row {
   padding: 1.5px 0;
-  font-size: 9px;
-  gap: 5px;
+  font-size: 10px;
+  gap: 6px;
 }
 
 .nws-table--tier-md .nws-table__status,
 .nws-table--tier-md .nws-table__motive {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .nws-table--tier-sm .nws-table__status,
 .nws-table--tier-sm .nws-table__motive {
-  font-size: 9px;
-  gap: 4px;
+  font-size: 10px;
+  gap: 5px;
 }
 
 .nws-table--tier-xs .nws-table__status,
 .nws-table--tier-xs .nws-table__motive {
-  font-size: 8px;
+  font-size: 9px;
   gap: 3px;
 }
 
 .nws-table--tier-sm .nws-dot,
 .nws-table--tier-xs .nws-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 
 .nws-table__brand {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -370,7 +380,7 @@
 }
 
 .nws-table__row--head {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -404,19 +414,19 @@
 .nws-table__status {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
+  gap: 7px;
+  font-size: 13px;
 }
 
 .nws-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 999px;
   flex-shrink: 0;
 }
 
 .nws-table__motive {
-  font-size: 11.5px;
+  font-size: 13px;
   color: color-mix(in srgb, var(--nws-ink) 70%, transparent);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -424,12 +434,12 @@
 }
 
 .nws-table__target {
-  margin: 12px 0 0;
-  padding: 8px 12px;
-  border-radius: 10px;
+  margin: 14px 0 0;
+  padding: 9px 14px;
+  border-radius: 11px;
   background: var(--nws-cream);
   text-align: center;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--nws-accent-dark);
 }
@@ -440,8 +450,8 @@
 }
 
 .nws-donut-card__total {
-  margin: 0 0 12px;
-  font-size: 12px;
+  margin: 0 0 14px;
+  font-size: 14px;
   color: color-mix(in srgb, var(--nws-ink) 65%, transparent);
 }
 
@@ -455,7 +465,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 15px;
 }
 
 .nws-donut__svg {
@@ -469,19 +479,19 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
 }
 
 .nws-donut__legend li {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 11.5px;
+  gap: 9px;
+  font-size: 13px;
 }
 
 .nws-donut__swatch {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 3px;
   flex-shrink: 0;
 }
@@ -506,13 +516,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 11px;
   text-align: center;
-  padding: 20px;
+  padding: 23px;
   border: 1.5px dashed var(--nws-cream-deep);
-  border-radius: 14px;
+  border-radius: 16px;
   color: color-mix(in srgb, var(--nws-ink) 55%, transparent);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
 }
 
@@ -521,15 +531,15 @@
 .nws-footer {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 18px;
-  border-radius: 12px;
+  gap: 16px;
+  padding: 11px 21px;
+  border-radius: 14px;
   background: var(--nws-accent-dark);
   color: #fff;
 }
 
 .nws-footer__logo {
-  height: 26px;
+  height: 27px;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
@@ -538,14 +548,14 @@
 .nws-footer__tagline {
   flex: 1;
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
   font-style: italic;
   color: rgba(255, 255, 255, 0.8);
 }
 
 .nws-footer__meta {
   margin: 0;
-  font-size: 11px;
+  font-size: 13px;
   color: rgba(255, 255, 255, 0.65);
   white-space: nowrap;
 }

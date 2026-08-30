@@ -16,6 +16,7 @@ export const SUPABASE_TABLES = {
   dashboard_kpis: "dashboard_kpis",
   perfiles: "perfiles",
   analisis_ia: "analisis_ia",
+  resena_motivos: "resena_motivos",
   empresas: "empresas",
   usuario_marcas: "usuario_marcas",
   usuario_restaurantes: "usuario_restaurantes",

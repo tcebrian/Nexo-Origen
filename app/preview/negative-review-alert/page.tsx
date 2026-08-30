@@ -35,6 +35,11 @@ import {
   SAMPLE_VAULT_SHORT,
 } from "@/lib/templates/negative-review-alert/sample-data";
 import { EDITABLE_HANDOFF_KEY } from "@/lib/templates/negative-review-alert/editable-handoff";
+import {
+  loadSavedReviewEdit,
+  saveReviewEdit,
+  type SavedReviewEdit,
+} from "@/lib/templates/negative-review-alert/editable-storage";
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
 import { NegativeReviewAlertTemplate } from "@/templates/negative-review-alert";
 import { BurgerKingAlertTemplate } from "@/templates/negative-review-alert/brands/burger-king-alert-template";
@@ -174,7 +179,18 @@ export default function NegativeReviewAlertPreviewPage() {
   );
   const sample = BRAND_SAMPLE_VARIANTS[brandKey].variants[sampleKey];
   const isEditable = sampleKey === "editable";
-  const activeData = isEditable && externalEditableData ? externalEditableData : sample.data;
+  const baseData = isEditable && externalEditableData ? externalEditableData : sample.data;
+
+  // Fecha y hora que aparecen en la imagen — vienen ya formateadas como
+  // texto (p.ej. "10 ago 2026" / "14:32") desde map-from-review.ts, así que
+  // se editan como texto libre en vez de con un <input type="date">.
+  const [editedDate, setEditedDate] = useState<string | null>(null);
+  const [editedTime, setEditedTime] = useState<string | null>(null);
+  const activeData: NegativeReviewAlertData = {
+    ...baseData,
+    ...(isEditable && editedDate !== null ? { review_date: editedDate } : {}),
+    ...(isEditable && editedTime !== null ? { review_time: editedTime } : {}),
+  };
   const isBk = activeData.brand === "bk";
   const isPopeyes = activeData.brand === "pp";
   const isSantaGloria = activeData.brand === "sg";
@@ -188,6 +204,11 @@ export default function NegativeReviewAlertPreviewPage() {
 
   const previewScale = 0.55;
 
+  // Id de la reseña que se está editando (si venimos del modal real) — en un
+  // ref porque el efecto de reset de abajo lo necesita en el momento en que
+  // sampleKey pasa a "editable", no en un futuro render.
+  const activeReviewIdRef = useRef<string | null>(null);
+
   // Si venimos del botón "Editar" del modal real de generación de PNG, carga
   // la reseña exacta que se estaba viendo (una sola vez) en vez de la
   // muestra genérica.
@@ -196,8 +217,9 @@ export default function NegativeReviewAlertPreviewPage() {
       const raw = window.sessionStorage.getItem(EDITABLE_HANDOFF_KEY);
       if (!raw) return;
       window.sessionStorage.removeItem(EDITABLE_HANDOFF_KEY);
-      const parsed = JSON.parse(raw) as { data: NegativeReviewAlertData };
+      const parsed = JSON.parse(raw) as { data: NegativeReviewAlertData; reviewId?: string };
       if (parsed?.data) {
+        activeReviewIdRef.current = typeof parsed.reviewId === "string" ? parsed.reviewId : null;
         setExternalEditableData(parsed.data);
         if (
           parsed.data.brand === "bk" ||
@@ -252,25 +274,38 @@ export default function NegativeReviewAlertPreviewPage() {
   }, []);
 
   // Al cambiar de diseño, los bloques son otros (o tienen otro contenido):
-  // se limpian los desplazamientos, tamaños y tamaños de letra para no
-  // arrastrar ajustes que ya no tienen sentido en el nuevo diseño.
+  // se limpian los desplazamientos, tamaños y tamaños de letra. Si el diseño
+  // que se activa es "Editable" y viene de una reseña concreta (venimos del
+  // botón "Editar" del modal de generación) con cambios guardados, se
+  // restauran esos cambios en vez de partir de cero.
   useEffect(() => {
-    setOffsets({});
-    setFontDeltas({});
-    setSizes({});
     const root = captureRef.current;
+    if (root) {
+      for (const { selector } of DRAG_TARGETS) {
+        root.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+          el.style.translate = "";
+        });
+      }
+      for (const { selector } of RESIZE_TARGETS) {
+        root.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+          el.style.width = "";
+          el.style.height = "";
+        });
+      }
+    }
+
+    const saved =
+      sampleKey === "editable" && activeReviewIdRef.current
+        ? loadSavedReviewEdit(activeReviewIdRef.current)
+        : null;
+
+    setOffsets(saved?.offsets ?? {});
+    setSizes(saved?.sizes ?? {});
+    setFontDeltas(saved?.fontDeltas ?? {});
+    setEditedDate(saved?.editedDate ?? null);
+    setEditedTime(saved?.editedTime ?? null);
+
     if (!root) return;
-    for (const { selector } of DRAG_TARGETS) {
-      root.querySelectorAll<HTMLElement>(selector).forEach((el) => {
-        el.style.translate = "";
-      });
-    }
-    for (const { selector } of RESIZE_TARGETS) {
-      root.querySelectorAll<HTMLElement>(selector).forEach((el) => {
-        el.style.width = "";
-        el.style.height = "";
-      });
-    }
     const base: Record<string, number> = {};
     const available: string[] = [];
     for (const { selector, label } of FONT_TARGETS) {
@@ -287,6 +322,32 @@ export default function NegativeReviewAlertPreviewPage() {
     fontBaseRef.current = base;
     setAvailableFontTargets(available);
   }, [sampleKey, brandKey]);
+
+  // El estado de offsets/sizes solo se aplicaba al DOM durante el propio
+  // arrastre/redimensionado — al restaurar un guardado hace falta un efecto
+  // aparte que sincronice el estado (offsets/sizes) con los estilos reales.
+  useEffect(() => {
+    const root = captureRef.current;
+    if (!root) return;
+    for (const { selector, label } of DRAG_TARGETS) {
+      const offset = offsets[label];
+      root.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+        el.style.translate = offset ? `${offset.x}px ${offset.y}px` : "";
+      });
+    }
+  }, [offsets, sampleKey, brandKey]);
+
+  useEffect(() => {
+    const root = captureRef.current;
+    if (!root) return;
+    for (const { selector, label } of RESIZE_TARGETS) {
+      const size = sizes[label];
+      root.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+        el.style.width = size ? `${size.width}px` : "";
+        el.style.height = size ? `${size.height}px` : "";
+      });
+    }
+  }, [sizes, sampleKey, brandKey]);
 
   useEffect(() => {
     const root = captureRef.current;
@@ -459,7 +520,6 @@ export default function NegativeReviewAlertPreviewPage() {
       window.removeEventListener("pointermove", onResizeMove);
       window.removeEventListener("pointerup", onResizeUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditable, sampleKey, brandKey]);
 
   function resetPositions() {
@@ -485,6 +545,16 @@ export default function NegativeReviewAlertPreviewPage() {
     setOffsets({});
     setFontDeltas({});
     setSizes({});
+    setEditedDate(null);
+    setEditedTime(null);
+  }
+
+  function saveEdit() {
+    const reviewId = activeReviewIdRef.current;
+    if (!reviewId) return;
+    const edit: SavedReviewEdit = { offsets, sizes, fontDeltas, editedDate, editedTime };
+    saveReviewEdit(reviewId, edit);
+    setStatus("Cambios guardados para esta reseña — se restaurarán la próxima vez que la edites.");
   }
 
   async function copyPositions() {
@@ -495,7 +565,13 @@ export default function NegativeReviewAlertPreviewPage() {
       fontSizes[label] = Math.round((base + delta) * 10) / 10;
     }
     const text = JSON.stringify(
-      { posiciones: offsets, tamanos: sizes, tamanosLetra: fontSizes },
+      {
+        posiciones: offsets,
+        tamanos: sizes,
+        tamanosLetra: fontSizes,
+        ...(editedDate !== null ? { fecha: editedDate } : {}),
+        ...(editedTime !== null ? { hora: editedTime } : {}),
+      },
       null,
       2,
     );
@@ -721,16 +797,30 @@ export default function NegativeReviewAlertPreviewPage() {
                 Estás en el diseño Editable: arrastra el interior de cualquier bloque con borde
                 morado discontinuo para moverlo, o coge uno de los tiradores morados del borde
                 (lateral, inferior o esquina) para agrandarlo o encogerlo. Los sliders de abajo
-                cambian el tamaño de letra. Todo se resetea si cambias a otro diseño.
+                cambian el tamaño de letra.{" "}
+                {activeReviewIdRef.current
+                  ? "Pulsa “Guardar” para que estos cambios se recuerden y vuelvan a aparecer la próxima vez que edites esta reseña."
+                  : "Todo se resetea si cambias a otro diseño."}
               </p>
               <div className="flex gap-2">
+                {activeReviewIdRef.current ? (
+                  <button
+                    type="button"
+                    onClick={saveEdit}
+                    className="rounded-lg bg-[#5b2d8e] px-3 py-1.5 text-xs font-medium text-white"
+                  >
+                    Guardar
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={copyPositions}
                   disabled={
                     Object.keys(offsets).length === 0 &&
                     Object.keys(sizes).length === 0 &&
-                    Object.keys(fontDeltas).length === 0
+                    Object.keys(fontDeltas).length === 0 &&
+                    editedDate === null &&
+                    editedTime === null
                   }
                   className="rounded-lg border border-[#d8d0e5] bg-white px-3 py-1.5 text-xs font-medium disabled:opacity-50"
                 >
@@ -742,13 +832,41 @@ export default function NegativeReviewAlertPreviewPage() {
                   disabled={
                     Object.keys(offsets).length === 0 &&
                     Object.keys(sizes).length === 0 &&
-                    Object.keys(fontDeltas).length === 0
+                    Object.keys(fontDeltas).length === 0 &&
+                    editedDate === null &&
+                    editedTime === null
                   }
                   className="rounded-lg border border-[#d8d0e5] bg-white px-3 py-1.5 text-xs font-medium disabled:opacity-50"
                 >
                   Reiniciar todo
                 </button>
               </div>
+            </div>
+
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#5b2d8e]">
+              Contenido
+            </p>
+            <div className="mb-4 flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 text-xs text-[#5f5670]">
+                Fecha
+                <input
+                  type="text"
+                  value={editedDate ?? baseData.review_date}
+                  onChange={(e) => setEditedDate(e.target.value)}
+                  placeholder={baseData.review_date}
+                  className="w-32 rounded-lg border border-[#d8d0e5] bg-white px-2 py-1.5 text-xs"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs text-[#5f5670]">
+                Hora
+                <input
+                  type="text"
+                  value={editedTime ?? baseData.review_time}
+                  onChange={(e) => setEditedTime(e.target.value)}
+                  placeholder={baseData.review_time}
+                  className="w-24 rounded-lg border border-[#d8d0e5] bg-white px-2 py-1.5 text-xs"
+                />
+              </label>
             </div>
 
             <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#5b2d8e]">

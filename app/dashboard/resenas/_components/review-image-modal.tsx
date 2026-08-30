@@ -148,7 +148,10 @@ export function ReviewImageModal({ review, onClose }: ReviewImageModalProps) {
               type="button"
               className={btnGhost}
               onClick={() => {
-                window.sessionStorage.setItem(EDITABLE_HANDOFF_KEY, JSON.stringify({ data }));
+                window.sessionStorage.setItem(
+                  EDITABLE_HANDOFF_KEY,
+                  JSON.stringify({ data, reviewId: review.id })
+                );
                 window.open("/preview/negative-review-alert", "_blank");
               }}
             >

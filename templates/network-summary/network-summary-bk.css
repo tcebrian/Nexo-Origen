@@ -1,0 +1,661 @@
+@import url("../negative-review-alert/fonts.css");
+
+/*
+ * Informe de red de Burger King — plantilla dedicada (no la genérica
+ * compartida), replicando la composición editorial exacta del informe de
+ * referencia: cabecera fotográfica + columna Nexo blanca, 6 KPIs, tabla de
+ * rendimiento + donut de motivos, footer negro. No es un dashboard SaaS.
+ *
+ * Lienzo a 1920×1080 (Full HD, 16:9). Todas las medidas fijas de aquí en
+ * adelante están reajustadas respecto al diseño original de 1536×1024 (3:2)
+ * con dos factores: horizontal ×1.25 (1920/1536) y vertical ×1.0547
+ * (1080/1024) para posiciones/tamaños direccionales, y un factor combinado
+ * ×1.148 (media geométrica) para elementos no direccionales (tipografía,
+ * iconos cuadrados/circulares, radios de borde) — así se conserva la
+ * composición exacta del diseño original en el nuevo formato en vez de
+ * estirarla.
+ */
+
+.nwsbk-canvas {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: #fafafa;
+  color: #111;
+  font-family: "Oswald", "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.nwsbk-canvas *,
+.nwsbk-canvas *::before,
+.nwsbk-canvas *::after {
+  box-sizing: border-box;
+}
+
+.nwsbk-canvas img,
+.nwsbk-canvas svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* ---------- cabecera ---------- */
+
+.nwsbk-header {
+  display: flex;
+  height: 284px;
+  flex-shrink: 0;
+}
+
+.nwsbk-header__main {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  background-color: #090909;
+  background-image:
+    radial-gradient(120% 140% at 15% 10%, rgba(60, 40, 20, 0.35) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(9, 9, 9, 0.15) 0%, rgba(9, 9, 9, 0.55) 100%);
+  background-size: 91% auto;
+  background-position: 62% 70%;
+  background-blend-mode: normal;
+  padding: 21px 0 0 44px;
+  overflow: hidden;
+}
+
+.nwsbk-header__logo {
+  height: 178px;
+  width: auto;
+  max-width: 183px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.4));
+}
+
+.nwsbk-header__title-block {
+  position: absolute;
+  top: 25px;
+  left: 250px;
+  right: 275px;
+}
+
+.nwsbk-header__kicker {
+  margin: 0;
+  font-size: 31px;
+  font-weight: 700;
+  letter-spacing: 1.7px;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.nwsbk-header__title {
+  margin: 2px 0 0;
+  font-family: "Anton", sans-serif;
+  font-size: 90px;
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
+  color: #ff6500;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.nwsbk-header__subtitle {
+  margin: 6px 0 0;
+  font-size: 41px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.nwsbk-header__pin {
+  margin: 10px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 28px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.nwsbk-date-bar {
+  position: absolute;
+  left: 43px;
+  bottom: 13px;
+  width: 788px;
+  height: 51px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 23px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 13px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.nwsbk-date-bar__label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.nwsbk-date-bar__sep {
+  width: 1px;
+  height: 27px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.nwsbk-date-bar__value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #ff9500;
+  white-space: nowrap;
+}
+
+/* ---------- columna Nexo Origen ---------- */
+
+.nwsbk-header__nexo {
+  flex: 0 0 270px;
+  width: 270px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 0;
+  margin-top: -10px;
+}
+
+.nwsbk-header__nexo-logo {
+  width: 245px;
+  height: auto;
+  object-fit: contain;
+}
+
+.nwsbk-header__nexo-claim {
+  margin-top: 27px;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 0 23px;
+}
+
+.nwsbk-header__nexo-bar {
+  width: 4px;
+  align-self: stretch;
+  background: #ff6500;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.nwsbk-header__nexo-claim p {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: #111;
+}
+
+/* ---------- KPIs ---------- */
+
+.nwsbk-kpis {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 13px;
+  padding: 14px 34px 0;
+  height: 161px;
+}
+
+.nwsbk-kpi {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid #ececec;
+  border-radius: 16px;
+  background: #fff;
+  padding: 17px 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.nwsbk-kpi__icon {
+  flex-shrink: 0;
+  width: 68px;
+  height: 68px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nwsbk-kpi__icon-glyph {
+  color: #fff;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nwsbk-kpi__icon--orange {
+  background: #ff6500;
+}
+
+.nwsbk-kpi__icon--green {
+  background: #08751d;
+}
+
+.nwsbk-kpi__icon--red {
+  background: #e00000;
+}
+
+.nwsbk-kpi__body {
+  min-width: 0;
+}
+
+.nwsbk-kpi__label {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  color: #111;
+  line-height: 1.15;
+}
+
+.nwsbk-kpi__value {
+  margin: 5px 0 0;
+  font-size: 58px;
+  font-weight: 700;
+  line-height: 1;
+  color: #111;
+}
+
+.nwsbk-kpi__value--green {
+  color: #08751d;
+}
+
+.nwsbk-kpi__value--red {
+  color: #e00000;
+}
+
+.nwsbk-kpi__sub {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 400;
+  color: #303030;
+}
+
+.nwsbk-kpi__sub-caption {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #b5b5b5;
+}
+
+.nwsbk-kpi__sub-list {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6a6a6a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nwsbk-kpi__dot-list {
+  list-style: none;
+  margin: 3px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.nwsbk-kpi__dot-list li {
+  position: relative;
+  padding-left: 15px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #6a6a6a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nwsbk-kpi__dot-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #e00000;
+}
+
+.nwsbk-kpi__badge {
+  margin: 6px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  padding: 3px 11px 3px 6px;
+  width: fit-content;
+}
+
+.nwsbk-kpi__badge svg {
+  width: 15px;
+  height: 15px;
+}
+
+.nwsbk-kpi__badge--good {
+  background: #e7f5ea;
+  color: #08751d;
+}
+
+.nwsbk-kpi__badge--good svg {
+  stroke: #08751d;
+}
+
+.nwsbk-kpi__badge--bad {
+  background: #fbe7e7;
+  color: #e00000;
+}
+
+.nwsbk-kpi__badge--bad svg circle,
+.nwsbk-kpi__badge--bad svg path {
+  stroke: #e00000;
+}
+
+/* ---------- paneles inferiores ---------- */
+
+.nwsbk-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 13px;
+  padding: 16px 34px 16px;
+  min-height: 0;
+}
+
+.nwsbk-panel {
+  border: 1px solid #ececec;
+  border-radius: 16px;
+  background: #fff;
+  padding: 16px 25px 17px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.nwsbk-panel__title {
+  margin: 0 0 4px;
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: #111;
+}
+
+.nwsbk-panel__hint {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 400;
+  color: #303030;
+  line-height: 1.4;
+}
+
+.nwsbk-panel--donut .nwsbk-panel__title,
+.nwsbk-panel--donut .nwsbk-panel__hint {
+  text-align: left;
+}
+
+/* ---------- tabla de rendimiento ---------- */
+
+.nwsbk-table {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Cada fila se reparte a partes iguales el alto disponible del panel — así
+   la tabla siempre aprovecha todo el espacio de la tarjeta (sea cual sea el
+   nº de locales) en vez de quedarse compacta arriba con un hueco debajo. */
+.nwsbk-table__row {
+  flex: 1 1 0;
+  display: grid;
+  grid-template-columns: 32px 1.5fr 0.8fr 0.75fr 0.6fr 1.3fr;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border-bottom: 1px solid #eaeaea;
+  font-size: 19px;
+}
+
+.nwsbk-table__row--head {
+  flex: 0 0 auto;
+  font-size: 17px;
+  font-weight: 700;
+  color: #111;
+  border-bottom: 1px solid #d8d8d8;
+  padding: 0 0 8px;
+}
+
+.nwsbk-table__index {
+  color: #8a8a8a;
+  font-weight: 500;
+}
+
+.nwsbk-table__name {
+  font-weight: 600;
+  color: #111;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nwsbk-table__reviews {
+  font-weight: 500;
+  color: #303030;
+}
+
+.nwsbk-table__rating--good {
+  color: #08751d;
+  font-weight: 700;
+}
+
+.nwsbk-table__rating--watch {
+  color: #ff9500;
+  font-weight: 700;
+}
+
+.nwsbk-table__rating--bad {
+  color: #e00000;
+  font-weight: 700;
+}
+
+.nwsbk-table__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nwsbk-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.nwsbk-table__motive {
+  font-size: 17px;
+  color: #303030;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Con muchos locales cada fila (flex:1) se queda más baja al repartirse el
+   mismo alto entre más filas — se reduce la letra en proporción para que el
+   texto siga respirando dentro de la fila en vez de quedar apretado. */
+.nwsbk-table:has(.nwsbk-table__row:nth-child(16)) .nwsbk-table__row {
+  font-size: 16px;
+}
+
+.nwsbk-table:has(.nwsbk-table__row:nth-child(16)) .nwsbk-table__motive {
+  font-size: 14px;
+}
+
+.nwsbk-table:has(.nwsbk-table__row:nth-child(20)) .nwsbk-table__row {
+  font-size: 13px;
+}
+
+.nwsbk-table:has(.nwsbk-table__row:nth-child(20)) .nwsbk-table__motive {
+  font-size: 12px;
+}
+
+/* ---------- donut de motivos ---------- */
+
+.nwsbk-donut-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 30px;
+  min-height: 0;
+}
+
+.nwsbk-donut__svg {
+  flex-shrink: 0;
+}
+
+.nwsbk-donut-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  text-align: center;
+  padding: 23px;
+  border: 1.5px dashed #e3e3e3;
+  border-radius: 16px;
+  color: #8a8a8a;
+  font-size: 16px;
+}
+
+/* Grid (no flex) para que motivo / nº / % queden en columnas alineadas
+   entre filas — con flex cada fila se ajusta a su propio contenido y las
+   columnas no cuadran entre sí cuando las etiquetas tienen largos distintos. */
+.nwsbk-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  column-gap: 10px;
+  row-gap: 15px;
+  align-content: center;
+  justify-content: end;
+}
+
+.nwsbk-legend li {
+  display: contents;
+}
+
+.nwsbk-legend__swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+
+.nwsbk-legend__label {
+  font-size: 20px;
+  font-weight: 500;
+  color: #111;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  justify-self: start;
+}
+
+.nwsbk-legend__count {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e00000;
+  text-align: right;
+  justify-self: end;
+}
+
+.nwsbk-legend__percent {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e00000;
+  text-align: right;
+  justify-self: end;
+}
+
+/* ---------- footer ---------- */
+
+.nwsbk-footer {
+  flex-shrink: 0;
+  height: 74px;
+  background: #080808;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.nwsbk-footer__pillar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.nwsbk-footer__pillar:first-child {
+  border-left: none;
+}
+
+.nwsbk-footer__item {
+  font-size: 18px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+}
+
+.nwsbk-footer__item--web {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.7);
+}

@@ -13,6 +13,8 @@ export type NetworkSummaryLocationRow = {
 
 export type NetworkSummaryReasonSegment = {
   label: string;
+  /** Categoría SNAKE_CASE original de resena_motivos (p.ej. "TIEMPO_ESPERA") — para buscarle un emoji de referencia. */
+  categoria: string;
   count: number;
   percent: number;
 };
@@ -24,6 +26,8 @@ export type NetworkSummaryData = {
   periodLabel: string;
   periodStart: string;
   periodEnd: string;
+  /** Ciudades únicas del grupo, en mayúsculas y unidas por " + " (p.ej. "MADRID + LOGROÑO"). */
+  citiesLabel: string;
   totalLocations: number;
   totalReviews: number;
   positiveReviews: number;
@@ -36,4 +40,6 @@ export type NetworkSummaryData = {
   belowTargetLocations: string[];
   locations: NetworkSummaryLocationRow[];
   negativeReasons: NetworkSummaryReasonSegment[];
+  /** Nº real de reseñas negativas con categoría en resena_motivos (suma de negativeReasons). */
+  negativeReasonsTotal: number;
 };

@@ -7,8 +7,8 @@ type Props = {
   accent: string;
 };
 
-const SIZE = 220;
-const STROKE = 34;
+const SIZE = 253;
+const STROKE = 39;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRC = 2 * Math.PI * RADIUS;
 

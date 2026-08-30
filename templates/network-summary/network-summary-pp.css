@@ -1,0 +1,626 @@
+@import url("../negative-review-alert/fonts.css");
+
+/*
+ * Informe de red de Popeyes — plantilla dedicada (no la genérica
+ * compartida), construida a partir de un spec pixel a pixel del cliente:
+ * cabecera naranja + foto de producto + columna Nexo blanca, 4 KPIs con
+ * icono circular a la derecha, tabla + donut con agujero real (a diferencia
+ * del de BK, que es un círculo completo), footer blanco. Tipografía
+ * Montserrat, paleta corporativa Popeyes — nada de estética SaaS genérica.
+ */
+
+.nwspp-canvas {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: #fafaf8;
+  color: #171717;
+  font-family: "Montserrat", "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.nwspp-canvas *,
+.nwspp-canvas *::before,
+.nwspp-canvas *::after {
+  box-sizing: border-box;
+}
+
+.nwspp-canvas img,
+.nwspp-canvas svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* ---------- cabecera ---------- */
+
+.nwspp-header {
+  display: flex;
+  height: 310px;
+  flex-shrink: 0;
+}
+
+.nwspp-header__main {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  background-color: #f76800;
+  background-image: none;
+  background-size: 68% auto;
+  background-position: 100% 62%;
+  background-repeat: no-repeat;
+  overflow: hidden;
+}
+
+/* Transición del naranja sólido hacia la fotografía — la foto ya trae su
+   propia mesa/fondo desenfocado, esto solo funde el borde izquierdo. */
+.nwspp-header__blend {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #f76800 0%, #f76800 42%, rgba(247, 104, 0, 0) 78%);
+}
+
+.nwspp-header__logo {
+  position: absolute;
+  top: 70px;
+  left: 35px;
+  width: 300px;
+  height: auto;
+  /* pp-wordmark-2.png es naranja+negro sobre transparente — se vuelve blanco puro. */
+  filter: brightness(0) invert(1);
+  z-index: 2;
+}
+
+.nwspp-header__title-block {
+  position: absolute;
+  top: 30px;
+  left: 400px;
+  right: 30px;
+  z-index: 2;
+}
+
+.nwspp-header__kicker {
+  margin: 0;
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.nwspp-header__title {
+  margin: 2px 0 0;
+  font-family: "Montserrat", sans-serif;
+  font-size: 96px;
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.nwspp-header__subtitle {
+  margin: 4px 0 0;
+  font-size: 34px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.nwspp-header__pin {
+  margin: 10px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 26px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.nwspp-date-bar {
+  position: absolute;
+  left: 35px;
+  bottom: 10px;
+  width: 700px;
+  height: 68px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 22px;
+  border-radius: 11px;
+  background: #080808;
+  color: #fff;
+  z-index: 2;
+}
+
+.nwspp-date-bar__label {
+  font-size: 26px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.nwspp-date-bar__value {
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ---------- columna Nexo Origen ---------- */
+
+.nwspp-header__nexo {
+  position: relative;
+  flex: 0 0 320px;
+  width: 320px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.nwspp-header__nexo-logo-slot {
+  height: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 14px 0 0;
+  position: relative;
+  z-index: 1;
+}
+
+.nwspp-header__nexo-logo {
+  width: 295px;
+  height: auto;
+}
+
+.nwspp-header__nexo-splash {
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 110px;
+  height: 110px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 35%, #ff9b17 0%, #f76800 55%, rgba(247, 104, 0, 0) 75%);
+  opacity: 0.45;
+  z-index: 0;
+}
+
+.nwspp-header__nexo-claim {
+  margin-top: -8px;
+  padding: 0 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.nwspp-header__nexo-claim p {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #171717;
+}
+
+.nwspp-header__nexo-claim-accent {
+  color: #f76800;
+  font-weight: 700;
+}
+
+/* ---------- KPIs ---------- */
+
+.nwspp-kpis {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  padding: 15px 25px 0;
+  height: 240px;
+}
+
+.nwspp-kpi {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid #e8e4df;
+  border-radius: 16px;
+  background: #fff;
+  padding: 24px 28px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.nwspp-kpi__body {
+  min-width: 0;
+  align-self: flex-start;
+}
+
+.nwspp-kpi__label {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  color: #171717;
+  line-height: 1.2;
+}
+
+.nwspp-kpi__value {
+  margin: 6px 0 0;
+  font-size: 72px;
+  font-weight: 900;
+  line-height: 1;
+  color: #f76800;
+}
+
+.nwspp-kpi__value--bad {
+  color: #ff2d20;
+}
+
+.nwspp-kpi__sub {
+  margin: 14px 0 0;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #555555;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.nwspp-kpi__sub-caption {
+  margin: 3px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #a8a8a8;
+}
+
+.nwspp-kpi__dot-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nwspp-kpi__dot-list li {
+  position: relative;
+  padding-left: 15px;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #171717;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nwspp-kpi__dot-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #f76800;
+}
+
+.nwspp-kpi__icon {
+  flex-shrink: 0;
+  width: 82px;
+  height: 82px;
+  border-radius: 999px;
+  border: 2px solid #f76800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nwspp-kpi__icon--bad {
+  border-color: #ff2d20;
+}
+
+/* ---------- paneles inferiores ---------- */
+
+.nwspp-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 15px;
+  padding: 15px 25px 15px;
+  min-height: 0;
+}
+
+.nwspp-panel {
+  position: relative;
+  border: 1px solid #e8e4df;
+  border-radius: 16px;
+  background: #fff;
+  padding: 29px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.nwspp-panel__title {
+  margin: 0 0 6px;
+  font-size: 32px;
+  font-weight: 800;
+  color: #171717;
+}
+
+.nwspp-panel__hint {
+  margin: 0 0 10px;
+  font-size: 19px;
+  font-weight: 500;
+  color: #171717;
+}
+
+.nwspp-panel__hint strong {
+  color: #ff2d20;
+  font-weight: 800;
+}
+
+/* ---------- tabla de locales ---------- */
+
+.nwspp-table {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.nwspp-table__row {
+  flex: 1 1 0;
+  display: grid;
+  grid-template-columns: 1.5fr 0.9fr 0.85fr 1.15fr 1.3fr;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #e5e5e5;
+  font-size: 19px;
+  font-weight: 500;
+}
+
+.nwspp-table__row--head {
+  flex: 0 0 auto;
+  padding: 0 0 10px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #555555;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.nwspp-table__name {
+  font-weight: 700;
+  color: #171717;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nwspp-table__reviews {
+  font-weight: 500;
+  color: #171717;
+}
+
+.nwspp-table__rating--good {
+  color: #159a35;
+  font-weight: 800;
+}
+
+.nwspp-table__rating--watch {
+  color: #ff9813;
+  font-weight: 800;
+}
+
+.nwspp-table__rating--bad {
+  color: #ff2d20;
+  font-weight: 800;
+}
+
+.nwspp-table__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.nwspp-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.nwspp-table__motive {
+  font-size: 17px;
+  font-weight: 500;
+  color: #555555;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Con muchos locales, letra más compacta para que quepan sin cortarse. */
+.nwspp-table:has(.nwspp-table__row:nth-child(10)) .nwspp-table__row {
+  font-size: 16px;
+}
+
+.nwspp-table:has(.nwspp-table__row:nth-child(10)) .nwspp-table__motive,
+.nwspp-table:has(.nwspp-table__row:nth-child(10)) .nwspp-table__status {
+  font-size: 14px;
+}
+
+.nwspp-table:has(.nwspp-table__row:nth-child(16)) .nwspp-table__row {
+  font-size: 13px;
+}
+
+.nwspp-table:has(.nwspp-table__row:nth-child(16)) .nwspp-table__motive,
+.nwspp-table:has(.nwspp-table__row:nth-child(16)) .nwspp-table__status {
+  font-size: 12px;
+}
+
+/* ---------- donut de motivos ---------- */
+
+.nwspp-donut-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  min-height: 0;
+}
+
+.nwspp-donut__svg {
+  flex-shrink: 0;
+}
+
+.nwspp-donut-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 20px;
+  border: 1.5px dashed #e8e4df;
+  border-radius: 14px;
+  color: #8a8a8a;
+  font-size: 15px;
+}
+
+.nwspp-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  justify-content: center;
+}
+
+.nwspp-legend li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nwspp-legend__swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.nwspp-legend__label {
+  flex: 1;
+  font-size: 19px;
+  font-weight: 600;
+  color: #171717;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nwspp-legend__count {
+  font-size: 19px;
+  font-weight: 700;
+  color: #171717;
+}
+
+.nwspp-legend__percent {
+  font-size: 19px;
+  font-weight: 800;
+  color: #f76800;
+  min-width: 62px;
+  text-align: right;
+}
+
+.nwspp-donut-card__splash {
+  position: absolute;
+  right: -18px;
+  bottom: -18px;
+  width: 150px;
+  height: auto;
+  opacity: 0.85;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ---------- footer ---------- */
+
+.nwspp-footer {
+  flex-shrink: 0;
+  height: 90px;
+  background: #ffffff;
+  border-top: 1px solid #e5e5e5;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.nwspp-footer__pillar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  border-left: 1px solid #e5e5e5;
+}
+
+.nwspp-footer__pillar:first-child {
+  border-left: none;
+}
+
+.nwspp-footer__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #171717;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nwspp-footer__logo {
+  height: 30px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.nwspp-footer__item {
+  font-size: 22px;
+  font-weight: 500;
+  color: #171717;
+  white-space: nowrap;
+}
+
+.nwspp-footer__item--web {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #f76800;
+  font-weight: 700;
+}

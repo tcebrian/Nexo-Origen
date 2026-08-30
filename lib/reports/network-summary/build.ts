@@ -1,9 +1,9 @@
 import { REPUTATION_TARGET } from "@/lib/restaurants/metrics";
-import { getTopReasons } from "@/lib/review-metrics";
+import { dedupeResenas } from "@/lib/review-metrics";
 import { marcaToBrandId } from "@/lib/supabase/kpi-mappers";
 import type { KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
 import type { ResenaRow } from "@/lib/supabase/resenas";
-import type { AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
+import { categoriaMotivoLabel, getMotivoForResena, type ResenaMotivoIndex } from "@/lib/supabase/resena-motivos";
 import type { NetworkReportGroup } from "./brand-groups";
 import type {
   NetworkSummaryData,
@@ -31,6 +31,81 @@ function shortLocationName(name: string): string {
 // "Locales por debajo del objetivo", que sí compara la media directamente.
 const WATCH_THRESHOLD = 4.0;
 
+/**
+ * Motivos de reseñas negativas agrupados por `resena_motivos.categoria` —
+ * la categoría que ya viene clasificada en Supabase, tal cual, sin pasar por
+ * la heurística de palabras clave de lib/reviews/classify-reason.ts.
+ */
+function topMotivosFromIndex(
+  resenas: ResenaRow[],
+  motivoIndex: ResenaMotivoIndex,
+  options: { restauranteId?: number; limit?: number; groupRestAsOtro?: boolean } = {}
+): { label: string; categoria: string; count: number; percent: number }[] {
+  const negatives = dedupeResenas(resenas).filter((row) => {
+    if (row.estrellas > 3) return false;
+    if (options.restauranteId != null && row.restaurante_id !== options.restauranteId) return false;
+    return true;
+  });
+
+  // Se cuenta por categoria (la clave SNAKE_CASE de Supabase), no por label
+  // ya formateado — así se conserva la categoría real para poder buscarle un
+  // emoji de referencia en la plantilla, en vez de perderla al convertirla a
+  // texto legible.
+  const counts = new Map<string, number>();
+  let withMotivo = 0;
+
+  for (const row of negatives) {
+    const motivo = getMotivoForResena(motivoIndex, row);
+    if (!motivo) continue;
+    withMotivo += 1;
+    const key = motivo.categoria.trim().toUpperCase();
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const ranked = [...counts.entries()]
+    .map(([categoria, count]) => ({ categoria, label: categoriaMotivoLabel(categoria), count }))
+    .sort((a, b) => b.count - a.count);
+
+  // Si hay más categorías que el límite, las que sobran se agrupan en un
+  // único "Otros" (sumando sus recuentos) en vez de descartarlas sin más —
+  // así el donut siempre representa el 100% de las reseñas negativas, sin
+  // huecos en blanco por categorías que se quedaron fuera del top.
+  let grouped = ranked;
+  if (options.groupRestAsOtro && options.limit && ranked.length > options.limit) {
+    const kept = ranked.slice(0, options.limit - 1);
+    const rest = ranked.slice(options.limit - 1);
+    const restCount = rest.reduce((sum, item) => sum + item.count, 0);
+    const otrosIndex = kept.findIndex((item) => item.categoria === "OTRO");
+    if (otrosIndex >= 0) {
+      kept[otrosIndex] = { categoria: "OTRO", label: categoriaMotivoLabel("OTRO"), count: kept[otrosIndex].count + restCount };
+    } else {
+      kept.push({ categoria: "OTRO", label: categoriaMotivoLabel("OTRO"), count: restCount });
+    }
+    grouped = kept.sort((a, b) => b.count - a.count);
+  } else if (options.limit) {
+    grouped = ranked.slice(0, options.limit);
+  }
+
+  if (withMotivo === 0) {
+    return grouped.map((item) => ({ ...item, percent: 0 }));
+  }
+
+  // Redondear cada % de forma independiente puede dejar la suma en 99.9 o
+  // 100.1 (p.ej. tres tercios: 33.3+33.3+33.3=99.9) — un hueco o solape
+  // diminuto pero real en el donut. Se redondean todos menos el último, y al
+  // último se le asigna el resto exacto hasta 100, para que la suma sea
+  // siempre 100% clavado.
+  const withPercent = grouped.map((item) => ({
+    ...item,
+    percent: Math.round((item.count / withMotivo) * 1000) / 10,
+  }));
+  const roundedSum = withPercent.slice(0, -1).reduce((sum, item) => sum + item.percent, 0);
+  const last = withPercent[withPercent.length - 1];
+  if (last) last.percent = Math.round((100 - roundedSum) * 10) / 10;
+
+  return withPercent;
+}
+
 function toStatus(row: KpiRestaurantRow): { status: NetworkSummaryLocationStatus; label: string } {
   if (row.total_resenas === 0) return { status: "no_reviews", label: "Sin reseñas" };
   if (row.media_total >= REPUTATION_TARGET) return { status: "on_target", label: "Sobre el objetivo" };
@@ -52,11 +127,13 @@ export function buildNetworkSummaryReport(
   group: NetworkReportGroup,
   allRows: KpiRestaurantRow[],
   allResenas: ResenaRow[],
-  analisisByResenaId: AnalisisIaIndex,
+  motivoIndex: ResenaMotivoIndex,
   period: { start: Date; end: Date }
 ): NetworkSummaryData {
   const brandIdSet = new Set(group.brandIds);
-  const rows = allRows.filter((row) => brandIdSet.has(marcaToBrandId(row.marca)));
+  const rows = allRows
+    .filter((row) => brandIdSet.has(marcaToBrandId(row.marca)))
+    .filter((row) => !group.restaurantFilter || group.restaurantFilter(row));
   // Se filtra por restaurante_id (fiable, viene de kpi_restaurantes) en vez
   // de por resenas.marca — ese campo no siempre viene poblado en la tabla
   // resenas, y filtrar por él dejaba el donut de motivos vacío aunque la
@@ -70,13 +147,16 @@ export function buildNetworkSummaryReport(
   const weightedAverage =
     totalReviews > 0 ? rows.reduce((sum, row) => sum + row.media_total * row.total_resenas, 0) / totalReviews : 0;
 
-  const belowTarget = rows.filter((row) => row.total_resenas > 0 && row.media_total < REPUTATION_TARGET);
+  // Ordenados de peor a mejor media — así el peor local sale primero en la
+  // lista de "fuera de objetivo", que es lo más útil para leer de un vistazo.
+  const belowTarget = rows
+    .filter((row) => row.total_resenas > 0 && row.media_total < REPUTATION_TARGET)
+    .sort((a, b) => a.media_total - b.media_total);
 
   const locations: NetworkSummaryLocationRow[] = rows
     .map((row) => {
       const { status, label } = toStatus(row);
-      const topNegative = getTopReasons(resenas, analisisByResenaId, {
-        negativesOnly: true,
+      const topNegative = topMotivosFromIndex(resenas, motivoIndex, {
         restauranteId: row.restaurante_id,
         limit: 1,
       });
@@ -88,15 +168,20 @@ export function buildNetworkSummaryReport(
         reviewCount: row.total_resenas,
         status,
         statusLabel: label,
-        mainNegativeMotive: topNegative[0]?.motivo ?? "Sin reseñas negativas",
+        mainNegativeMotive: topNegative[0]?.label ?? "Sin reseñas negativas",
       };
     })
     .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
 
-  const negativeReasons: NetworkSummaryReasonSegment[] = getTopReasons(resenas, analisisByResenaId, {
-    negativesOnly: true,
+  const negativeReasons: NetworkSummaryReasonSegment[] = topMotivosFromIndex(resenas, motivoIndex, {
     limit: 6,
-  }).map((item) => ({ label: item.motivo, count: item.count, percent: item.percent }));
+    groupRestAsOtro: true,
+  });
+
+  const citiesLabel = [...new Set(rows.map((row) => row.ciudad.trim()).filter(Boolean))]
+    .sort()
+    .join(" + ")
+    .toUpperCase();
 
   return {
     groupId: group.id,
@@ -105,6 +190,7 @@ export function buildNetworkSummaryReport(
     periodLabel: formatPeriodLabel(period.start, period.end),
     periodStart: period.start.toISOString(),
     periodEnd: period.end.toISOString(),
+    citiesLabel,
     totalLocations: rows.length,
     totalReviews,
     positiveReviews,
@@ -117,5 +203,6 @@ export function buildNetworkSummaryReport(
     belowTargetLocations: belowTarget.map((row) => shortLocationName(row.restaurante)),
     locations,
     negativeReasons,
+    negativeReasonsTotal: negativeReasons.reduce((sum, item) => sum + item.count, 0),
   };
 }

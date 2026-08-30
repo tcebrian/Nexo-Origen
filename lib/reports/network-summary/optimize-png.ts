@@ -1,7 +1,7 @@
 import sharp from "sharp";
 
-const DELIVERY_WIDTH = 1536;
-const DELIVERY_HEIGHT = 1024;
+const DELIVERY_WIDTH = 1920;
+const DELIVERY_HEIGHT = 1080;
 
 /** Redimensiona con Lanczos (si hace falta) y optimiza el PNG para entrega nítida. */
 export async function optimizeNetworkSummaryPng(buffer: Buffer): Promise<Buffer> {

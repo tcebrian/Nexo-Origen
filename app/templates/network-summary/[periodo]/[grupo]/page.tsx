@@ -4,6 +4,9 @@ import { isNetworkReportGroupId } from "@/lib/reports/network-summary/brand-grou
 import { fetchNetworkSummaryReport } from "@/lib/reports/network-summary/fetch";
 import { NETWORK_SUMMARY_GROUP_VISUALS } from "@/lib/reports/network-summary/group-visuals";
 import { NetworkSummaryStandardTemplate } from "@/templates/network-summary/network-summary-standard-template";
+import { NetworkSummaryBkTemplate } from "@/templates/network-summary/network-summary-bk-template";
+import { NetworkSummaryPpTemplate } from "@/templates/network-summary/network-summary-pp-template";
+import { NetworkSummarySgTemplate } from "@/templates/network-summary/network-summary-sg-template";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +31,39 @@ export default async function Page({ params, searchParams }: PageProps) {
   const range = resolveReportPeriodRange(periodo, Number.isFinite(offsetNumber) ? offsetNumber : 0);
   const data = await fetchNetworkSummaryReport(grupo, { start: range.start, end: range.end });
   const visual = NETWORK_SUMMARY_GROUP_VISUALS[grupo];
+
+  if (grupo === "bk") {
+    return (
+      <NetworkSummaryBkTemplate
+        data={data}
+        visual={visual}
+        periodoAdjective={PERIODO_ADJECTIVE[periodo]}
+        assetBaseUrl={base}
+      />
+    );
+  }
+
+  if (grupo === "pp") {
+    return (
+      <NetworkSummaryPpTemplate
+        data={data}
+        visual={visual}
+        periodoAdjective={PERIODO_ADJECTIVE[periodo]}
+        assetBaseUrl={base}
+      />
+    );
+  }
+
+  if (grupo === "sg-es" || grupo === "sg-ad") {
+    return (
+      <NetworkSummarySgTemplate
+        data={data}
+        visual={visual}
+        periodoAdjective={PERIODO_ADJECTIVE[periodo]}
+        assetBaseUrl={base}
+      />
+    );
+  }
 
   return (
     <NetworkSummaryStandardTemplate

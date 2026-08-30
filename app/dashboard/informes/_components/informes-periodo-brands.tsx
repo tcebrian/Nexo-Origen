@@ -23,22 +23,35 @@ const PERIODO_UNIT_LABEL: Record<ReportPeriodSlug, string> = {
 /**
  * Ribs, Sibuya y Volapié comparten un único informe PNG combinado ("Grupo
  * Hámbar") en vez de uno por marca — así lo pidió el usuario, siguiendo el
- * mismo formato que ya usan a mano cada semana. El PDF no se agrupa: sigue
- * siendo uno por marca (restaurante a restaurante), sin tocar cómo funciona
- * hoy.
+ * mismo formato que ya usan a mano cada semana. Santa Gloria es al revés:
+ * una sola marca pero dos PNG (España / Andorra, redes con dinámicas
+ * distintas). El PDF no se agrupa ni se divide: sigue siendo uno por marca
+ * (restaurante a restaurante), sin tocar cómo funciona hoy.
  */
-const REPORT_GROUPS: { id: NetworkReportGroupId; label: string; sublabel?: string; pdfBrands: string[] }[] = [
-  { id: "bk", label: "Burger King", pdfBrands: ["Burger King"] },
-  { id: "pp", label: "Popeyes", pdfBrands: ["Popeyes"] },
-  { id: "sg", label: "Santa Gloria", pdfBrands: ["Santa Gloria"] },
-  { id: "th", label: "Tim Hortons", pdfBrands: ["Tim Hortons"] },
+const REPORT_GROUPS: {
+  label: string;
+  sublabel?: string;
+  pdfBrands: string[];
+  pngGroups: { id: NetworkReportGroupId; label: string }[];
+}[] = [
+  { label: "Burger King", pdfBrands: ["Burger King"], pngGroups: [{ id: "bk", label: "PNG" }] },
+  { label: "Popeyes", pdfBrands: ["Popeyes"], pngGroups: [{ id: "pp", label: "PNG" }] },
   {
-    id: "hambar",
+    label: "Santa Gloria",
+    pdfBrands: ["Santa Gloria"],
+    pngGroups: [
+      { id: "sg-es", label: "PNG España" },
+      { id: "sg-ad", label: "PNG Andorra" },
+    ],
+  },
+  { label: "Tim Hortons", pdfBrands: ["Tim Hortons"], pngGroups: [{ id: "th", label: "PNG" }] },
+  {
     label: "Grupo Hámbar",
     sublabel: "Ribs · Sibuya · Volapié",
     pdfBrands: ["Ribs", "Sibuya", "Taberna Volapié"],
+    pngGroups: [{ id: "hambar", label: "PNG" }],
   },
-  { id: "vault", label: "Vault", pdfBrands: ["Vault"] },
+  { label: "Vault", pdfBrands: ["Vault"], pngGroups: [{ id: "vault", label: "PNG" }] },
 ];
 
 function DocumentIcon({ className = "" }: { className?: string }) {
@@ -159,14 +172,17 @@ export function InformesPeriodoBrands({ periodo, offset, rangeLabel }: InformesP
                       PDF{group.pdfBrands.length > 1 ? ` ${brandName}` : ""}
                     </a>
                   ))}
-                  <button
-                    type="button"
-                    onClick={() => setPngGroup({ id: group.id, label: group.label })}
-                    className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-500/15 px-3.5 py-2 text-[13px] font-medium text-emerald-100 transition hover:border-emerald-300/40 hover:bg-emerald-500/25 hover:text-white"
-                  >
-                    <ImageIcon className="h-4 w-4" />
-                    PNG
-                  </button>
+                  {group.pngGroups.map((png) => (
+                    <button
+                      key={png.id}
+                      type="button"
+                      onClick={() => setPngGroup({ id: png.id, label: group.label })}
+                      className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-500/15 px-3.5 py-2 text-[13px] font-medium text-emerald-100 transition hover:border-emerald-300/40 hover:bg-emerald-500/25 hover:text-white"
+                    >
+                      <ImageIcon className="h-4 w-4" />
+                      {png.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             ))}
