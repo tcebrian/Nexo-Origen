@@ -159,3 +159,12 @@
   font-display: swap;
   src: url("/fonts/allura-400-normal.woff2") format("woff2");
 }
+
+/* Fuente variable — un único archivo cubre los pesos 400 a 900 (eje wght). */
+@font-face {
+  font-family: "Roboto Condensed";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("/fonts/roboto-condensed-variable.woff2") format("woff2-variations");
+}

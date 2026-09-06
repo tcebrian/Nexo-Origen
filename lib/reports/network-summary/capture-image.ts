@@ -10,7 +10,7 @@ import type { ReportPeriodSlug } from "@/lib/reports/period-ranges";
 const DESIGN_WIDTH = 1920;
 const DESIGN_HEIGHT = 1080;
 const CAPTURE_SCALE_FACTOR = 2;
-const CANVAS_SELECTOR = ".nws-canvas, .nwsbk-canvas, .nwspp-canvas, .nwssg-canvas";
+const CANVAS_SELECTOR = ".nws-canvas, .nwsbk-canvas, .nwspp-canvas, .nwssg-canvas, .nwsth-canvas";
 
 /**
  * Misma receta (probada a fuego) que

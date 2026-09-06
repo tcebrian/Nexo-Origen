@@ -1,0 +1,506 @@
+@import url("../negative-review-alert/fonts.css");
+
+/*
+ * Informe de red de Tim Hortons — plantilla dedicada construida a partir de
+ * un spec pixel a pixel del cliente. Rojo Tim Hortons + crema cálido +
+ * verde para lo positivo. Roboto Condensed (variable) para todo el texto,
+ * igual que pide el spec — nada de Anton (demasiado comprimida) ni de
+ * dashboard SaaS.
+ */
+
+.nwsth-canvas {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: #faf3ed;
+  color: #191310;
+  font-family: "Roboto Condensed", "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.nwsth-canvas *,
+.nwsth-canvas *::before,
+.nwsth-canvas *::after {
+  box-sizing: border-box;
+}
+
+.nwsth-canvas img,
+.nwsth-canvas svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* ---------- cabecera ---------- */
+
+.nwsth-header {
+  position: relative;
+  height: 365px;
+  flex-shrink: 0;
+}
+
+.nwsth-header__logo {
+  position: absolute;
+  left: 36px;
+  top: 37px;
+  width: 342px;
+  height: auto;
+}
+
+.nwsth-header__leaf {
+  position: absolute;
+  left: 167px;
+  top: 132px;
+  width: 80px;
+  height: 80px;
+  color: #c8102e;
+}
+
+.nwsth-header__title-block {
+  position: absolute;
+  left: 430px;
+  top: 27px;
+  width: 760px;
+}
+
+.nwsth-header__kicker {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: #191310;
+  line-height: 1;
+}
+
+.nwsth-header__title {
+  margin: 2px 0 0;
+  font-family: "Roboto Condensed", sans-serif;
+  font-size: 100px;
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -1px;
+  text-transform: uppercase;
+  color: #c8102e;
+}
+
+.nwsth-header__subtitle {
+  margin: 9px 0 0;
+  font-size: 40px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #191310;
+}
+
+.nwsth-header__pin {
+  margin: 10px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 28px;
+  font-weight: 500;
+  color: #211a16;
+}
+
+.nwsth-header__pin svg {
+  color: #211612;
+  flex-shrink: 0;
+}
+
+.nwsth-header__photo {
+  position: absolute;
+  right: -5px;
+  top: 5px;
+  width: 780px;
+  height: auto;
+  object-fit: contain;
+}
+
+.nwsth-date-bar {
+  position: absolute;
+  left: 37px;
+  top: 296px;
+  width: 645px;
+  height: 63px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 23px;
+  border-radius: 11px;
+  background: linear-gradient(90deg, #b90008, #d00810);
+  color: #fff;
+}
+
+.nwsth-date-bar__label {
+  font-size: 26px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.nwsth-date-bar__value {
+  font-size: 26px;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ---------- KPIs ---------- */
+
+.nwsth-kpis {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding: 10px 36px 0;
+  height: 213px;
+}
+
+.nwsth-kpi {
+  position: relative;
+  border: 1px solid #e5d4ca;
+  border-radius: 15px;
+  background: #fcf9f6;
+  padding: 26px 30px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(50, 20, 10, 0.025);
+}
+
+.nwsth-kpi__label {
+  margin: 0;
+  padding-right: 95px;
+  font-size: 26px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #191310;
+  line-height: 1.1;
+}
+
+.nwsth-kpi__sub-caption {
+  margin: 6px 95px 0 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: #191310;
+}
+
+.nwsth-kpi__value {
+  margin: 6px 0 0;
+  font-size: 72px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.nwsth-kpi__value--good {
+  color: #08712f;
+}
+
+.nwsth-kpi__value--red,
+.nwsth-kpi__value--bad {
+  color: #c8102e;
+}
+
+.nwsth-kpi__foot {
+  margin: 8px 95px 0 0;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #191310;
+}
+
+.nwsth-kpi__foot--good {
+  color: #08712f;
+}
+
+.nwsth-kpi__icon {
+  position: absolute;
+  top: 69px;
+  right: 23px;
+  width: 83px;
+  height: 83px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nwsth-kpi__icon--good {
+  border: 2px solid #08712f;
+}
+
+.nwsth-kpi__icon--bad {
+  border: 2px solid #c8102e;
+}
+
+/* ---------- paneles inferiores ---------- */
+
+.nwsth-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1.12fr 0.88fr;
+  gap: 16px;
+  padding: 17px 36px 20px;
+  min-height: 0;
+}
+
+.nwsth-panel {
+  border: 1px solid #e5d4ca;
+  border-radius: 15px;
+  background: #fcf9f6;
+  padding: 24px 27px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  box-shadow: 0 1px 3px rgba(50, 20, 10, 0.025);
+}
+
+.nwsth-panel__title {
+  margin: 0 0 8px;
+  font-size: 29px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #191310;
+}
+
+.nwsth-panel__hint {
+  margin: 0 0 10px;
+  font-size: 21px;
+  font-weight: 400;
+  color: #191310;
+}
+
+.nwsth-panel__hint strong {
+  color: #d00812;
+  font-weight: 600;
+}
+
+/* ---------- tabla de locales ---------- */
+
+.nwsth-table {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.nwsth-table__row {
+  flex: 1 1 0;
+  display: grid;
+  grid-template-columns: 1.7fr 1fr 0.8fr 1.3fr 1.4fr;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #ded6d0;
+  font-size: 19px;
+}
+
+.nwsth-table__row--head {
+  flex: 0 0 auto;
+  padding: 0 0 10px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #191310;
+  border-bottom: 1px solid #c8102e;
+}
+
+.nwsth-table__name {
+  font-weight: 500;
+  color: #191310;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nwsth-table__reviews {
+  font-weight: 400;
+  color: #191310;
+}
+
+.nwsth-table__rating--good {
+  color: #08712f;
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.nwsth-table__rating--watch {
+  color: #e39113;
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.nwsth-table__rating--bad {
+  color: #cc0a12;
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.nwsth-table__status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  color: #191310;
+}
+
+.nwsth-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.nwsth-tag {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 7px 12px;
+  border-radius: 6px;
+  background: #e8f2da;
+  color: #294b2b;
+  font-size: 15px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nwsth-table__target {
+  margin: 12px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 53px;
+  border-radius: 7px;
+  background: #f1e4d9;
+  font-size: 24px;
+  font-weight: 500;
+  color: #191310;
+}
+
+/* Con muchos locales, letra más compacta para que quepan sin cortarse. */
+.nwsth-table:has(.nwsth-table__row:nth-child(10)) .nwsth-table__row {
+  font-size: 16px;
+}
+
+.nwsth-table:has(.nwsth-table__row:nth-child(10)) .nwsth-table__rating--good,
+.nwsth-table:has(.nwsth-table__row:nth-child(10)) .nwsth-table__rating--watch,
+.nwsth-table:has(.nwsth-table__row:nth-child(10)) .nwsth-table__rating--bad {
+  font-size: 18px;
+}
+
+.nwsth-table:has(.nwsth-table__row:nth-child(10)) .nwsth-tag {
+  font-size: 13px;
+  padding: 5px 11px;
+}
+
+.nwsth-table:has(.nwsth-table__row:nth-child(16)) .nwsth-table__row {
+  font-size: 13px;
+}
+
+.nwsth-table:has(.nwsth-table__row:nth-child(16)) .nwsth-tag {
+  font-size: 11px;
+  padding: 4px 9px;
+}
+
+/* ---------- donut de motivos ---------- */
+
+.nwsth-donut-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  min-height: 0;
+}
+
+.nwsth-donut__svg {
+  flex-shrink: 0;
+}
+
+.nwsth-donut-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #08712f;
+}
+
+.nwsth-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 27px;
+  justify-content: center;
+}
+
+.nwsth-legend li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.nwsth-legend__swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.nwsth-legend__text {
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: #191310;
+}
+
+/* ---------- footer ---------- */
+
+.nwsth-footer {
+  flex-shrink: 0;
+  height: 115px;
+  background: linear-gradient(90deg, #a50004 0%, #c50008 100%);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 60px;
+}
+
+.nwsth-footer__sep {
+  width: 1px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.85);
+  flex-shrink: 0;
+}
+
+.nwsth-footer__item {
+  font-size: 22px;
+  font-weight: 400;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.nwsth-footer__item--web {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+}
+
+.nwsth-footer__tagline {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 400;
+  color: #fff;
+  white-space: nowrap;
+}

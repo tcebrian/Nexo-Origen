@@ -10,7 +10,7 @@ import { dedupeResenas } from "@/lib/review-metrics";
 import { getSupabaseDataClientForServer } from "@/lib/supabase/data-client";
 import { SUPABASE_TABLES } from "@/lib/supabase/tables";
 import type { PeriodQuery } from "./kpi-restaurantes";
-import type { ResenaRow } from "./resenas";
+import { getResenaActivityDateValue, type ResenaRow } from "./resenas";
 
 function toNumber(value: unknown): number {
   const n = Number(value);
@@ -53,18 +53,19 @@ function normalizeResena(row: Record<string, unknown>): ResenaRow {
 }
 
 /**
- * Una reseña pertenece al periodo si su fecha original (fecha_resena, o
- * created_at como último recurso si fecha_resena está vacío) cae dentro del
- * rango, O si fue editada dentro del rango (fecha_ultima_edicion). Cualquiera
- * de las dos condiciones basta — no hace falta que se cumplan ambas.
+ * Una reseña pertenece a UN único periodo — el de su fecha de actividad
+ * (getResenaActivityDateValue: la última edición si fue editada, si no la
+ * fecha original) — nunca a dos a la vez. Antes se usaba un OR entre fecha
+ * original y fecha de edición, así que una reseña editada de una semana
+ * para otra aparecía en los informes de ambas semanas, contando doble
+ * (comprobado con datos reales: 11 de las 13 reseñas editadas caen en una
+ * semana distinta a la que se editaron). `fecha_resena` no se toca ni se
+ * pierde en ningún momento — sigue disponible tal cual para mostrarla,
+ * esto solo decide en qué periodo se cuenta la reseña.
  */
 function isResenaInPeriod(row: ResenaRow, queryBounds: QueryDateBounds): boolean {
-  const originalDate = row.fecha_resena ?? row.created_at;
-  if (isTimestampInQueryRange(originalDate, queryBounds)) return true;
-  if (row.editada === true && isTimestampInQueryRange(row.fecha_ultima_edicion, queryBounds)) {
-    return true;
-  }
-  return false;
+  const activityDate = getResenaActivityDateValue(row);
+  return isTimestampInQueryRange(activityDate, queryBounds);
 }
 
 function filterResenaRows(

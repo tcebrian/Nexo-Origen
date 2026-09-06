@@ -321,16 +321,21 @@ export function NetworkSummarySgTemplate({ data, visual, periodoAdjective, asset
       </section>
 
       <footer className="nwssg-footer">
-        <FlowerIcon />
-        <span className="nwssg-footer__script">{visual.footerTagline}</span>
-        <span className="nwssg-footer__sep" aria-hidden />
-        <span className="nwssg-footer__item">Fuente: Google Maps (Reseñas)</span>
-        <span className="nwssg-footer__sep" aria-hidden />
-        <span className="nwssg-footer__item">Nexo Origen – {data.periodLabel.split(" de ").slice(-2).join(" de ")}</span>
-        <span className="nwssg-footer__sep" aria-hidden />
-        <span className="nwssg-footer__item nwssg-footer__item--web">
-          <GlobeIcon />
-          www.nexoorigen.com
+        <span className="nwssg-footer__pillar">
+          <FlowerIcon />
+          <span className="nwssg-footer__script">{visual.footerTagline}</span>
+        </span>
+        <span className="nwssg-footer__pillar">
+          <span className="nwssg-footer__item">Fuente: Google Maps (Reseñas)</span>
+        </span>
+        <span className="nwssg-footer__pillar">
+          <span className="nwssg-footer__item">Nexo Origen – {data.periodLabel.split(" de ").slice(-2).join(" de ")}</span>
+        </span>
+        <span className="nwssg-footer__pillar">
+          <span className="nwssg-footer__item nwssg-footer__item--web">
+            <GlobeIcon />
+            www.nexoorigen.com
+          </span>
         </span>
       </footer>
     </div>

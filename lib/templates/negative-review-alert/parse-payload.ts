@@ -75,6 +75,25 @@ export function parseAlertFromSearchParams(
     detected_impact: get("detected_impact") ?? fallback.detected_impact,
     employee_mentioned: get("employee_mentioned") ?? fallback.employee_mentioned,
     period_label: get("period_label") ?? fallback.period_label,
+    ai_summary: get("ai_summary") ?? fallback.ai_summary,
+    analisis_pending: get("analisis_pending") != null ? get("analisis_pending") === "true" : fallback.analisis_pending,
+    weekly_period_label: get("weekly_period_label") ?? fallback.weekly_period_label,
+    weekly_reviews_before:
+      get("weekly_reviews_before") != null && get("weekly_reviews_before") !== ""
+        ? parseNumber(get("weekly_reviews_before"), fallback.weekly_reviews_before ?? 0)
+        : fallback.weekly_reviews_before,
+    weekly_reviews_after:
+      get("weekly_reviews_after") != null && get("weekly_reviews_after") !== ""
+        ? parseNumber(get("weekly_reviews_after"), fallback.weekly_reviews_after ?? 0)
+        : fallback.weekly_reviews_after,
+    weekly_media_before:
+      get("weekly_media_before") != null && get("weekly_media_before") !== ""
+        ? parseNumber(get("weekly_media_before"), fallback.weekly_media_before ?? 0)
+        : fallback.weekly_media_before,
+    weekly_media_after:
+      get("weekly_media_after") != null && get("weekly_media_after") !== ""
+        ? parseNumber(get("weekly_media_after"), fallback.weekly_media_after ?? 0)
+        : fallback.weekly_media_after,
   };
 }
 
@@ -119,6 +138,13 @@ export function normalizeAlertPayload(
     detected_impact: input.detected_impact ?? fallback.detected_impact,
     employee_mentioned: input.employee_mentioned ?? fallback.employee_mentioned,
     period_label: input.period_label ?? fallback.period_label,
+    ai_summary: input.ai_summary ?? fallback.ai_summary,
+    analisis_pending: input.analisis_pending ?? fallback.analisis_pending,
+    weekly_period_label: input.weekly_period_label ?? fallback.weekly_period_label,
+    weekly_reviews_before: input.weekly_reviews_before ?? fallback.weekly_reviews_before,
+    weekly_reviews_after: input.weekly_reviews_after ?? fallback.weekly_reviews_after,
+    weekly_media_before: input.weekly_media_before ?? fallback.weekly_media_before,
+    weekly_media_after: input.weekly_media_after ?? fallback.weekly_media_after,
   };
 }
 

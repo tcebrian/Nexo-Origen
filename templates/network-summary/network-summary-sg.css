@@ -94,7 +94,7 @@
 
 .nwssg-header__cities {
   margin: 5px 0 0;
-  font-size: 26px;
+  font-size: 36px;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: uppercase;
@@ -122,9 +122,9 @@
 
 .nwssg-header__photo {
   position: absolute;
-  left: 890px;
-  top: 6px;
-  width: 660px;
+  left: 680px;
+  top: -20px;
+  width: 830px;
   height: auto;
   object-fit: contain;
 }
@@ -141,7 +141,7 @@
 }
 
 .nwssg-header__nexo-logo {
-  width: 150px;
+  width: 240px;
   height: auto;
 }
 
@@ -266,7 +266,7 @@
 
 .nwssg-kpi__sub {
   margin: 10px 0 0;
-  font-size: 15px;
+  font-size: 19px;
   font-weight: 500;
   line-height: 1.35;
   color: #1f1b18;
@@ -287,7 +287,7 @@
 .nwssg-body {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.25fr 0.75fr;
   gap: 15px;
   padding: 12px 26px 14px;
   min-height: 0;
@@ -542,10 +542,21 @@
   flex-shrink: 0;
   height: 72px;
   border-top: 1px solid #e5d8cc;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.nwssg-footer__pillar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 0 30px;
+  justify-content: center;
+  gap: 10px;
+  height: 100%;
+  border-left: 1px solid #e5d8cc;
+}
+
+.nwssg-footer__pillar:first-child {
+  border-left: none;
 }
 
 .nwssg-footer__script {
@@ -569,11 +580,4 @@
   gap: 7px;
   color: #2b1808;
   font-weight: 600;
-}
-
-.nwssg-footer__sep {
-  width: 1px;
-  height: 36px;
-  background: #8f8378;
-  flex-shrink: 0;
 }

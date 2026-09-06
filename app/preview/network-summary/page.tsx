@@ -19,8 +19,35 @@ export default function PreviewNetworkSummaryPage() {
   const [grupo, setGrupo] = useState<NetworkReportGroupId>("bk");
   const [periodo, setPeriodo] = useState<ReportPeriodSlug>("semanal");
   const [reloadKey, setReloadKey] = useState(0);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const src = `/templates/network-summary/${periodo}/${grupo}`;
+
+  async function downloadPng() {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const response = await fetch(
+        `/api/generate-network-summary-image?periodo=${periodo}&grupo=${grupo}&offset=0`
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? `Error ${response.status}`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `nexo-informe-red-${grupo}-${periodo}.png`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "No se pudo generar el PNG.");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   return (
     <div style={{ padding: 20, fontFamily: "system-ui, sans-serif", background: "#0c0a12", minHeight: "100vh" }}>
@@ -63,6 +90,23 @@ export default function PreviewNetworkSummaryPage() {
           Recargar
         </button>
 
+        <button
+          type="button"
+          onClick={downloadPng}
+          disabled={downloading}
+          style={{
+            padding: "5px 12px",
+            cursor: downloading ? "default" : "pointer",
+            background: "#5b2d8e",
+            color: "#fff",
+            border: "none",
+            borderRadius: 6,
+            opacity: downloading ? 0.6 : 1,
+          }}
+        >
+          {downloading ? "Generando…" : "Descargar PNG"}
+        </button>
+
         <a
           href={src}
           target="_blank"
@@ -72,6 +116,10 @@ export default function PreviewNetworkSummaryPage() {
           Abrir a tamaño real ↗
         </a>
       </div>
+
+      {downloadError ? (
+        <p style={{ color: "#f88", fontSize: 13, marginTop: -8, marginBottom: 16 }}>{downloadError}</p>
+      ) : null}
 
       <div
         style={{

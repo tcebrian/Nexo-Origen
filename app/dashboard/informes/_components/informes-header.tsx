@@ -13,6 +13,15 @@ function IconCalendar() {
   );
 }
 
+function IconEdit() {
+  return (
+    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+      <path d="M12 20h9" strokeLinecap="round" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 type InformesHeaderProps = {
   periodLabel: string;
 };
@@ -45,6 +54,13 @@ export function InformesHeader({ periodLabel }: InformesHeaderProps) {
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <TenantBadge />
+          <Link
+            href="/preview/network-summary"
+            className="inline-flex max-w-full items-center gap-2 rounded-xl border border-[var(--nexo-border)] bg-[var(--nexo-card)] px-3.5 py-2 text-sm font-medium text-[var(--nexo-text)] transition hover:border-[var(--nexo-border-strong)]"
+          >
+            <IconEdit />
+            <span className="truncate">Editar informes</span>
+          </Link>
           <button
             type="button"
             onClick={openPanel}

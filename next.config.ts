@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // El indicador de dev de Next (el badge "N" flotante) no existe en
+  // producción (next start), pero en local se solapa con las plantillas de
+  // informes al hacer capturas/QA visual — lo desactivamos para no
+  // confundirlo con un logo real de la plantilla.
+  devIndicators: false,
   serverExternalPackages: ["puppeteer", "playwright", "playwright-core", "sharp", "@sparticuz/chromium"],
   // El análisis estático de Next para decidir qué archivos incluir en cada
   // función serverless no detecta bien los `require()` con rutas dinámicas

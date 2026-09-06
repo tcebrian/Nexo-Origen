@@ -126,19 +126,19 @@ export function NetworkSummaryBkTemplate({ data, visual, periodoAdjective, asset
       </header>
 
       <section className="nwsbk-kpis">
-        <div className="nwsbk-kpi">
-          <span className={`nwsbk-kpi__icon ${data.belowTargetCount > 0 ? "nwsbk-kpi__icon--red" : "nwsbk-kpi__icon--green"}`}>
+        <div className="nwsbk-kpi nwsbk-kpi--impact">
+          <span className={`nwsbk-kpi__icon nwsbk-kpi__icon--corner ${data.belowTargetCount > 0 ? "nwsbk-kpi__icon--red" : "nwsbk-kpi__icon--green"}`}>
             {data.belowTargetCount > 0 ? <span className="nwsbk-kpi__icon-glyph">!</span> : <SmileIcon />}
           </span>
-          <div className="nwsbk-kpi__body">
+          <div className="nwsbk-kpi__body nwsbk-kpi__body--full">
             <p className="nwsbk-kpi__label">Impacto en media {periodoAdjective}</p>
             <p className="nwsbk-kpi__sub-caption">Locales fuera de objetivo ({data.targetAverage.toFixed(1)})</p>
             {data.belowTargetCount > 0 ? (
-              <ul className="nwsbk-kpi__dot-list">
-                {data.belowTargetLocations.slice(0, 4).map((name) => (
+              <ul className="nwsbk-kpi__dot-list nwsbk-kpi__dot-list--cols">
+                {data.belowTargetLocations.slice(0, 8).map((name) => (
                   <li key={name}>{name}</li>
                 ))}
-                {data.belowTargetLocations.length > 4 ? <li>+{data.belowTargetLocations.length - 4} más</li> : null}
+                {data.belowTargetLocations.length > 8 ? <li>+{data.belowTargetLocations.length - 8} más</li> : null}
               </ul>
             ) : (
               <p className="nwsbk-kpi__sub-list">Todos los locales alcanzan el objetivo</p>

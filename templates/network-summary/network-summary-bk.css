@@ -181,7 +181,7 @@
 }
 
 .nwsbk-header__nexo-claim {
-  margin-top: 27px;
+  margin-top: 8px;
   display: flex;
   align-items: flex-start;
   gap: 13px;
@@ -214,7 +214,7 @@
   grid-template-columns: repeat(5, 1fr);
   gap: 13px;
   padding: 14px 34px 0;
-  height: 161px;
+  height: 218px;
 }
 
 .nwsbk-kpi {
@@ -225,6 +225,7 @@
   border-radius: 16px;
   background: #fff;
   padding: 17px 20px;
+  overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
@@ -236,6 +237,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Icono a la izquierda, centrado en vertical con el resto de la tarjeta
+   (align-items:center del .nwsbk-kpi ya se encarga) — el cuerpo ocupa el
+   resto del ancho a la derecha. */
+.nwsbk-kpi__icon--corner {
+  width: 68px;
+  height: 68px;
+}
+
+.nwsbk-kpi__body--full {
+  flex: 1;
+  min-width: 0;
 }
 
 .nwsbk-kpi__icon-glyph {
@@ -320,6 +334,13 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+}
+
+.nwsbk-kpi__dot-list--cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 18px;
+  row-gap: 1px;
 }
 
 .nwsbk-kpi__dot-list li {
@@ -517,6 +538,14 @@
 /* Con muchos locales cada fila (flex:1) se queda más baja al repartirse el
    mismo alto entre más filas — se reduce la letra en proporción para que el
    texto siga respirando dentro de la fila en vez de quedar apretado. */
+.nwsbk-table:has(.nwsbk-table__row:nth-child(12)) .nwsbk-table__row {
+  font-size: 17px;
+}
+
+.nwsbk-table:has(.nwsbk-table__row:nth-child(12)) .nwsbk-table__motive {
+  font-size: 15px;
+}
+
 .nwsbk-table:has(.nwsbk-table__row:nth-child(16)) .nwsbk-table__row {
   font-size: 16px;
 }
@@ -647,7 +676,7 @@
 }
 
 .nwsbk-footer__item {
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.88);
   white-space: nowrap;

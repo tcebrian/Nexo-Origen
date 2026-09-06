@@ -7,6 +7,7 @@ import { NetworkSummaryStandardTemplate } from "@/templates/network-summary/netw
 import { NetworkSummaryBkTemplate } from "@/templates/network-summary/network-summary-bk-template";
 import { NetworkSummaryPpTemplate } from "@/templates/network-summary/network-summary-pp-template";
 import { NetworkSummarySgTemplate } from "@/templates/network-summary/network-summary-sg-template";
+import { NetworkSummaryThTemplate } from "@/templates/network-summary/network-summary-th-template";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,17 @@ export default async function Page({ params, searchParams }: PageProps) {
   if (grupo === "sg-es" || grupo === "sg-ad") {
     return (
       <NetworkSummarySgTemplate
+        data={data}
+        visual={visual}
+        periodoAdjective={PERIODO_ADJECTIVE[periodo]}
+        assetBaseUrl={base}
+      />
+    );
+  }
+
+  if (grupo === "th") {
+    return (
+      <NetworkSummaryThTemplate
         data={data}
         visual={visual}
         periodoAdjective={PERIODO_ADJECTIVE[periodo]}
