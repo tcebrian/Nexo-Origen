@@ -456,3 +456,63 @@ Resultado de red esperado:
 Dashboard e Informes deben partir exactamente de estos mismos valores.
 
 Ranking debe mantener los valores individuales de cada local sin recalcularlos de forma distinta.
+
+
+---
+
+# 13. Semántica canónica de atención
+
+## KPI
+
+- negativa: 1–2★;
+- neutral: 3★;
+- positiva: 4–5★.
+
+## Atención operativa
+
+- 1–2★ → `critical`;
+- 3★ → `follow_up`;
+- 4–5★ → `none`.
+
+La inclusión histórica de 3★ en alertas, WhatsApp, motivos e informes se conserva mediante `isReviewRequiringAttention`.
+
+Esto evita que cada consumidor codifique su propio `<= 3`.
+
+## Compatibilidad
+
+Algunos nombres siguen siendo heredados por compatibilidad:
+
+- `negative-reviews`;
+- `negativeReasons`;
+- `isNegativeInformeReview`;
+- opción `negativesOnly`.
+
+Cuando esos nombres representan 1–3★, deben entenderse como “atención/problemática”, no como el KPI oficial de negativas.
+
+`GetTopReasonsOptions.attentionOnly` es el nombre canónico nuevo; `negativesOnly` permanece como alias deprecated.
+
+## Cálculos derivados que siguen siendo independientes
+
+No deben mezclarse automáticamente con el KPI base:
+
+### NPS aproximado
+
+`computeNpsFromResenas` usa:
+
+- 5★ como promotor;
+- <=3★ como detractor.
+
+Es una métrica derivada propia y no redefine “negativa KPI”.
+
+### Prevent
+
+Las fórmulas de:
+
+- positivas necesarias;
+- tolerancia de negativas;
+- protección;
+- simulación;
+
+pertenecen al subdominio Prevent.
+
+Pueden reutilizar el objetivo 4,4, pero no deben convertirse en reglas base de clasificación de reseñas.
