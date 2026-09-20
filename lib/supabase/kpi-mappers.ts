@@ -10,6 +10,7 @@ import type { PreventRecord } from "@/lib/prevent/types";
 import type { RankingRecord } from "@/lib/ranking/types";
 import { classifyMediaStatus, type RestaurantPeriodMetrics } from "@/lib/review-metrics";
 import { REPUTATION_TARGET } from "@/lib/review-metrics";
+import { toRankingReputationBase } from "@/lib/reputation/summary";
 import {
   buildShortRecommendedAction,
   getStatusLabel,
@@ -129,18 +130,24 @@ export function metricsToRanking(
   metrics: RestaurantPeriodMetrics,
   mediaChange = 0
 ): RankingRecord {
+  const base = toRankingReputationBase({
+    media: metrics.media,
+    totalResenas: metrics.totalResenas,
+    resenasNegativas: metrics.resenasNegativas,
+  });
+
   return {
     id: metrics.slug,
     restaurant: metrics.restaurante,
     restaurantSlug: metrics.slug,
     brand: metrics.brand,
-    media: metrics.media,
-    reviews: metrics.totalResenas,
-    negatives: metrics.resenasNegativas,
-    activeAlerts: metrics.resenasNegativas,
-    criticalAlerts: metrics.operationalStatus === "critical" ? metrics.resenasNegativas : 0,
+    media: base.media,
+    reviews: base.reviews,
+    negatives: base.negatives,
+    activeAlerts: base.negatives,
+    criticalAlerts: metrics.operationalStatus === "critical" ? base.negatives : 0,
     mediaChange,
-    monthsAboveTarget: metrics.media >= REPUTATION_TARGET ? 1 : 0,
+    monthsAboveTarget: base.media >= REPUTATION_TARGET ? 1 : 0,
     sparkline: [],
   };
 }
