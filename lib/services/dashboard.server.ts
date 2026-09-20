@@ -3,6 +3,7 @@ import "server-only";
 import { buildAlertsFromResenas } from "@/lib/alerts/build-from-resenas";
 import { getUrgentAlerts } from "@/lib/alerts/filters";
 import { createRestaurantsRepository } from "@/lib/restaurants/restaurants-repository-shared";
+import { weightedAverage } from "@/lib/reputation/aggregation";
 import { loadPeriodDataServer } from "@/lib/supabase/period-api.server";
 import { getTranslationsForResenas } from "@/lib/translate/resena-translations";
 import type { DashboardOverview } from "./dashboard";
@@ -32,14 +33,9 @@ export async function getDashboardOverviewServer(query: {
   const onWatch = restaurants.filter((r) => r.status === "watch").length;
   const critical = restaurants.filter((r) => r.status === "critical").length;
 
-  const networkMedia =
-    restaurants.length > 0
-      ? restaurants.reduce((s, r) => s + r.currentMedia * r.totalReviews, 0) /
-        Math.max(
-          1,
-          restaurants.reduce((s, r) => s + r.totalReviews, 0)
-        )
-      : 0;
+  const networkMedia = weightedAverage(
+    restaurants.map((r) => ({ value: r.currentMedia, weight: r.totalReviews }))
+  );
 
   const totalReviews = restaurants.reduce((s, r) => s + r.totalReviews, 0);
   const totalNegatives = restaurants.reduce((s, r) => s + r.negativeReviews, 0);
