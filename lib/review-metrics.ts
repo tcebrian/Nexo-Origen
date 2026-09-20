@@ -75,6 +75,9 @@ export type TopReasonItem = {
 };
 
 export type GetTopReasonsOptions = {
+  /** Filtra reseñas que requieren atención (1–3★). */
+  attentionOnly?: boolean;
+  /** @deprecated Nombre histórico. Equivale a attentionOnly, no al KPI oficial de negativas 1–2★. */
   negativesOnly?: boolean;
   restauranteId?: number;
   limit?: number;
@@ -173,7 +176,8 @@ export function getTopReasons(
   analisisByResenaId: AnalisisIaIndex = new Map(),
   options: GetTopReasonsOptions = {}
 ): TopReasonItem[] {
-  const { negativesOnly = false, restauranteId, limit } = options;
+  const { restauranteId, limit } = options;
+  const attentionOnly = options.attentionOnly ?? options.negativesOnly ?? false;
   const entries: { reason: ReviewPrimaryReason; restauranteId: number | null | undefined }[] = [];
 
   if (reviews.length === 0) return [];
@@ -183,7 +187,7 @@ export function getTopReasons(
 
   if (isDomainReview) {
     for (const review of reviews as Review[]) {
-      if (negativesOnly && !isReviewRequiringAttention(review.rating)) continue;
+      if (attentionOnly && !isReviewRequiringAttention(review.rating)) continue;
       entries.push({
         reason: classifyReviewReason(review),
         restauranteId: undefined,
@@ -192,7 +196,7 @@ export function getTopReasons(
   } else {
     for (const row of dedupeResenas(reviews as ResenaRow[])) {
       if (restauranteId != null && row.restaurante_id !== restauranteId) continue;
-      if (negativesOnly && !isReviewRequiringAttention(row.estrellas)) continue;
+      if (attentionOnly && !isReviewRequiringAttention(row.estrellas)) continue;
       const analisis = getAnalisisForResena(analisisByResenaId, row);
       entries.push({
         reason: classifyReviewReason(row, analisis),
@@ -209,7 +213,7 @@ export function buildProblemDistributionFromAnalisis(
   resenas: ResenaRow[],
   analisisByResenaId: AnalisisIaIndex
 ): ProblemDistributionItem[] {
-  return getTopReasons(resenas, analisisByResenaId, { negativesOnly: true }).map((item) => ({
+  return getTopReasons(resenas, analisisByResenaId, { attentionOnly: true }).map((item) => ({
     label: item.motivo,
     count: item.count,
     percent: item.percent,
