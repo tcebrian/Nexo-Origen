@@ -1,5 +1,5 @@
 import { summarizeKpiReputation } from "@/lib/reputation/summary";
-import { REPUTATION_TARGET, REPUTATION_WATCH_THRESHOLD } from "@/lib/reputation/rules";
+import { REPUTATION_TARGET, REPUTATION_WATCH_THRESHOLD, isReviewRequiringAttention } from "@/lib/reputation/rules";
 import { dedupeResenas } from "@/lib/review-metrics";
 import { marcaToBrandId } from "@/lib/supabase/kpi-mappers";
 import type { KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
@@ -37,7 +37,7 @@ function topMotivosFromIndex(
   options: { restauranteId?: number; limit?: number; groupRestAsOtro?: boolean } = {}
 ): { label: string; categoria: string; count: number; percent: number }[] {
   const negatives = dedupeResenas(resenas).filter((row) => {
-    if (row.estrellas > 3) return false;
+    if (!isReviewRequiringAttention(row.estrellas)) return false;
     if (options.restauranteId != null && row.restaurante_id !== options.restauranteId) return false;
     return true;
   });
