@@ -367,29 +367,77 @@ Esto permite reducir superficie de acceso y centralizar auditoría.
 
 ---
 
-# 9. Deuda detectada en deduplicación de alertas Make
+# 9. Hallazgo confirmado — reviewId vs reviewerId
 
-La ruta activa de alertas utiliza una tabla de control para evitar duplicados.
+La investigación sobre ejecuciones reales confirma:
 
-Durante la revisión se ha detectado una inconsistencia que debe verificarse antes de modificar producción:
+- `reviewId` identifica la reseña concreta;
+- `reviewerId` identifica la cuenta/persona que publica la reseña.
 
-- la reseña se identifica/guarda usando `reviewId`;
-- una parte del control de alertas referencia `reviewerId`.
+La tabla `resenas` se alimenta correctamente con `reviewId`.
 
-No asumir que ambos identificadores significan lo mismo.
+Sin embargo, el módulo actual que escribe en `alertas_enviadas.review_id` está usando `reviewerId`.
 
-Antes de tocar el escenario:
+La tabla tiene índice único sobre `review_id`, por lo que en la práctica ese índice está actuando sobre el autor y no sobre la reseña.
 
-1. verificar qué devuelve exactamente Apify para ambos campos;
-2. confirmar la clave única real de la tabla de alertas;
-3. probar una reseña repetida;
-4. corregir solo después.
+Los datos actuales confirman que prácticamente todo `alertas_enviadas.review_id` contiene identificadores numéricos de autor, no IDs reales de reseña.
 
-No se ha modificado el escenario activo en esta fase.
+Además, el flujo no utiliza el resultado de esa inserción como condición antes de enviar email/WhatsApp, por lo que `alertas_enviadas` no está funcionando como un deduplicador efectivo del envío.
+
+La deduplicación real de re-scrapes de la misma reseña ocurre antes, cuando Make consulta `resenas` por `reviewId`.
+
+No modificar producción sin diseñar primero la migración de `alertas_enviadas`.
 
 ---
 
-# 10. Destinatarios y permisos de WhatsApp
+# 10. Hallazgo confirmado — URL de la reseña
+
+Apify entrega URLs distintas:
+
+- `reviewerUrl`: perfil del autor;
+- `reviewUrl`: reseña concreta;
+- `url`: ficha/negocio en Google Maps.
+
+El módulo actual de alta en `resenas` guarda `reviewerUrl` dentro de `resenas.url`.
+
+La base actual solo dispone del campo `url`, sin un campo separado para `review_url`.
+
+La mayoría de filas existentes con URL contienen por tanto el perfil del reseñador, no el enlace exacto a su reseña.
+
+Además, el mensaje actual de WhatsApp muestra “Ver reseña en Google Maps” pero utiliza la URL de la ficha del negocio, no `reviewUrl`.
+
+Dirección recomendada:
+
+- mantener `reviewer_url` separado si se necesita;
+- añadir `review_url` como identidad navegable de la reseña;
+- mantener la URL del negocio separada si aporta valor;
+- no sobrecargar un único campo `url` con significados distintos.
+
+---
+
+# 11. Hallazgo confirmado — reseñas editadas y alertas
+
+La ruta de reseña editada:
+
+```
+detectar cambio
+   ↓
+PATCH resenas
+   ↓
+nuevo análisis IA
+   ↓
+upsert analisis_ia
+```
+
+no pasa actualmente por la rama de email/WhatsApp.
+
+Por tanto, una reseña que originalmente no requería atención y después se edita a 1–3★ se actualiza y se vuelve a analizar, pero no genera automáticamente la misma alerta que una reseña nueva.
+
+Esto debe decidirse explícitamente como regla de producto antes de modificar Make.
+
+---
+
+# 12. Destinatarios y permisos de WhatsApp
 
 Actualmente existen filtros/destinatarios configurados dentro de Make.
 
@@ -415,7 +463,7 @@ La configuración debe acabar viviendo en Nexo/Supabase y Make debería recibir 
 
 ---
 
-# 11. Vercel
+# 13. Vercel
 
 ## Estado
 
@@ -432,7 +480,7 @@ Reglas:
 
 ---
 
-# 12. Arquitectura recomendada de transición
+# 14. Arquitectura recomendada de transición
 
 No hay que eliminar Make ahora.
 
@@ -495,7 +543,7 @@ Solo migrar cuando reduzca complejidad, coste o riesgo.
 
 ---
 
-# 13. Google Business
+# 15. Google Business
 
 ## Estado
 
@@ -512,7 +560,7 @@ Debe mapearse al modelo interno de Nexo.
 
 ---
 
-# 14. StoreAce / TPV
+# 16. StoreAce / TPV
 
 ## Estado
 
@@ -546,7 +594,7 @@ Web · WhatsApp · Informes
 
 ---
 
-# 15. Tiempos, personal y delivery
+# 17. Tiempos, personal y delivery
 
 ## Estado
 
@@ -569,7 +617,7 @@ No conectar una fuente externa directamente a una pantalla como arquitectura per
 
 ---
 
-# 16. Matriz real actual
+# 18. Matriz real actual
 
 | Integración | Estado | Rol actual |
 |---|---|---|
@@ -589,7 +637,7 @@ No conectar una fuente externa directamente a una pantalla como arquitectura per
 
 ---
 
-# 17. Regla principal
+# 19. Regla principal
 
 La arquitectura actual de Make es válida para la V1.
 
