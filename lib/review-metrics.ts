@@ -8,8 +8,13 @@ import type { ResenaRow } from "@/lib/supabase/resenas";
 import type { AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
 import { getAnalisisForResena } from "@/lib/supabase/analisis-ia";
 import { marcaToBrandId } from "@/lib/supabase/kpi-mappers";
+import {
+  REPUTATION_TARGET,
+  classifyMediaStatus,
+  classifyReviewStars,
+} from "@/lib/reputation/rules";
 
-export const REPUTATION_TARGET = 4.4;
+export { REPUTATION_TARGET, classifyMediaStatus };
 
 export type StarCounts = {
   stars1: number;
@@ -189,22 +194,6 @@ function bumpStar(stars: StarCounts, rating: number) {
   else if (rating >= 5) stars.stars5 += 1;
 }
 
-export function classifyMediaStatus(media: number, hasReviews: boolean): {
-  statusLabel: RestaurantPeriodMetrics["statusLabel"];
-  operationalStatus: RestaurantPeriodMetrics["operationalStatus"];
-} {
-  if (!hasReviews) {
-    return { statusLabel: "En riesgo", operationalStatus: "watch" };
-  }
-  if (media >= REPUTATION_TARGET) {
-    return { statusLabel: "Óptimo", operationalStatus: "on_target" };
-  }
-  if (media >= 4.0) {
-    return { statusLabel: "En riesgo", operationalStatus: "watch" };
-  }
-  return { statusLabel: "Crítico", operationalStatus: "critical" };
-}
-
 export function classifyProblemLabel(text: string, rating: number): ProblemLabel {
   const reason = classifyReviewReason({ comentario: text });
   switch (reason) {
@@ -379,8 +368,9 @@ function aggregateFromResenas(
     );
 
     current.totalResenas += 1;
-    if (estrellas >= 4) current.resenasPositivas += 1;
-    if (estrellas <= 2) current.resenasNegativas += 1;
+    const polarity = classifyReviewStars(estrellas);
+    if (polarity === "positive") current.resenasPositivas += 1;
+    if (polarity === "negative") current.resenasNegativas += 1;
     bumpStar(current.stars, estrellas);
     current.media =
       (current.media * (current.totalResenas - 1) + estrellas) / current.totalResenas;
