@@ -394,3 +394,65 @@ Antes de sustituir un cálculo local:
 6. continuar con el siguiente.
 
 No eliminar una fórmula solo porque “se parece” a otra si su denominador o semántica son distintos.
+
+
+---
+
+# 12. Paridad entre consumidores
+
+Existe un fixture compartido de reputación que protege la coherencia entre:
+
+- Dashboard;
+- Informes;
+- Ranking.
+
+## Dashboard vs Informes
+
+Ambos consumen ahora el mismo resumen canónico desde:
+
+`lib/reputation/summary.ts`
+
+Se valida que para el mismo conjunto de restaurantes coincidan:
+
+- media ponderada;
+- volumen de reseñas;
+- positivas;
+- negativas;
+- porcentaje positivo;
+- porcentaje negativo.
+
+## Ranking
+
+Ranking no necesita una media global de red.
+
+La paridad que se protege es por restaurante:
+
+- media;
+- número de reseñas;
+- negativas.
+
+La conversión base vive en:
+
+`toRankingReputationBase(...)`
+
+y es consumida por `metricsToRanking(...)`.
+
+## Fixture actual
+
+Ejemplo protegido:
+
+- Restaurante A: media 4,5; 10 reseñas; 7 positivas; 2 negativas;
+- Restaurante B: media 3,8; 5 reseñas; 3 positivas; 1 negativa.
+
+Resultado de red esperado:
+
+- 15 reseñas;
+- 10 positivas;
+- 3 negativas;
+- 66,7% positivas;
+- 20,0% negativas;
+- media ponderada 4,2666... antes de redondeo de presentación.
+
+Dashboard e Informes deben partir exactamente de estos mismos valores.
+
+Ranking debe mantener los valores individuales de cada local sin recalcularlos de forma distinta.
