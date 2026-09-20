@@ -1,7 +1,5 @@
 import type { InformeEstado } from "@/lib/informes/types";
-import { REPUTATION_TARGET } from "@/lib/review-metrics";
-
-const WATCH_THRESHOLD = 4.0;
+import { REPUTATION_TARGET, REPUTATION_WATCH_THRESHOLD } from "@/lib/reputation/rules";
 
 export function resolveInformeEstado(media: number): {
   estado: InformeEstado;
@@ -10,7 +8,7 @@ export function resolveInformeEstado(media: number): {
   if (media >= REPUTATION_TARGET) {
     return { estado: "verde", estadoLabel: "Óptimo" };
   }
-  if (media >= WATCH_THRESHOLD) {
+  if (media >= REPUTATION_WATCH_THRESHOLD) {
     return { estado: "amarillo", estadoLabel: "En vigilancia" };
   }
   return { estado: "rojo", estadoLabel: "Crítico" };
