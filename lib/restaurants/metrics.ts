@@ -1,4 +1,5 @@
 import { restaurantSlug } from "@/app/dashboard/restaurantes/utils";
+import { weightedAverage } from "@/lib/reputation/aggregation";
 import { REPUTATION_TARGET } from "@/lib/reputation/rules";
 import type { OperationalStatus } from "./types";
 
@@ -52,9 +53,9 @@ export function getNetworkSummary(
   const onWatch = items.filter((r) => r.status === "watch").length;
   const critical = items.filter((r) => r.status === "critical").length;
   const pct = (n: number) => (total === 0 ? 0 : Math.round((n / total) * 100));
-  const periodReviews = items.reduce((sum, r) => sum + r.totalReviews, 0);
-  const weightedMediaSum = items.reduce((sum, r) => sum + r.currentMedia * r.totalReviews, 0);
-  const networkAverage = periodReviews > 0 ? weightedMediaSum / periodReviews : 0;
+  const networkAverage = weightedAverage(
+    items.map((r) => ({ value: r.currentMedia, weight: r.totalReviews }))
+  );
 
   return {
     total,
