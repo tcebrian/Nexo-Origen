@@ -1,5 +1,6 @@
 import { getPeriodBounds, getPeriodBoundsFromDates, periodBoundsToQuery } from "@/lib/date-utils";
 import type { PeriodBounds } from "@/lib/dates/period";
+import { percentageOfTotal } from "@/lib/reputation/aggregation";
 import {
   buildPeriodMetrics,
   dedupeResenas,
@@ -187,19 +188,17 @@ export function mergeNetworkWithDashboardKpis(
     totalRestaurantes: dashboardKpis.totalRestaurantes || network.totalRestaurantes,
     positivePct:
       (dashboardKpis.totalResenas || network.totalResenas) > 0
-        ? Math.round(
-            ((dashboardKpis.totalPositivas || network.totalPositivas) /
-              (dashboardKpis.totalResenas || network.totalResenas)) *
-              1000
-          ) / 10
+        ? percentageOfTotal(
+            dashboardKpis.totalPositivas || network.totalPositivas,
+            dashboardKpis.totalResenas || network.totalResenas
+          )
         : network.positivePct,
     negativePct:
       (dashboardKpis.totalResenas || network.totalResenas) > 0
-        ? Math.round(
-            ((dashboardKpis.totalNegativas || network.totalNegativas) /
-              (dashboardKpis.totalResenas || network.totalResenas)) *
-              1000
-          ) / 10
+        ? percentageOfTotal(
+            dashboardKpis.totalNegativas || network.totalNegativas,
+            dashboardKpis.totalResenas || network.totalResenas
+          )
         : network.negativePct,
   };
 }
