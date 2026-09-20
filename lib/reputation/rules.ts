@@ -1,4 +1,5 @@
 export const REPUTATION_TARGET = 4.4;
+export const REPUTATION_WATCH_THRESHOLD = 4.0;
 
 export type ReviewPolarity = "positive" | "neutral" | "negative";
 export type ReputationStatusLabel = "Óptimo" | "En riesgo" | "Crítico";
@@ -25,7 +26,7 @@ export function classifyMediaStatus(
     return { statusLabel: "Óptimo", operationalStatus: "on_target" };
   }
 
-  if (media >= 4.0) {
+  if (media >= REPUTATION_WATCH_THRESHOLD) {
     return { statusLabel: "En riesgo", operationalStatus: "watch" };
   }
 
