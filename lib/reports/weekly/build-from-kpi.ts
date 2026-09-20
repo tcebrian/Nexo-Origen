@@ -1,5 +1,5 @@
 import type { BrandId } from "@/app/dashboard/restaurantes/data";
-import { percentageOfTotal, weightedAverage } from "@/lib/reputation/aggregation";
+import { summarizeKpiReputation } from "@/lib/reputation/summary";
 import { REPUTATION_TARGET } from "@/lib/restaurants/metrics";
 import { getTopReasons } from "@/lib/review-metrics";
 import { mapEstadoToOperational, marcaToBrandId } from "@/lib/supabase/kpi-mappers";
@@ -98,11 +98,10 @@ export function buildWeeklyReportFromKpi(
   analisisByResenaId: AnalisisIaIndex = new Map()
 ): WeeklyReportData {
   const rows = filterRowsForTemplate(allRows, templateId);
-  const totalReviews = rows.reduce((sum, row) => sum + row.total_resenas, 0);
-  const negativeReviews = rows.reduce((sum, row) => sum + row.resenas_negativas, 0);
-  const weightedMedia = weightedAverage(
-    rows.map((row) => ({ value: row.media_total, weight: row.total_resenas }))
-  );
+  const reputation = summarizeKpiReputation(rows);
+  const totalReviews = reputation.reviews;
+  const negativeReviews = reputation.negatives;
+  const weightedMedia = reputation.media;
 
   const belowTarget = rows.filter((row) => row.media_total < REPUTATION_TARGET && row.total_resenas > 0);
 
@@ -133,7 +132,7 @@ export function buildWeeklyReportFromKpi(
       belowTargetLocations: belowTarget.map((row) => shortLocationName(row.restaurante)),
       totalReviews,
       negativeReviews,
-      negativePercent: percentageOfTotal(negativeReviews, totalReviews),
+      negativePercent: reputation.negativePct,
       weeklyAverage: Math.round(weightedMedia * 100) / 100,
       targetAverage: REPUTATION_TARGET,
     },
