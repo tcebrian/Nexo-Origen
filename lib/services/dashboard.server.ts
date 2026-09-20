@@ -3,7 +3,7 @@ import "server-only";
 import { buildAlertsFromResenas } from "@/lib/alerts/build-from-resenas";
 import { getUrgentAlerts } from "@/lib/alerts/filters";
 import { createRestaurantsRepository } from "@/lib/restaurants/restaurants-repository-shared";
-import { weightedAverage } from "@/lib/reputation/aggregation";
+import { summarizeOperationalReputation } from "@/lib/reputation/summary";
 import { loadPeriodDataServer } from "@/lib/supabase/period-api.server";
 import { getTranslationsForResenas } from "@/lib/translate/resena-translations";
 import type { DashboardOverview } from "./dashboard";
@@ -29,16 +29,13 @@ export async function getDashboardOverviewServer(query: {
     translationsByResenaId
   );
 
-  const onTarget = restaurants.filter((r) => r.status === "on_target").length;
-  const onWatch = restaurants.filter((r) => r.status === "watch").length;
-  const critical = restaurants.filter((r) => r.status === "critical").length;
-
-  const networkMedia = weightedAverage(
-    restaurants.map((r) => ({ value: r.currentMedia, weight: r.totalReviews }))
-  );
-
-  const totalReviews = restaurants.reduce((s, r) => s + r.totalReviews, 0);
-  const totalNegatives = restaurants.reduce((s, r) => s + r.negativeReviews, 0);
+  const reputation = summarizeOperationalReputation(restaurants);
+  const onTarget = reputation.onTarget;
+  const onWatch = reputation.watch;
+  const critical = reputation.critical;
+  const networkMedia = reputation.media;
+  const totalReviews = reputation.reviews;
+  const totalNegatives = reputation.negatives;
 
   const urgentAlerts = getUrgentAlerts(alerts).slice(0, 4);
 
