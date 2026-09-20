@@ -1,26 +1,37 @@
-# Nexo Origen — Current database model
+# Nexo Origen — Esquema actual
 
-This document describes the database shape visible from the current repository. It is not yet a complete production data dictionary.
+## Propósito
 
-## Core hierarchy
+Este documento describe **lo que el repositorio actual espera de Supabase**.
 
-Current business hierarchy is effectively:
+No es el modelo futuro de Nexo. Para eso existe `DATA_MODEL.md`.
+
+No añadir aquí tablas futuras como si ya existieran en producción.
+
+---
+
+# 1. Jerarquía actual
+
+La jerarquía empresarial efectiva es:
 
 **empresa → marca → restaurante**
 
-Important current peculiarity:
+Actualmente existe una peculiaridad importante:
 
-- `restaurantes` contains `empresa_id` and `marca_id`;
-- `marcas` currently does **not** contain `empresa_id`;
-- therefore company↔brand relationships are derived through restaurants.
+- `restaurantes` tiene `empresa_id`;
+- `restaurantes` tiene `marca_id`;
+- `marcas` no tiene actualmente una relación directa `empresa_id` según el código del repositorio;
+- empresa ↔ marca se deriva a través de los restaurantes.
 
-Do not assume a direct `marcas.empresa_id` relation exists.
+Por tanto, no asumir que existe `marcas.empresa_id`.
 
-## Tables/views referenced by the app
+---
 
-From `lib/supabase/tables.ts`:
+# 2. Objetos Supabase utilizados por la aplicación
 
-### Tables
+Definidos en `lib/supabase/tables.ts`.
+
+## Tablas
 
 - `empresas`
 - `marcas`
@@ -34,49 +45,220 @@ From `lib/supabase/tables.ts`:
 - `usuario_marcas`
 - `usuario_restaurantes`
 
-### Views
+## Vistas
 
 - `kpi_restaurantes`
 
-## Auth and roles
+---
 
-The application currently uses these roles:
+# 3. empresas
+
+El código actual utiliza al menos:
+
+- `id`
+- `nombre`
+
+Los usuarios con rol `empresa_admin` se limitan por `perfiles.empresa_id` y por los restaurantes pertenecientes a esa empresa.
+
+No documentar más columnas como obligatorias hasta verificarlas en el esquema real.
+
+---
+
+# 4. marcas
+
+El código actual utiliza:
+
+- `id`
+- `nombre`
+
+Actualmente no se debe asumir que `marcas` contiene `empresa_id`.
+
+La pertenencia de una marca a una empresa se deriva a través de `restaurantes`.
+
+---
+
+# 5. restaurantes
+
+El código actual utiliza o depende de:
+
+- `id`
+- `nombre`
+- `ciudad`
+- `marca_id`
+- `empresa_id`
+- `media_google`
+- `total_resenas_google`
+
+`media_google` y `total_resenas_google` representan el snapshot público de Google y son alimentados por un proceso externo.
+
+La aplicación actual los lee; no debe asumirse que el dashboard es quien los actualiza.
+
+---
+
+# 6. resenas
+
+Campos observados por el código actual:
+
+- `id`
+- `review_id`
+- `restaurante_id`
+- `estrellas`
+- `comentario`
+- `autor`
+- `fecha_resena`
+- `created_at`
+- `editada`
+- `fecha_ultima_edicion`
+- información textual de restaurante / marca / dirección cuando existe.
+
+## Identidad
+
+El código prioriza `review_id` como identificador externo de la reseña.
+
+Si falta, existen mecanismos de deduplicación por contenido.
+
+## Fecha de actividad
+
+Actualmente una reseña editada se asigna al periodo de su última edición cuando `editada = true` y existe `fecha_ultima_edicion`.
+
+La fecha original se conserva para mostrarla.
+
+Esta regla evita contar una misma fila en dos periodos, pero **no equivale a conservar un histórico completo de todas las versiones de una reseña**.
+
+Ese problema se trata en `DATA_MODEL.md`.
+
+---
+
+# 7. analisis_ia
+
+La unión actual correcta es:
+
+`analisis_ia.review_id = resenas.review_id`
+
+No utilizar `resenas.id` como sustituto sin revisar el flujo.
+
+Campos observados:
+
+- `review_id`
+- `resumen`
+- `motivo`
+- `impacto`
+- `recomendacion`
+- `riesgo`
+- `empleado_mencionado`
+- `sentimiento`
+- `created_at`
+
+Los análisis son interpretación. No deben convertirse en fuente de verdad de cálculos deterministas.
+
+---
+
+# 8. kpi_diario
+
+Granularidad actual:
+
+**1 fila por restaurante y día**
+
+Campos utilizados:
+
+- `restaurante_id`
+- `fecha`
+- `total_resenas`
+- `media`
+- `negativas`
+- `positivas`
+
+Las medias de varios días/restaurantes deben agregarse de forma ponderada por volumen de reseñas.
+
+---
+
+# 9. kpi_restaurantes
+
+Es una **vista de lectura**, no una tabla.
+
+Campos esperados por la aplicación:
+
+- `restaurante_id`
+- `restaurante`
+- `ciudad`
+- `marca`
+- `total_resenas`
+- `media_total`
+- `resenas_negativas`
+- `resenas_positivas`
+- `ultima_resena`
+- `estado`
+
+Después, el código puede enriquecer estas filas con:
+
+- `media_google`
+- `total_resenas_google`
+
+procedentes de `restaurantes`.
+
+---
+
+# 10. perfiles y permisos
+
+`perfiles.id = auth.users.id`
+
+Campos documentados en el repositorio:
+
+- `id`
+- `nombre`
+- `email`
+- `rol`
+- `empresa_id`
+- `created_at`
+
+Roles:
 
 - `super_admin`
 - `empresa_admin`
 - `marca_admin`
 - `restaurante_user`
 
-User scope is resolved in `lib/auth/scopes.ts`.
+Asignaciones adicionales:
 
-Assignments can come from:
+- `usuario_marcas.user_id → marca_id`
+- `usuario_restaurantes.user_id → restaurante_id`
 
-- `perfiles.empresa_id`;
-- `usuario_marcas`;
-- `usuario_restaurantes`.
+---
 
-## Security reality
+# 11. Seguridad actual
 
-Several production-facing tables currently have permissive SELECT RLS policies for `anon` / `authenticated`.
+Una parte relevante del aislamiento multiempresa depende actualmente de la capa de aplicación:
 
-The application therefore relies heavily on server/application scope filtering in `lib/auth/data-scope.ts`.
+- `lib/auth/scopes.ts`
+- `lib/auth/data-scope.ts`
 
-Treat that code as security-sensitive.
+Varias tablas tienen políticas SELECT permisivas en los SQL actuales.
 
-## External ownership
+Por tanto:
 
-Review/public Google data is populated by an external process that does not currently live in this repository.
+> el filtrado de scope es hoy parte de la frontera de seguridad y no puede eliminarse o saltarse casualmente.
 
-The application mainly consumes those records.
+En el futuro se puede reforzar RLS, pero debe hacerse como migración controlada.
 
-## Future modeling direction
+---
 
-As Nexo expands, new operational domains should preserve:
+# 12. Fuentes externas
 
-- source system identifiers;
-- organization / brand / restaurant ownership where relevant;
-- timestamps and period semantics;
-- raw source payload/history when useful for reprocessing;
-- normalized records used by business logic.
+Las reseñas y los snapshots públicos de Google son alimentados por procesos externos que no forman parte actualmente de este repositorio.
 
-For reviews specifically, consider explicit version/history support for edited source reviews before relying on current snapshots for historical truth.
+La aplicación consume esos datos.
+
+Esto significa que el esquema actual no representa todavía todo el pipeline de ingesta de Nexo.
+
+---
+
+# 13. Limitaciones conocidas del esquema actual
+
+- No existe todavía un modelo común para todas las integraciones externas.
+- Las reseñas editadas no tienen un histórico completo de versiones persistido por la aplicación.
+- La relación empresa ↔ marca se deriva indirectamente.
+- Los KPIs actuales están muy orientados a reputación.
+- Todavía no existe un modelo normalizado para ventas, tiempos, personal o costes.
+- La seguridad en base de datos puede reforzarse.
+
+Estas limitaciones no deben corregirse todas a la vez. Se migrarán por fases.
