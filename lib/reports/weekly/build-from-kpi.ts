@@ -57,7 +57,7 @@ function shortLocationName(name: string): string {
 }
 
 function buildNegativeReasons(resenas: ResenaRow[], analisisByResenaId: AnalisisIaIndex): NegativeReasonSegment[] {
-  return getTopReasons(resenas, analisisByResenaId, { negativesOnly: true, limit: 5 }).map(
+  return getTopReasons(resenas, analisisByResenaId, { attentionOnly: true, limit: 5 }).map(
     (item, index) => ({
       label: item.motivo,
       count: item.count,
