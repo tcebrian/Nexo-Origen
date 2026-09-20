@@ -1,6 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendWhatsAppImageAlert } from "@/lib/notifications/whatsapp";
-import { getReviewAttentionLevel, isReviewRequiringAttention } from "@/lib/reputation/rules";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,8 +35,8 @@ export async function POST(request: Request) {
     return Response.json({ ok: true, skipped: "payload-incompleto" });
   }
 
-  // Se avisan reseñas que requieren atención: 1–2★ negativas KPI y 3★ seguimiento.
-  if (!isReviewRequiringAttention(record.estrellas)) {
+  // Solo reseñas negativas (mismo criterio que el resto de la app: <= 3 estrellas).
+  if (record.estrellas > 3) {
     return Response.json({ ok: true, skipped: "no-negativa" });
   }
 
@@ -70,11 +69,7 @@ export async function POST(request: Request) {
 
   const origin = new URL(request.url).origin;
   const imageUrl = `${origin}/api/notifications/whatsapp-alert-image?resena_id=${record.id}&token=${secret}`;
-  const attentionLevel = getReviewAttentionLevel(record.estrellas);
-  const caption =
-    attentionLevel === "critical"
-      ? "⚠️ Nueva reseña negativa detectada — Nexo Origen"
-      : "⚠️ Nueva reseña de seguimiento (3★) — Nexo Origen";
+  const caption = "⚠️ Nueva reseña negativa detectada — Nexo Origen";
 
   const results = await Promise.all(
     recipients.map((to) => sendWhatsAppImageAlert({ to, mediaUrl: imageUrl, caption }))
