@@ -35,10 +35,13 @@ Read only the documentation needed for the task.
 - Project overview and direction → `docs/OVERVIEW.md`
 - Current priorities and migration phases → `docs/ROADMAP.md`
 - Architecture decisions → `docs/architecture/ARCHITECTURE.md`
+- Shared metric/business rules → `docs/business/BUSINESS_RULES.md`
 - Reputation rules → `docs/business/REPUTATION.md`
 - Current Supabase reality → `docs/database/CURRENT_SCHEMA.md`
 - Future data-model decisions → `docs/database/DATA_MODEL.md`
 - External systems → `docs/integrations/CURRENT_INTEGRATIONS.md`
+
+For any task that changes a KPI, formula, comparison, status or aggregation, read `docs/business/BUSINESS_RULES.md` first, then the relevant domain doc.
 
 When changing existing database code, read `CURRENT_SCHEMA.md`.
 When designing a new domain/table, also read `DATA_MODEL.md`.
