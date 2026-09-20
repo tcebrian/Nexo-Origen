@@ -6,6 +6,7 @@ import type { ResenaRow } from "./resenas";
 import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
 import { aggregateResumenFromAnalisis } from "@/lib/reviews/map-analisis-ia";
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
+import { isReviewRequiringAttention } from "@/lib/reputation/rules";
 import { dedupeResenas, getReviewDedupKey } from "@/lib/review-metrics";
 import { buildMediaImpactIndex } from "@/lib/reviews/media-impact";
 import { getAnalisisForResena, type AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
@@ -149,7 +150,7 @@ function buildAlertasFromResenas(
   const impactIndex = buildMediaImpactIndex(resenas);
 
   return dedupeResenas(resenas)
-    .filter((row) => row.estrellas <= 3)
+    .filter((row) => isReviewRequiringAttention(row.estrellas))
     .sort((a, b) => {
       const ta = new Date(a.fecha_resena ?? a.created_at ?? 0).getTime();
       const tb = new Date(b.fecha_resena ?? b.created_at ?? 0).getTime();
