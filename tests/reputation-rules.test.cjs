@@ -3,6 +3,7 @@ const { describe, it } = require("node:test");
 
 const {
   REPUTATION_TARGET,
+  REPUTATION_WATCH_THRESHOLD,
   classifyMediaStatus,
   classifyReviewStars,
 } = require("../.test-dist/lib/reputation/rules.js");
@@ -21,8 +22,9 @@ const {
 } = require("../.test-dist/lib/reputation/aggregation.js");
 
 describe("reputation rules", () => {
-  it("keeps the current target at 4.4", () => {
+  it("keeps the current target and watch threshold", () => {
     assert.equal(REPUTATION_TARGET, 4.4);
+    assert.equal(REPUTATION_WATCH_THRESHOLD, 4.0);
   });
 
   it("classifies 4-5 as positive, 3 as neutral, and 1-2 as negative", () => {
