@@ -19,6 +19,8 @@ const {
 const {
   aggregateKpiDailyByRestaurant,
   choosePeriodMetricsSource,
+  percentageOfTotal,
+  weightedAverage,
 } = require("../.test-dist/lib/reputation/aggregation.js");
 
 describe("reputation rules", () => {
@@ -159,6 +161,41 @@ describe("edited review activity date", () => {
       }),
       "2026-08-01T10:05:00Z"
     );
+  });
+});
+
+describe("canonical aggregation math", () => {
+  it("matches the legacy weighted-average formula exactly", () => {
+    const values = [
+      { value: 4.5, weight: 100 },
+      { value: 3.0, weight: 2 },
+      { value: 5.0, weight: 7 },
+    ];
+
+    const legacy =
+      values.reduce((sum, item) => sum + item.value * item.weight, 0) /
+      values.reduce((sum, item) => sum + item.weight, 0);
+
+    assert.equal(weightedAverage(values), legacy);
+  });
+
+  it("returns zero for a weighted average with no review volume", () => {
+    assert.equal(
+      weightedAverage([
+        { value: 4.9, weight: 0 },
+        { value: 2.0, weight: 0 },
+      ]),
+      0
+    );
+  });
+
+  it("matches the legacy one-decimal percentage formula", () => {
+    const part = 7;
+    const total = 13;
+    const legacy = Math.round((part / total) * 1000) / 10;
+
+    assert.equal(percentageOfTotal(part, total), legacy);
+    assert.equal(percentageOfTotal(0, 0), 0);
   });
 });
 
