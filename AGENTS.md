@@ -39,9 +39,12 @@ Read only the documentation needed for the task.
 - Reputation rules → `docs/business/REPUTATION.md`
 - Current Supabase reality → `docs/database/CURRENT_SCHEMA.md`
 - Future data-model decisions → `docs/database/DATA_MODEL.md`
-- External systems → `docs/integrations/CURRENT_INTEGRATIONS.md`
+- Current external systems → `docs/integrations/CURRENT_INTEGRATIONS.md`
+- New integration/provider work → `docs/integrations/INTEGRATION_RULES.md`
 
 For any task that changes a KPI, formula, comparison, status or aggregation, read `docs/business/BUSINESS_RULES.md` first, then the relevant domain doc.
+
+For any task that changes or adds a provider, webhook, synchronization, WhatsApp flow, Make/n8n flow or external API, read `docs/integrations/INTEGRATION_RULES.md` and `docs/integrations/CURRENT_INTEGRATIONS.md`.
 
 When changing existing database code, read `CURRENT_SCHEMA.md`.
 When designing a new domain/table, also read `DATA_MODEL.md`.
