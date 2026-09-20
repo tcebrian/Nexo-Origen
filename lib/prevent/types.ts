@@ -1,6 +1,7 @@
 import type { BrandId } from "@/app/dashboard/restaurantes/data";
+import { REPUTATION_TARGET } from "@/lib/reputation/rules";
 
-export const REPUTATION_TARGET = 4.4;
+export { REPUTATION_TARGET };
 
 export type PreventStatus = "protegido" | "vigilancia" | "fuera_objetivo";
 
