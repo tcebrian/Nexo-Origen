@@ -23,6 +23,13 @@ const {
   weightedAverage,
 } = require("../.test-dist/lib/reputation/aggregation.js");
 
+const {
+  summarizeReputation,
+  summarizeOperationalReputation,
+  summarizeKpiReputation,
+  toRankingReputationBase,
+} = require("../.test-dist/lib/reputation/summary.js");
+
 describe("reputation rules", () => {
   it("keeps the current target and watch threshold", () => {
     assert.equal(REPUTATION_TARGET, 4.4);
@@ -231,5 +238,115 @@ describe("kpi diario fallback and weighted aggregation", () => {
     assert.equal(restaurant.positivas, 91);
     assert.ok(Math.abs(restaurant.media - 456 / 102) < 1e-12);
     assert.notEqual(restaurant.media, (4.5 + 3.0) / 2);
+  });
+});
+
+
+describe("consumer parity fixture", () => {
+  const canonical = [
+    {
+      id: 1,
+      media: 4.5,
+      reviews: 10,
+      positives: 7,
+      negatives: 2,
+      status: "on_target",
+    },
+    {
+      id: 2,
+      media: 3.8,
+      reviews: 5,
+      positives: 3,
+      negatives: 1,
+      status: "critical",
+    },
+  ];
+
+  it("keeps dashboard and reports on the same network KPIs", () => {
+    const expected = summarizeReputation(canonical);
+
+    const dashboard = summarizeOperationalReputation(
+      canonical.map((row) => ({
+        currentMedia: row.media,
+        totalReviews: row.reviews,
+        positiveReviews: row.positives,
+        negativeReviews: row.negatives,
+        status: row.status,
+      }))
+    );
+
+    const report = summarizeKpiReputation(
+      canonical.map((row) => ({
+        media_total: row.media,
+        total_resenas: row.reviews,
+        resenas_positivas: row.positives,
+        resenas_negativas: row.negatives,
+      }))
+    );
+
+    assert.equal(expected.reviews, 15);
+    assert.equal(expected.negatives, 3);
+    assert.equal(expected.positives, 10);
+    assert.ok(Math.abs(expected.media - 64 / 15) < 1e-12);
+    assert.equal(expected.negativePct, 20);
+    assert.equal(expected.positivePct, 66.7);
+
+    assert.deepEqual(
+      {
+        media: dashboard.media,
+        reviews: dashboard.reviews,
+        positives: dashboard.positives,
+        negatives: dashboard.negatives,
+        positivePct: dashboard.positivePct,
+        negativePct: dashboard.negativePct,
+      },
+      {
+        media: expected.media,
+        reviews: expected.reviews,
+        positives: expected.positives,
+        negatives: expected.negatives,
+        positivePct: expected.positivePct,
+        negativePct: expected.negativePct,
+      }
+    );
+
+    assert.deepEqual(report, {
+      ...expected,
+      onTarget: 0,
+      watch: 0,
+      critical: 0,
+    });
+  });
+
+  it("keeps dashboard status counts aligned with the canonical fixture", () => {
+    const dashboard = summarizeOperationalReputation(
+      canonical.map((row) => ({
+        currentMedia: row.media,
+        totalReviews: row.reviews,
+        positiveReviews: row.positives,
+        negativeReviews: row.negatives,
+        status: row.status,
+      }))
+    );
+
+    assert.equal(dashboard.onTarget, 1);
+    assert.equal(dashboard.watch, 0);
+    assert.equal(dashboard.critical, 1);
+  });
+
+  it("keeps ranking restaurant KPIs identical to canonical period metrics", () => {
+    for (const row of canonical) {
+      const ranking = toRankingReputationBase({
+        media: row.media,
+        totalResenas: row.reviews,
+        resenasNegativas: row.negatives,
+      });
+
+      assert.deepEqual(ranking, {
+        media: row.media,
+        reviews: row.reviews,
+        negatives: row.negatives,
+      });
+    }
   });
 });
