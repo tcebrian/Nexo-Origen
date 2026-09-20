@@ -27,6 +27,7 @@ export type DashboardAlertItem = {
   brand: BrandId;
   ultima_resena: string | null;
   estrellas: number;
+  /** @deprecated En alertas históricas puede representar atención 1–3★, no solo negativa KPI 1–2★. */
   resenas_negativas: number;
   impacto: number;
   mediaBefore: number | null;
