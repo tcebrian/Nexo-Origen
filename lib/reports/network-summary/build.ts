@@ -1,3 +1,4 @@
+import { percentageOfTotal, weightedAverage } from "@/lib/reputation/aggregation";
 import { REPUTATION_TARGET, REPUTATION_WATCH_THRESHOLD } from "@/lib/reputation/rules";
 import { dedupeResenas } from "@/lib/review-metrics";
 import { marcaToBrandId } from "@/lib/supabase/kpi-mappers";
@@ -138,8 +139,9 @@ export function buildNetworkSummaryReport(
   const totalReviews = rows.reduce((sum, row) => sum + row.total_resenas, 0);
   const negativeReviews = rows.reduce((sum, row) => sum + row.resenas_negativas, 0);
   const positiveReviews = rows.reduce((sum, row) => sum + row.resenas_positivas, 0);
-  const weightedAverage =
-    totalReviews > 0 ? rows.reduce((sum, row) => sum + row.media_total * row.total_resenas, 0) / totalReviews : 0;
+  const networkWeightedAverage = weightedAverage(
+    rows.map((row) => ({ value: row.media_total, weight: row.total_resenas }))
+  );
 
   // Ordenados de peor a mejor media — así el peor local sale primero en la
   // lista de "fuera de objetivo", que es lo más útil para leer de un vistazo.
@@ -188,10 +190,10 @@ export function buildNetworkSummaryReport(
     totalLocations: rows.length,
     totalReviews,
     positiveReviews,
-    positivePercent: totalReviews > 0 ? Math.round((positiveReviews / totalReviews) * 1000) / 10 : 0,
+    positivePercent: percentageOfTotal(positiveReviews, totalReviews),
     negativeReviews,
-    negativePercent: totalReviews > 0 ? Math.round((negativeReviews / totalReviews) * 1000) / 10 : 0,
-    weightedAverage: Math.round(weightedAverage * 100) / 100,
+    negativePercent: percentageOfTotal(negativeReviews, totalReviews),
+    weightedAverage: Math.round(networkWeightedAverage * 100) / 100,
     targetAverage: REPUTATION_TARGET,
     belowTargetCount: belowTarget.length,
     belowTargetLocations: belowTarget.map((row) => shortLocationName(row.restaurante)),
