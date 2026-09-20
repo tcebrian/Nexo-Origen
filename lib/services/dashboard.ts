@@ -3,7 +3,7 @@ import { getAlertsRepository } from "@/lib/alerts/repository";
 import type { RestaurantAlert } from "@/lib/alerts/types";
 import { getRestaurantsRepository } from "@/lib/restaurants/repository";
 import type { RestaurantOperational } from "@/lib/restaurants/types";
-import { weightedAverage } from "@/lib/reputation/aggregation";
+import { summarizeOperationalReputation } from "@/lib/reputation/summary";
 import { REPUTATION_TARGET } from "@/lib/status/unified";
 
 export type DashboardOverview = {
@@ -79,16 +79,13 @@ export async function getDashboardOverview(query: {
     alertsRepo.list(query),
   ]);
 
-  const onTarget = restaurants.filter((r) => r.status === "on_target").length;
-  const onWatch = restaurants.filter((r) => r.status === "watch").length;
-  const critical = restaurants.filter((r) => r.status === "critical").length;
-
-  const networkMedia = weightedAverage(
-    restaurants.map((r) => ({ value: r.currentMedia, weight: r.totalReviews }))
-  );
-
-  const totalReviews = restaurants.reduce((s, r) => s + r.totalReviews, 0);
-  const totalNegatives = restaurants.reduce((s, r) => s + r.negativeReviews, 0);
+  const reputation = summarizeOperationalReputation(restaurants);
+  const onTarget = reputation.onTarget;
+  const onWatch = reputation.watch;
+  const critical = reputation.critical;
+  const networkMedia = reputation.media;
+  const totalReviews = reputation.reviews;
+  const totalNegatives = reputation.negatives;
 
   const urgentAlerts = getUrgentAlerts(alerts).slice(0, 4);
 
