@@ -1,4 +1,4 @@
-import { REPUTATION_TARGET } from "@/lib/restaurants/metrics";
+import { REPUTATION_TARGET, REPUTATION_WATCH_THRESHOLD } from "@/lib/reputation/rules";
 import { dedupeResenas } from "@/lib/review-metrics";
 import { marcaToBrandId } from "@/lib/supabase/kpi-mappers";
 import type { KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
@@ -24,12 +24,6 @@ function shortLocationName(name: string): string {
       .trim() || name
   );
 }
-
-// Mismo umbral de "vigilancia" que lib/informes/resolve-informe-estado.ts.
-// Se deriva directamente de media_total vs REPUTATION_TARGET (no del campo
-// `estado` de Supabase) para que la tabla nunca contradiga a la tarjeta de
-// "Locales por debajo del objetivo", que sí compara la media directamente.
-const WATCH_THRESHOLD = 4.0;
 
 /**
  * Motivos de reseñas negativas agrupados por `resena_motivos.categoria` —
@@ -109,7 +103,7 @@ function topMotivosFromIndex(
 function toStatus(row: KpiRestaurantRow): { status: NetworkSummaryLocationStatus; label: string } {
   if (row.total_resenas === 0) return { status: "no_reviews", label: "Sin reseñas" };
   if (row.media_total >= REPUTATION_TARGET) return { status: "on_target", label: "Sobre el objetivo" };
-  if (row.media_total >= WATCH_THRESHOLD) return { status: "watch", label: "Cerca del objetivo" };
+  if (row.media_total >= REPUTATION_WATCH_THRESHOLD) return { status: "watch", label: "Cerca del objetivo" };
   return { status: "risk", label: "Bajo objetivo" };
 }
 
