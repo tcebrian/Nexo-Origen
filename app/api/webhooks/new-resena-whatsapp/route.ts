@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendWhatsAppImageAlert } from "@/lib/notifications/whatsapp";
+import { isReviewRequiringAttention } from "@/lib/reputation/rules";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,8 +36,8 @@ export async function POST(request: Request) {
     return Response.json({ ok: true, skipped: "payload-incompleto" });
   }
 
-  // Solo reseñas negativas (mismo criterio que el resto de la app: <= 3 estrellas).
-  if (record.estrellas > 3) {
+  // Se avisan reseñas que requieren atención: 1–2★ negativas KPI y 3★ seguimiento.
+  if (!isReviewRequiringAttention(record.estrellas)) {
     return Response.json({ ok: true, skipped: "no-negativa" });
   }
 
