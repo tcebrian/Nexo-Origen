@@ -1,6 +1,7 @@
 import type { OperationalStatus } from "@/lib/types";
 import type { AlertStatus } from "@/lib/alerts/types";
 import type { PreventStatus } from "@/lib/prevent/types";
+import { REPUTATION_TARGET } from "@/lib/reputation/rules";
 
 export type UnifiedStatus =
   | "protegido"
@@ -87,4 +88,4 @@ export function fromPreventStatus(status: PreventStatus): UnifiedStatus {
   return "riesgo";
 }
 
-export const REPUTATION_TARGET = 4.4;
+export { REPUTATION_TARGET };
