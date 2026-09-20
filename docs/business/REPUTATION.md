@@ -8,6 +8,8 @@ Este documento describe tanto las **reglas actuales canónicas** como las discre
 
 Las reglas generales están en `BUSINESS_RULES.md`.
 
+El mapa de consumidores y duplicaciones está en `REPUTATION_CONSUMERS.md`.
+
 ---
 
 # 1. Fuentes actuales
