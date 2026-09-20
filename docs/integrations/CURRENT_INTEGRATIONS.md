@@ -2,13 +2,15 @@
 
 ## Propósito
 
-Este documento describe **qué integraciones existen hoy o están parcialmente implementadas** y qué papel cumplen.
+Este documento describe el estado **real verificado** de las integraciones de Nexo a fecha actual.
 
-Para las reglas que debe seguir cualquier integración nueva, leer también:
+Para reglas de diseño de cualquier integración nueva, leer también:
 
 `INTEGRATION_RULES.md`
 
-No confundir integraciones actuales con integraciones planificadas.
+Principio:
+
+> Make puede orquestar y transportar. Nexo debe acabar siendo quien define las reglas, permisos y cálculos.
 
 ---
 
@@ -31,338 +33,465 @@ Se utiliza para:
 - KPIs;
 - análisis IA persistidos;
 - permisos/asignaciones;
-- datos necesarios para informes y alertas.
+- datos necesarios para web, informes y automatizaciones.
 
-## Responsabilidad
+## Regla
 
-Supabase almacena datos y sirve como base operativa de Nexo.
+Supabase almacena la realidad.
 
-No debe convertirse en un sustituto del Domain o Brain.
-
-## Seguridad
-
-Existen dos niveles de acceso:
-
-### Cliente
-
-Usa credenciales públicas compatibles con navegador.
-
-### Servidor
-
-Puede utilizar `SUPABASE_SERVICE_ROLE_KEY`.
-
-La service role:
-
-- nunca debe exponerse al navegador;
-- nunca debe incluirse en Git;
-- debe utilizarse únicamente desde código server-only.
+No debe convertirse en sustituto del dominio de Nexo ni contener lógica duplicada entre consumidores.
 
 ---
 
-# 2. Ingesta externa de reseñas
+# 2. Apify + Make — ingesta de reseñas
 
 ## Estado
 
-**ACTIVA FUERA DE ESTE REPOSITORIO**
+**ACTIVO / PRODUCCIÓN EXTERNA AL REPOSITORIO**
 
-Las reseñas y snapshots públicos de Google llegan a Supabase mediante un proceso externo.
+El flujo activo verificado actualmente es:
 
-El dashboard actual consume esos datos, pero el pipeline completo de scraping/ingesta no vive todavía en este repositorio.
+```
+Google Maps
+   ↓
+Apify
+   ↓
+Make
+   ↓
+Supabase
+```
 
-## Datos consumidos
+El escenario activo de Make:
 
-Principalmente:
+`Nexo Origen (copy)`
 
-- reseñas individuales;
+parte de resultados de Apify y procesa las reseñas.
+
+## Flujo de reseña nueva
+
+De forma simplificada:
+
+```
+Apify
+  ↓
+Make
+  ↓
+buscar review_id en Supabase
+  ↓
+si es nueva
+  ↓
+guardar en resenas
+  ↓
+análisis IA
+  ↓
+guardar analisis_ia
+  ↓
+si requiere atención
+  ↓
+notificaciones
+```
+
+La identidad principal utilizada para guardar la reseña es `review_id`.
+
+## Flujo de reseña editada
+
+Make también contiene una ruta específica para detectar cambios en una reseña ya conocida.
+
+Actualmente compara, entre otros:
+
 - estrellas;
-- autor;
-- comentario;
-- fechas;
-- restaurante;
-- identificador externo;
-- media Google;
-- total de reseñas Google.
+- comentario.
 
-## Riesgo actual
+Cuando detecta una edición:
 
-Nexo depende de que ese proceso externo respete:
+```
+reseña existente
+   ↓
+PATCH resenas
+   ↓
+nuevo análisis IA
+   ↓
+upsert analisis_ia
+```
 
-- identidad de reseña;
-- deduplicación;
-- ediciones;
-- asociación restaurante;
-- fechas.
-
-La futura capa de ingesta debe convertir estas reglas en un pipeline explícito y auditable.
+Esta lógica sigue estando fuera del repositorio.
 
 ---
 
-# 3. Twilio / WhatsApp — envío de alertas
+# 3. WhatsApp de alertas — flujo activo real
 
 ## Estado
 
-**IMPLEMENTADO EN EL REPOSITORIO**
+**ACTIVO EN MAKE**
 
-El proyecto incluye la dependencia `twilio` y código para enviar alertas de WhatsApp.
+El canal activo verificado para notificaciones utiliza:
 
-Archivos principales actuales:
+**WhatsApp Business Cloud desde Make**
 
-- `lib/notifications/whatsapp.ts`
-- `app/api/webhooks/new-resena-whatsapp/route.ts`
-- `app/api/notifications/whatsapp-alert-image/route.ts`
-- `lib/notifications/build-alert-for-resena.ts`
+No depende actualmente del webhook Twilio del repositorio como camino principal.
 
-Variables de entorno documentadas:
+El escenario `Nexo Origen (copy)` contiene una rama de notificación para reseñas de atención.
 
-- `TWILIO_ACCOUNT_SID`
-- `TWILIO_AUTH_TOKEN`
-- `TWILIO_WHATSAPP_FROM`
-- `WHATSAPP_WEBHOOK_SECRET`
-
-Los valores reales nunca deben estar en Git.
-
----
-
-# 4. Flujo actual de alerta WhatsApp
-
-Flujo aproximado actual:
-
-```
-nueva reseña
-   ↓
-Supabase / evento externo
-   ↓
-POST /api/webhooks/new-resena-whatsapp
-   ↓
-validación de secreto
-   ↓
-consulta restaurante/empresa
-   ↓
-deduplicación de envío
-   ↓
-generación de imagen
-   ↓
-Twilio
-   ↓
-WhatsApp
-```
-
-El endpoint de imagen genera un PNG accesible temporalmente para que Twilio pueda descargarlo.
-
----
-
-# 5. Deuda conocida — criterio de reseña negativa
-
-La regla oficial documentada de reputación es:
-
-- negativa = 1–2 estrellas;
-- neutral = 3 estrellas.
-
-Sin embargo, el webhook actual de WhatsApp utiliza:
+Actualmente la regla de entrada de esa rama es equivalente a:
 
 `estrellas <= 3`
 
-para decidir qué alertas enviar.
+Después Make puede distribuir la alerta por canales como:
 
-Esto es una discrepancia conocida.
+- email;
+- WhatsApp Business Cloud.
 
-No corregir de forma aislada sin revisar:
+## Semántica
 
-- qué esperan los usuarios actuales;
-- alertas ya configuradas;
-- informes;
-- lógica de motivos;
-- tests.
+La semántica de dominio de Nexo queda separada:
 
-La futura migración debe hacer que el webhook consuma la regla canónica del dominio en lugar de mantener su propia definición.
+- 1–2★ = negativa KPI;
+- 3★ = neutral KPI;
+- 1–3★ = requiere atención.
 
----
+Por tanto, la rama actual de Make debe entenderse como:
 
-# 6. Deuda conocida — destinatarios de WhatsApp
+> reseñas que requieren atención
 
-El webhook actual contiene configuración de destinatarios en código.
-
-Esto no debe escalar así.
-
-Dirección futura:
-
-```
-usuario / configuración
-      ↓
-permisos y suscripciones
-      ↓
-reglas de notificación
-      ↓
-canal WhatsApp
-```
-
-Los destinatarios deberían depender de configuración persistida y permisos, no de editar y desplegar código.
+y no como definición del KPI oficial de negativas.
 
 ---
 
-# 7. Deuda conocida — deduplicación de alertas
-
-El webhook consulta una tabla de envíos para evitar reenviar la misma reseña.
-
-La idea es correcta:
-
-> una reejecución del webhook no debe duplicar la alerta.
-
-A futuro la deduplicación debería formar parte de un modelo de alertas/notificaciones común y no ser exclusiva de este webhook.
-
-Debe poder registrar, según necesidad:
-
-- alerta;
-- destinatario;
-- canal;
-- estado de envío;
-- intento;
-- identificador del proveedor;
-- fecha;
-- error.
-
----
-
-# 8. Deuda conocida — autenticación del recurso multimedia
-
-El endpoint que genera la imagen utiliza actualmente un token derivado del secreto compartido del webhook en la URL.
-
-Funciona como protección básica, pero no es el diseño final deseable.
-
-Dirección futura:
-
-- URL firmada;
-- token específico;
-- expiración corta;
-- o almacenamiento temporal privado/presignado.
-
-No reutilizar indefinidamente un secreto global como credencial de recursos externos.
-
----
-
-# 9. WhatsApp conversacional / bot
+# 4. Código Twilio / WhatsApp dentro del repositorio
 
 ## Estado
 
-**PARCIAL / EXTERNO AL REPOSITORIO**
+**IMPLEMENTADO, PERO NO ES EL FLUJO ACTIVO PRINCIPAL VERIFICADO**
 
-Nexo también contempla WhatsApp como interfaz conversacional.
+El repositorio contiene:
 
-Conceptualmente:
+- `lib/notifications/whatsapp.ts`;
+- `app/api/webhooks/new-resena-whatsapp/route.ts`;
+- `app/api/notifications/whatsapp-alert-image/route.ts`;
+- `lib/notifications/build-alert-for-resena.ts`.
+
+También documenta variables como:
+
+- `TWILIO_ACCOUNT_SID`;
+- `TWILIO_AUTH_TOKEN`;
+- `TWILIO_WHATSAPP_FROM`;
+- `WHATSAPP_WEBHOOK_SECRET`.
+
+Este código no debe asumirse como el canal productivo actual únicamente porque exista en Git.
+
+Hasta que se decida migrar hacia él o retirarlo, tratarlo como:
+
+- flujo alternativo;
+- implementación anterior;
+- o infraestructura preparada.
+
+No modificarlo para cambiar el comportamiento real de WhatsApp sin comprobar primero Make.
+
+---
+
+# 5. WhatsApp conversacional / bot
+
+## Estado
+
+**ACTIVO EN MAKE**
+
+El escenario activo verificado es:
+
+`Integration WhatsApp Business Cloud`
+
+Flujo aproximado:
 
 ```
 usuario WhatsApp
    ↓
-proveedor/API WhatsApp
+WhatsApp Business Cloud
    ↓
-identidad + permisos
+Make
    ↓
-Nexo API / Domain / Brain
+memoria diaria en Supabase
    ↓
-respuesta
+OpenAI
+   ↓
+consulta validada a Supabase
+   ↓
+OpenAI
+   ↓
+Make
+   ↓
+WhatsApp
+   ↓
+guardar respuesta
 ```
 
-WhatsApp no debe tener una copia independiente de:
+Actualmente Make participa tanto en la orquestación como en parte de la lógica del asistente.
+
+## Dirección futura
+
+El bot no debe mantener su propia definición de:
 
 - medias;
 - rankings;
-- problemas;
+- periodos;
+- negativas;
 - permisos;
-- comparativas.
+- restaurantes accesibles.
 
-Debe consultar Nexo.
+Objetivo:
 
-Si Make u otra plataforma participa como transporte/orquestación, no debe convertirse en la fuente de verdad.
+```
+WhatsApp
+   ↓
+Make
+   ↓
+Nexo API
+   ↓
+Auth / permisos
+   ↓
+Domain
+   ↓
+datos calculados
+   ↓
+Brain / explicación
+   ↓
+Make
+   ↓
+WhatsApp
+```
+
+Make continúa siendo útil, pero pasa a actuar principalmente como adaptador/orquestador.
 
 ---
 
-# 10. Vercel
+# 6. IA
+
+## Estado
+
+**ACTIVA**
+
+Los escenarios actuales de Make utilizan IA para analizar reseñas y para el bot conversacional.
+
+Además, Nexo persiste análisis asociados a reseñas en `analisis_ia`.
+
+Principio:
+
+> la IA interpreta; no debe ser la fuente de verdad de un KPI determinista.
+
+La IA puede:
+
+- resumir;
+- clasificar motivos;
+- interpretar;
+- recomendar;
+- generar explicaciones.
+
+No debe decidir por sí sola:
+
+- permisos;
+- identidad de restaurante;
+- cálculo de medias;
+- conteos oficiales;
+- reglas de acceso.
+
+---
+
+# 7. Make — papel actual
+
+## Estado
+
+**ACTIVO Y CRÍTICO EN LA V1**
+
+Hoy Make realiza más que simple transporte.
+
+Entre otras cosas participa en:
+
+- ingesta desde Apify;
+- comprobación de existencia de reseñas;
+- altas y actualizaciones en Supabase;
+- disparo de IA;
+- persistencia de análisis;
+- filtros de atención;
+- email;
+- WhatsApp;
+- bot conversacional;
+- memoria diaria del bot.
+
+Eso es válido para la fase actual de Nexo.
+
+## Limitación
+
+Si una regla crítica solo existe en Make, Web y Make pueden divergir.
+
+Ejemplo:
+
+```
+Web:
+3★ = neutral KPI
+
+Make:
+<=3★ = enviar alerta
+```
+
+Ambos comportamientos pueden ser correctos, pero deben compartir vocabulario:
+
+- neutral KPI;
+- seguimiento operativo.
+
+---
+
+# 8. Seguridad actual de Make
+
+Los escenarios activos hacen llamadas HTTP directas a Supabase con credenciales server-side.
+
+Reglas:
+
+- esas credenciales nunca deben llegar al navegador;
+- no deben copiarse a prompts, documentación o Git;
+- no deben multiplicarse por módulos/escenarios sin necesidad;
+- a medio plazo es preferible que Make llame a endpoints server-side de Nexo en lugar de tener acceso amplio directo a Supabase.
+
+Dirección:
+
+```
+Make
+  ↓
+endpoint autenticado de Nexo
+  ↓
+validación
+  ↓
+permisos
+  ↓
+Supabase
+```
+
+Esto permite reducir superficie de acceso y centralizar auditoría.
+
+---
+
+# 9. Deuda detectada en deduplicación de alertas Make
+
+La ruta activa de alertas utiliza una tabla de control para evitar duplicados.
+
+Durante la revisión se ha detectado una inconsistencia que debe verificarse antes de modificar producción:
+
+- la reseña se identifica/guarda usando `reviewId`;
+- una parte del control de alertas referencia `reviewerId`.
+
+No asumir que ambos identificadores significan lo mismo.
+
+Antes de tocar el escenario:
+
+1. verificar qué devuelve exactamente Apify para ambos campos;
+2. confirmar la clave única real de la tabla de alertas;
+3. probar una reseña repetida;
+4. corregir solo después.
+
+No se ha modificado el escenario activo en esta fase.
+
+---
+
+# 10. Destinatarios y permisos de WhatsApp
+
+Actualmente existen filtros/destinatarios configurados dentro de Make.
+
+Esto es aceptable para una V1 con pocos usuarios.
+
+No escala como modelo definitivo.
+
+Objetivo:
+
+```
+usuario
+  ↓
+perfil + teléfono
+  ↓
+empresa / marca / restaurante permitido
+  ↓
+suscripciones de notificación
+  ↓
+canal
+```
+
+La configuración debe acabar viviendo en Nexo/Supabase y Make debería recibir la decisión ya resuelta.
+
+---
+
+# 11. Vercel
 
 ## Estado
 
 **CONFIGURADO**
 
-El repositorio contiene configuración de despliegue para Vercel.
-
-Vercel aloja/ejecuta la aplicación, pero no es una capa de negocio.
+Vercel aloja/ejecuta la aplicación web y API del repositorio.
 
 Reglas:
 
 - producción no es entorno de pruebas;
 - secretos mediante variables de entorno;
-- cambios importantes deben pasar por rama/PR;
-- una integración no debe depender de archivos locales del ordenador de Tomás.
+- cambios importantes por rama/PR;
+- ninguna integración debe depender del ordenador local de Tomás.
 
 ---
 
-# 11. IA
+# 12. Arquitectura recomendada de transición
 
-## Estado
+No hay que eliminar Make ahora.
 
-**PRESENTE EN EL PRODUCTO**
-
-Nexo consume/almacena resultados de análisis IA asociados a reseñas.
-
-La integración concreta con proveedor/modelo puede evolucionar.
-
-Principio:
-
-> el proveedor de IA es sustituible; el dominio de Nexo no debe depender de una marca/modelo concreto.
-
-IA:
-
-- interpreta;
-- clasifica;
-- resume;
-- genera hipótesis/recomendaciones.
-
-IA no:
-
-- controla permisos;
-- calcula KPIs deterministas;
-- es la única copia del dato;
-- inventa datos ausentes.
-
----
-
-# 12. Make / n8n
-
-## Estado
-
-**HERRAMIENTAS EXTERNAS DE ORQUESTACIÓN**
-
-Pueden utilizarse para:
-
-- conectar servicios;
-- disparar webhooks;
-- automatizaciones sencillas;
-- notificaciones;
-- sincronizaciones.
-
-No deben contener la única implementación de reglas críticas.
-
-Dirección:
+## Fase actual
 
 ```
-Make / n8n
-    ↓
-evento o llamada
-    ↓
-Nexo
-    ↓
-regla canónica
-```
-
-Evitar:
-
-```
+Apify
+  ↓
 Make
-├── regla de negativas
-├── cálculo de media
-├── permisos
-├── ranking
-└── lógica distinta de Web
+  ├── lógica
+  ├── IA
+  ├── Supabase
+  └── WhatsApp
 ```
+
+Funciona y permite validar rápido.
+
+## Próxima evolución
+
+```
+Apify
+  ↓
+Make
+  ↓
+Nexo API
+  ↓
+Domain
+  ↓
+Supabase
+  ↓
+resultado / evento
+  ↓
+Make
+  ↓
+WhatsApp / email
+```
+
+Make conserva:
+
+- conectores;
+- disparadores;
+- entrega;
+- automatizaciones externas.
+
+Nexo gana:
+
+- reglas;
+- permisos;
+- cálculo;
+- semántica;
+- trazabilidad.
+
+## Futuro, solo si compensa
+
+Algunos canales podrían salir directamente desde Nexo sin Make.
+
+No hacerlo por principio.
+
+Solo migrar cuando reduzca complejidad, coste o riesgo.
 
 ---
 
@@ -370,19 +499,16 @@ Make
 
 ## Estado
 
-**PLANIFICADO / INTEGRACIÓN FUTURA**
+**PLANIFICADO**
 
-Puede aportar en el futuro:
+Puede aportar:
 
 - perfiles oficiales;
 - reseñas;
 - respuestas;
-- datos de negocio disponibles mediante API;
-- sincronización autorizada por el cliente.
+- datos autorizados del negocio.
 
-Cuando se incorpore, debe mapearse al modelo interno de Nexo.
-
-Google no debe convertirse en la identidad primaria del restaurante.
+Debe mapearse al modelo interno de Nexo.
 
 ---
 
@@ -392,7 +518,7 @@ Google no debe convertirse en la identidad primaria del restaurante.
 
 **PLANIFICADO**
 
-StoreAce u otros sistemas de venta podrán ser fuentes de:
+Puede aportar:
 
 - ventas;
 - tickets;
@@ -400,121 +526,77 @@ StoreAce u otros sistemas de venta podrán ser fuentes de:
 - franjas;
 - otros datos operativos disponibles.
 
-Flujo objetivo:
+Objetivo:
 
 ```
-StoreAce
+StoreAce / TPV
    ↓
 adaptador
    ↓
-modelo normalizado Nexo
+modelo Nexo
    ↓
 Supabase
    ↓
 Domain ventas
    ↓
-API / Brain
+Brain / API
    ↓
 Web · WhatsApp · Informes
 ```
 
-No conectar el proveedor directamente a componentes visuales como arquitectura permanente.
-
 ---
 
-# 15. Sistemas de tiempos
+# 15. Tiempos, personal y delivery
 
 ## Estado
 
 **PLANIFICADO**
 
-Posibles fuentes:
+Futuros conectores deberán normalizar datos de:
 
-- sistemas Auto / drive-thru;
+- Auto / drive-thru;
 - cocina;
 - mostrador;
 - delivery;
-- otras herramientas operativas.
-
-Deben normalizar:
-
-- restaurante;
-- tipo de métrica;
-- periodo/franja;
-- valor;
-- unidad;
-- volumen/muestra cuando exista;
-- proveedor.
-
----
-
-# 16. Sistemas de personal
-
-## Estado
-
-**PLANIFICADO**
-
-Posibles fuentes:
-
 - horarios;
-- fichaje;
-- workforce management;
-- costes laborales.
-
-Principio:
-
-recoger únicamente la información personal necesaria para el producto.
-
-La primera versión puede funcionar con métricas agregadas sin almacenar información individual innecesaria.
-
----
-
-# 17. Delivery
-
-## Estado
-
-**PLANIFICADO**
-
-Las plataformas delivery pueden aportar:
-
-- ventas;
+- fichajes;
+- coste laboral;
 - pedidos;
-- tiempos;
 - cancelaciones;
-- incidencias;
-- mix de canal.
+- incidencias.
 
-La semántica externa deberá mapearse al vocabulario interno de Nexo.
+No conectar una fuente externa directamente a una pantalla como arquitectura permanente.
 
 ---
 
-# 18. Matriz actual
+# 16. Matriz real actual
 
-| Integración | Estado | Rol |
+| Integración | Estado | Rol actual |
 |---|---|---|
-| Supabase | Activa | Backend / base operativa |
-| Ingesta reseñas | Activa, externa | Fuente reputación |
-| Twilio WhatsApp | Implementada | Canal de salida |
-| WhatsApp conversacional | Parcial/externo | Interfaz |
-| Vercel | Configurado | Hosting/runtime |
-| IA | Activa/parcial | Interpretación |
-| Make/n8n | Externo | Orquestación |
-| Google Business | Futuro | Fuente/acción oficial |
-| StoreAce/TPV | Futuro | Fuente ventas |
-| Tiempos | Futuro | Fuente operativa |
-| Personal | Futuro | Fuente labor |
-| Delivery | Futuro | Fuente operativa/ventas |
+| Supabase | Activa | Backend / fuente operativa |
+| Apify | Activa | Extracción de reseñas |
+| Make | Activo / crítico | Ingesta, orquestación, IA y notificaciones |
+| WhatsApp Business Cloud | Activo vía Make | Alertas + bot |
+| OpenAI en Make | Activo | Análisis / interpretación |
+| Email | Activo vía Make | Notificaciones |
+| Twilio en repo | Implementado, no confirmado como flujo activo | Alternativa / código existente |
+| Vercel | Configurado | Web / API runtime |
+| Google Business | Futuro | Integración oficial |
+| StoreAce / TPV | Futuro | Ventas |
+| Tiempos | Futuro | Operativa |
+| Personal | Futuro | Labor |
+| Delivery | Futuro | Operativa / ventas |
 
 ---
 
-# 19. Regla principal
+# 17. Regla principal
 
-Ninguna integración debe convertirse en “el cerebro” de Nexo.
+La arquitectura actual de Make es válida para la V1.
 
-Los proveedores:
+La evolución deseada es:
 
-> entregan o reciben datos.
+> **Make conecta. Supabase guarda. Nexo decide. Brain interpreta. Las interfaces muestran o ejecutan.**
 
-Nexo:
+No es necesario reescribir lo que funciona.
 
-> identifica, normaliza, calcula, autoriza, interpreta y distribuye.
+La migración debe hacerse regla por regla, manteniendo paridad y con posibilidad de volver atrás.
