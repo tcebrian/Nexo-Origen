@@ -36,8 +36,13 @@ Read only the documentation needed for the task.
 - Current priorities and migration phases → `docs/ROADMAP.md`
 - Architecture decisions → `docs/architecture/ARCHITECTURE.md`
 - Reputation rules → `docs/business/REPUTATION.md`
-- Current database model → `docs/database/CURRENT_SCHEMA.md`
+- Current Supabase reality → `docs/database/CURRENT_SCHEMA.md`
+- Future data-model decisions → `docs/database/DATA_MODEL.md`
 - External systems → `docs/integrations/CURRENT_INTEGRATIONS.md`
+
+When changing existing database code, read `CURRENT_SCHEMA.md`.
+When designing a new domain/table, also read `DATA_MODEL.md`.
+Do not treat proposed structures in `DATA_MODEL.md` as if they already exist in production.
 
 `PROGRESS.md` is historical session context. Do not read it by default.
 Read it only when a task depends on a past implementation detail not covered by the focused docs.
