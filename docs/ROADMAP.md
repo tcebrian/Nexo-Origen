@@ -36,7 +36,7 @@ No pasamos a la siguiente fase hasta que:
 
 ### Estado
 
-**EN CURSO**
+**EN CURSO — documentación base completada; hardening y validación técnica pendientes**
 
 ---
 
