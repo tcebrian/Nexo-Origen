@@ -23,6 +23,7 @@ import {
   REPUTATION_TARGET,
   classifyMediaStatus,
   classifyReviewStars,
+  isReviewRequiringAttention,
 } from "@/lib/reputation/rules";
 
 export {
@@ -182,7 +183,7 @@ export function getTopReasons(
 
   if (isDomainReview) {
     for (const review of reviews as Review[]) {
-      if (negativesOnly && review.rating > 3) continue;
+      if (negativesOnly && !isReviewRequiringAttention(review.rating)) continue;
       entries.push({
         reason: classifyReviewReason(review),
         restauranteId: undefined,
@@ -191,7 +192,7 @@ export function getTopReasons(
   } else {
     for (const row of dedupeResenas(reviews as ResenaRow[])) {
       if (restauranteId != null && row.restaurante_id !== restauranteId) continue;
-      if (negativesOnly && row.estrellas > 3) continue;
+      if (negativesOnly && !isReviewRequiringAttention(row.estrellas)) continue;
       const analisis = getAnalisisForResena(analisisByResenaId, row);
       entries.push({
         reason: classifyReviewReason(row, analisis),
@@ -218,7 +219,7 @@ export function buildProblemDistributionFromAnalisis(
 
 /** @deprecated Usar buildProblemDistributionFromAnalisis con datos de Supabase. */
 export function buildProblemDistribution(resenas: ResenaRow[]): ProblemDistributionItem[] {
-  const negatives = dedupeResenas(resenas).filter((row) => row.estrellas <= 3);
+  const negatives = dedupeResenas(resenas).filter((row) => isReviewRequiringAttention(row.estrellas));
   const counts = new Map<string, number>();
 
   for (const row of negatives) {
