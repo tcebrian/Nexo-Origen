@@ -2,11 +2,17 @@ import { getInclusiveQueryBounds, getPeriodBounds } from "@/lib/date-utils";
 import { toDateKey } from "@/lib/dates/period";
 import type { InformeKpiDatos } from "@/lib/informes/types";
 import { dedupeResenas } from "@/lib/review-metrics";
+import { isReviewRequiringAttention } from "@/lib/reputation/rules";
 import type { ResenaRow } from "@/lib/supabase/resenas";
 
-/** Negativas: reseñas de 1, 2 o 3 estrellas. */
+/** Reseñas que el informe histórico trata como problemáticas/seguimiento: 1–3★. */
+export function isInformeAttentionReview(stars: number): boolean {
+  return stars >= 1 && isReviewRequiringAttention(stars);
+}
+
+/** @deprecated Nombre histórico. No equivale al KPI oficial de negativas (1–2★). */
 export function isNegativeInformeReview(stars: number): boolean {
-  return stars >= 1 && stars <= 3;
+  return isInformeAttentionReview(stars);
 }
 
 export function countUniqueRestaurants(resenas: ResenaRow[]): number {
@@ -35,7 +41,7 @@ export function computeInformeKpiFromResenas(resenas: ResenaRow[]): InformeKpiDa
   }
 
   const totalEstrellas = resenas.reduce((sum, row) => sum + row.estrellas, 0);
-  const negativas = resenas.filter((row) => isNegativeInformeReview(row.estrellas)).length;
+  const negativas = resenas.filter((row) => isInformeAttentionReview(row.estrellas)).length;
 
   return {
     media: totalEstrellas / resenas.length,
