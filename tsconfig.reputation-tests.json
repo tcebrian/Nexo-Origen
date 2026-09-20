@@ -6,12 +6,9 @@
     "outDir": ".test-dist",
     "rootDir": ".",
     "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "types": ["node"]
+    "skipLibCheck": true
   },
   "include": [
-    "lib/reputation/rules.ts",
-    "tests/reputation-rules.test.ts"
+    "lib/reputation/rules.ts"
   ]
 }
