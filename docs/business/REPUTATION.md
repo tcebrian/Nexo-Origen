@@ -38,7 +38,9 @@ Objetivo general actual:
 
 `REPUTATION_TARGET = 4.4`
 
-Este valor vive hoy en `lib/review-metrics.ts`.
+La fuente canónica inicial vive ahora en `lib/reputation/rules.ts`.
+
+`lib/review-metrics.ts` mantiene un re-export de compatibilidad para no romper consumidores existentes.
 
 Hasta introducir objetivos configurables/versionados, no crear otra copia del 4,4 en nuevos módulos.
 
@@ -398,6 +400,12 @@ La fuente de verdad debe ser el estado interno calculado, no el color CSS.
 ---
 
 # 22. Tests mínimos del dominio
+
+Comando inicial de validación:
+
+`npm run test:reputation`
+
+El primer lote ya congela objetivo, estados básicos, polaridad por estrellas y el comportamiento heredado sin reseñas.
 
 Antes de considerar reputación consolidada deben existir casos para:
 
