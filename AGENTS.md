@@ -1,6 +1,5 @@
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
-
 This project uses Next.js 16 and may differ from model training data.
 Before changing framework-specific behavior, read the relevant guide in `node_modules/next/dist/docs/`.
 Heed deprecation notices.
@@ -8,62 +7,38 @@ Heed deprecation notices.
 
 # Nexo Origen — agent rules
 
-Nexo Origen is evolving from a reputation dashboard into a restaurant operational intelligence platform.
+Nexo evolves from a reputation dashboard into a restaurant operational intelligence platform.
 
-## Core architecture
+**Architecture:** Sources → Ingestion → Database → Domain → Brain → API → Interfaces
 
-Sources → Ingestion → Database → Domain → Brain → API → Interfaces
-
-## Non-negotiable rules
-
-- Inspect the current implementation before changing it.
-- Do not put business rules in UI components.
-- Deterministic calculations belong in domain/business code, not in AI prompts.
-- AI interprets, classifies and explains; normal code calculates.
-- Keep integrations decoupled from business rules.
+## Non-negotiable
+- Inspect existing behavior before changing it.
+- Business rules/calculations do not belong in UI or AI prompts.
+- AI interprets; deterministic code calculates.
+- Integrations adapt data; they do not define business meaning.
+- Preserve tenant isolation and backend authorization.
+- Never commit secrets, tokens or temporary real customer data.
 - Never modify production directly.
-- Never commit secrets, tokens, credentials or real customer data used only for testing.
-- Do not remove existing functionality without a verified replacement.
-- Preserve tenant isolation and authorization checks.
-- Prefer small, reversible changes over large rewrites.
-- Run relevant tests, typecheck and build after important changes.
+- Prefer small, reversible changes; verify before removing legacy behavior.
 
-## Context routing
+## Read only what the task needs
+- Direction → `docs/OVERVIEW.md`
+- Priorities → `docs/ROADMAP.md`
+- Architecture → `docs/architecture/ARCHITECTURE.md`
+- KPI/formula rules → `docs/business/BUSINESS_RULES.md`
+- Reputation → `docs/business/REPUTATION.md`
+- Existing Supabase → `docs/database/CURRENT_SCHEMA.md`
+- New data-model design → `docs/database/DATA_MODEL.md`
+- Existing integrations → `docs/integrations/CURRENT_INTEGRATIONS.md`
+- New/provider integration work → `docs/integrations/INTEGRATION_RULES.md`
 
-Read only the documentation needed for the task.
+For KPI/formula/status changes, read BUSINESS_RULES + the domain doc.
+For provider/webhook/WhatsApp/Make/API changes, read both integration docs.
+For existing DB changes, read CURRENT_SCHEMA; for new tables/domains, also read DATA_MODEL.
+Never treat future structures in DATA_MODEL as already deployed.
 
-- Project overview and direction → `docs/OVERVIEW.md`
-- Current priorities and migration phases → `docs/ROADMAP.md`
-- Architecture decisions → `docs/architecture/ARCHITECTURE.md`
-- Shared metric/business rules → `docs/business/BUSINESS_RULES.md`
-- Reputation rules → `docs/business/REPUTATION.md`
-- Current Supabase reality → `docs/database/CURRENT_SCHEMA.md`
-- Future data-model decisions → `docs/database/DATA_MODEL.md`
-- Current external systems → `docs/integrations/CURRENT_INTEGRATIONS.md`
-- New integration/provider work → `docs/integrations/INTEGRATION_RULES.md`
-
-For any task that changes a KPI, formula, comparison, status or aggregation, read `docs/business/BUSINESS_RULES.md` first, then the relevant domain doc.
-
-For any task that changes or adds a provider, webhook, synchronization, WhatsApp flow, Make/n8n flow or external API, read `docs/integrations/INTEGRATION_RULES.md` and `docs/integrations/CURRENT_INTEGRATIONS.md`.
-
-When changing existing database code, read `CURRENT_SCHEMA.md`.
-When designing a new domain/table, also read `DATA_MODEL.md`.
-Do not treat proposed structures in `DATA_MODEL.md` as if they already exist in production.
-
-`PROGRESS.md` is historical session context. Do not read it by default.
-Read it only when a task depends on a past implementation detail not covered by the focused docs.
+`PROGRESS.md` is historical context. Do not read it by default.
 
 ## Workflow
-
-Before coding:
-1. Inspect affected code.
-2. Read only the relevant docs above.
-3. Identify current behavior and dependencies.
-4. Make the smallest safe plan.
-
-After coding:
-1. Run relevant tests.
-2. Run `npm run typecheck`.
-3. Run `npm run build` for important changes when practical.
-4. Check for regressions.
-5. Update the focused documentation if behavior or architecture changed.
+Before coding: inspect affected code → read focused docs → identify current behavior/dependencies → make the smallest safe plan.
+After coding: run relevant tests + `npm run typecheck`; run `npm run build` for important changes when practical; check regressions; update focused docs when behavior/architecture changes.
