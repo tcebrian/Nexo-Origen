@@ -4,6 +4,7 @@ import { marcaToBrandId } from "@/lib/restaurants/brand-resolve";
 import { sortResenasByDateDesc } from "@/lib/restaurants/reputation-metrics";
 import { dedupeResenas, getReviewDedupKey, getReviewContentKey } from "@/lib/review-metrics";
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
+import { isReviewRequiringAttention } from "@/lib/reputation/rules";
 import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
 import { getAnalisisForResena } from "@/lib/supabase/analisis-ia";
 import { buildMediaImpactIndex } from "@/lib/reviews/media-impact";
@@ -66,7 +67,7 @@ export function buildNegativeReviewReportRows(
   const impactIndex = buildMediaImpactIndex(period.resenas);
 
   const negatives = sortResenasByDateDesc(
-    dedupeResenas(period.resenas).filter((row) => row.estrellas <= 3)
+    dedupeResenas(period.resenas).filter((row) => isReviewRequiringAttention(row.estrellas))
   );
 
   const rows: NegativeReviewReportRow[] = [];
