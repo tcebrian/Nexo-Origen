@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:reputation": "tsc -p tsconfig.reputation-tests.json && node --test .test-dist/tests/reputation-rules.test.js"
+    "test:reputation": "tsc -p tsconfig.reputation-tests.json && node --test tests/reputation-rules.test.cjs"
   },
   "dependencies": {
     "@sparticuz/chromium": "^149.0.0",
