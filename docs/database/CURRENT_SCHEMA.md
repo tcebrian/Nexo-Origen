@@ -49,6 +49,14 @@ Definidos en `lib/supabase/tables.ts`.
 
 - `kpi_restaurantes`
 
+## Referencias directas adicionales
+
+El código actual también referencia directamente:
+
+- `whatsapp_alertas_enviadas` — utilizada por el webhook de alertas para evitar reenviar la misma reseña.
+
+Esta tabla no está actualmente centralizada en `lib/supabase/tables.ts`, por lo que debe considerarse una dependencia real aunque no aparezca en ese catálogo.
+
 ---
 
 # 3. empresas
