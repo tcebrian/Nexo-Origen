@@ -450,3 +450,34 @@ WhatsApp calcula C
 ```
 
 Una vez conseguido esto, reputación será el patrón para los siguientes dominios.
+
+
+---
+
+## Semántica de 3 estrellas
+
+La semántica canónica queda definida así:
+
+- **1–2★** → reseña negativa para KPIs;
+- **3★** → reseña neutral para KPIs;
+- **4–5★** → reseña positiva para KPIs.
+
+Separadamente, para flujos de atención operativa:
+
+- **1–2★** → atención crítica;
+- **3★** → seguimiento;
+- **4–5★** → sin alerta de atención.
+
+Por tanto:
+
+> “negativa KPI” y “requiere atención” no son lo mismo.
+
+La regla de atención 1–3★ permite conservar el comportamiento histórico de alertas, informes y WhatsApp sin falsear el KPI oficial de negativas.
+
+Helpers canónicos:
+
+- `isKpiNegativeReview(stars)`;
+- `isReviewRequiringAttention(stars)`;
+- `getReviewAttentionLevel(stars)`.
+
+Los nombres históricos que usan “negative” para 1–3★ deben considerarse compatibilidad heredada y migrarse gradualmente.
