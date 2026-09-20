@@ -1,7 +1,8 @@
 import { restaurantSlug } from "@/app/dashboard/restaurantes/utils";
+import { REPUTATION_TARGET } from "@/lib/reputation/rules";
 import type { OperationalStatus } from "./types";
 
-export const REPUTATION_TARGET = 4.4;
+export { REPUTATION_TARGET };
 
 export function mapOperationalStatus(status: string): OperationalStatus {
   const normalized = status.toLowerCase();
