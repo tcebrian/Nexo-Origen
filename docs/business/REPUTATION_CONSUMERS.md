@@ -77,43 +77,45 @@ Usa `classifyMediaStatus` para resolver el estado cuando no existe métrica de p
 
 ---
 
-# 3. Cálculos repetidos que son candidatos de migración segura
+# 3. Cálculos repetidos migrados al núcleo
 
-Estos bloques calculan matemáticas que ya tienen una semántica clara y pueden ir migrándose al núcleo sin cambiar producto.
+La matemática compartida vive en `lib/reputation/aggregation.ts`.
 
 ## Media ponderada de red
 
-Aparece en:
+Helper canónico:
 
+`weightedAverage(values)`
+
+Ya lo consumen:
+
+- `lib/review-metrics.ts`;
 - `lib/services/dashboard.server.ts`;
 - `lib/services/dashboard.ts`;
 - `lib/restaurants/metrics.ts`;
 - `lib/reports/network-summary/build.ts`;
 - `lib/reports/weekly/build-from-kpi.ts`.
 
-Todos usan esencialmente:
+La fórmula preservada es:
 
 `Σ(media × volumen) / Σ(volumen)`
 
-Dirección:
+## Porcentajes sobre total
 
-usar un helper canónico de agregación.
+Helper canónico:
 
-## Porcentajes positivas / negativas
+`percentageOfTotal(part, total)`
 
-Se recalculan en algunos consumidores como:
+Mantiene el redondeo actual a una decimal por defecto.
 
-`conteo / total × 100`
+Ya se utiliza en:
 
-Ejemplos:
-
-- dashboard;
+- métricas de red;
+- merge de dashboard;
 - network summary;
 - weekly reports.
 
-Dirección:
-
-cuando consumen el mismo conjunto de datos, reutilizar el resultado canónico del periodo.
+Los tests comparan los helpers directamente contra las fórmulas heredadas para proteger paridad.
 
 ## Estados
 
