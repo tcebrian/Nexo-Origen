@@ -11,6 +11,8 @@ import { marcaToBrandId } from "@/lib/supabase/kpi-mappers";
 import {
   aggregateKpiDailyByRestaurant,
   choosePeriodMetricsSource,
+  percentageOfTotal,
+  weightedAverage,
 } from "@/lib/reputation/aggregation";
 import {
   dedupeResenas,
@@ -351,16 +353,18 @@ function buildNetworkMetrics(
   let totalResenas = 0;
   let totalPositivas = 0;
   let totalNegativas = 0;
-  let weightedSum = 0;
-
   for (const row of byRestaurante.values()) {
     totalResenas += row.totalResenas;
     totalPositivas += row.resenasPositivas;
     totalNegativas += row.resenasNegativas;
-    weightedSum += row.media * row.totalResenas;
   }
 
-  const mediaGlobal = totalResenas > 0 ? weightedSum / totalResenas : 0;
+  const mediaGlobal = weightedAverage(
+    Array.from(byRestaurante.values()).map((row) => ({
+      value: row.media,
+      weight: row.totalResenas,
+    }))
+  );
 
   return {
     mediaGlobal,
@@ -368,8 +372,8 @@ function buildNetworkMetrics(
     totalPositivas,
     totalNegativas,
     totalRestaurantes: byRestaurante.size,
-    positivePct: totalResenas > 0 ? Math.round((totalPositivas / totalResenas) * 1000) / 10 : 0,
-    negativePct: totalResenas > 0 ? Math.round((totalNegativas / totalResenas) * 1000) / 10 : 0,
+    positivePct: percentageOfTotal(totalPositivas, totalResenas),
+    negativePct: percentageOfTotal(totalNegativas, totalResenas),
     ultimaActualizacion,
     source,
   };
