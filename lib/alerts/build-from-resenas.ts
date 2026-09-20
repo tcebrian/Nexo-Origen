@@ -2,6 +2,7 @@ import { restaurantSlug } from "@/app/dashboard/restaurantes/utils";
 import { dedupeResenas, getReviewDedupKey } from "@/lib/review-metrics";
 import type { RestaurantPeriodMetrics } from "@/lib/review-metrics";
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
+import { getReviewAttentionLevel, isReviewRequiringAttention } from "@/lib/reputation/rules";
 import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
 import type { AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
 import { getAnalisisForResena } from "@/lib/supabase/analisis-ia";
@@ -22,7 +23,7 @@ export function buildAlertsFromResenas(
   const impactIndex = buildMediaImpactIndex(uniqueResenas);
 
   return uniqueResenas
-    .filter((row) => row.estrellas <= 3)
+    .filter((row) => isReviewRequiringAttention(row.estrellas))
     .map((row) => {
       const restauranteId = row.restaurante_id ?? 0;
       const metrics = metricsById.get(restauranteId);
@@ -39,9 +40,9 @@ export function buildAlertsFromResenas(
       const dateValue = row.fecha_resena ?? row.created_at;
       const impact = impactIndex.get(getReviewDedupKey(row));
 
-      let status: RestaurantAlert["status"] = "seguimiento";
-      if (row.estrellas <= 2) status = "critico";
-      else if (row.estrellas === 3) status = "seguimiento";
+      const attentionLevel = getReviewAttentionLevel(row.estrellas);
+      const status: RestaurantAlert["status"] =
+        attentionLevel === "critical" ? "critico" : "seguimiento";
 
       const recommendation = analisis?.recomendacion?.trim() || IA_NO_DATA;
       const estimatedImpact =
