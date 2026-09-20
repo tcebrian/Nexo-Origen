@@ -6,6 +6,9 @@ const {
   REPUTATION_WATCH_THRESHOLD,
   classifyMediaStatus,
   classifyReviewStars,
+  getReviewAttentionLevel,
+  isKpiNegativeReview,
+  isReviewRequiringAttention,
 } = require("../.test-dist/lib/reputation/rules.js");
 
 const {
@@ -42,6 +45,27 @@ describe("reputation rules", () => {
     assert.equal(classifyReviewStars(3), "neutral");
     assert.equal(classifyReviewStars(2), "negative");
     assert.equal(classifyReviewStars(1), "negative");
+  });
+
+  it("distinguishes KPI negatives from reviews that require attention", () => {
+    assert.equal(isKpiNegativeReview(1), true);
+    assert.equal(isKpiNegativeReview(2), true);
+    assert.equal(isKpiNegativeReview(3), false);
+    assert.equal(isKpiNegativeReview(4), false);
+
+    assert.equal(isReviewRequiringAttention(1), true);
+    assert.equal(isReviewRequiringAttention(2), true);
+    assert.equal(isReviewRequiringAttention(3), true);
+    assert.equal(isReviewRequiringAttention(4), false);
+    assert.equal(isReviewRequiringAttention(5), false);
+  });
+
+  it("maps 1-2 to critical, 3 to follow-up and 4-5 to no attention", () => {
+    assert.equal(getReviewAttentionLevel(1), "critical");
+    assert.equal(getReviewAttentionLevel(2), "critical");
+    assert.equal(getReviewAttentionLevel(3), "follow_up");
+    assert.equal(getReviewAttentionLevel(4), "none");
+    assert.equal(getReviewAttentionLevel(5), "none");
   });
 
   it("treats 4.4 exactly as on target", () => {
