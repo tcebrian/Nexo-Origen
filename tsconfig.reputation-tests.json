@@ -12,6 +12,7 @@
     "lib/reputation/rules.ts",
     "lib/reputation/dedupe.ts",
     "lib/reputation/review-date.ts",
-    "lib/reputation/aggregation.ts"
+    "lib/reputation/aggregation.ts",
+    "lib/reputation/summary.ts"
   ]
 }
