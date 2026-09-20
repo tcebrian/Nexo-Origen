@@ -30,6 +30,16 @@ export function weightedAverage(
   return totalWeight > 0 ? weightedSum / totalWeight : 0;
 }
 
+export function percentageOfTotal(
+  part: number,
+  total: number,
+  decimals = 1
+): number {
+  if (total <= 0) return 0;
+  const factor = 10 ** decimals;
+  return Math.round(((part / total) * 100) * factor) / factor;
+}
+
 export function aggregateKpiDailyByRestaurant(
   rows: KpiDailyReputationRow[]
 ): Map<number, AggregatedDailyReputation> {
