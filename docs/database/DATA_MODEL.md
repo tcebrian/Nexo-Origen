@@ -204,27 +204,85 @@ Abril:
 
 Un informe histórico de marzo no debería cambiar silenciosamente meses después si pretendemos medir lo que ocurrió en marzo.
 
-## 5.3 Dirección futura
+## 5.3 Diseño V2 preparado
 
-Introducir versionado, conceptualmente:
+La identidad lógica propuesta es:
 
-### review_versions
+`provider + place_id + reviewer_id`
 
-- identificador interno;
-- `review_id` externo;
-- `restaurante_id`;
-- versión / captured_at;
+No depende únicamente de `review_id`, porque un mismo usuario/local puede aparecer con distintos IDs externos.
+
+El diseño está preparado, pero **no aplicado a producción**, en:
+
+`supabase/review_history_v2.sql`
+
+### resena_logicas
+
+Estado actual de una reseña lógica:
+
+- restaurante;
+- proveedor;
+- place ID;
+- reviewer ID;
+- review ID actual;
+- estrellas/comentario actuales;
+- URLs separadas;
+- fechas de primera/última observación;
+- estado visible/posiblemente oculto/oculto.
+
+### resena_provider_ids
+
+Relaciona todos los IDs externos observados con la misma reseña lógica.
+
+Esto permite que `reviewId A` y `reviewId B` pertenezcan a la misma reseña si la identidad cuenta + place coincide.
+
+### resena_versiones
+
+Histórico inmutable:
+
+- versión;
+- review ID observado;
 - estrellas;
 - comentario;
-- autor;
-- fecha original;
-- fecha de edición de origen;
-- hash de contenido;
-- fuente.
+- fingerprint;
+- tipo de evento: new / edited / recreated;
+- published_at;
+- detected_at;
+- vigencia.
 
-La tabla actual `resenas` puede seguir representando el snapshot actual durante una migración.
+Una versión histórica no se sobrescribe.
 
-No cambiar este flujo hasta diseñar y probar la compatibilidad con informes existentes.
+### reputation_period_closures
+
+Fotografía inmutable de una semana/mes cerrado:
+
+- volumen;
+- positivas;
+- neutrales;
+- negativas;
+- media;
+- ediciones;
+- mejoras/empeoramientos;
+- fecha de cierre.
+
+Una edición posterior no modifica un periodo ya cerrado.
+
+## 5.4 Decisión de ingesta
+
+La lógica pura vive en:
+
+`lib/reputation/review-identity.ts`
+
+Clasifica cada observación como:
+
+- `new`;
+- `unchanged`;
+- `edited`;
+- `recreated`.
+
+Debe validarse en modo sombra con datos reales antes de sustituir la lógica productiva de Make.
+
+La tabla actual `resenas` seguirá siendo compatible durante la transición.
 
 ---
 
