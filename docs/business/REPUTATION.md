@@ -481,3 +481,51 @@ Helpers canónicos:
 - `getReviewAttentionLevel(stars)`.
 
 Los nombres históricos que usan “negative” para 1–3★ deben considerarse compatibilidad heredada y migrarse gradualmente.
+
+
+---
+
+## Histórico inmutable y reseñas lógicas
+
+La identidad lógica de una reseña de Google no debe depender únicamente de `review_id`.
+
+Nexo modelará una reseña lógica por:
+
+`provider + place_id + reviewer_id`
+
+Un mismo review lógico puede observarse con varios `review_id` externos a lo largo del tiempo.
+
+### Versiones
+
+Cada cambio material de estrellas o comentario crea una versión inmutable:
+
+- `new`: primera observación;
+- `edited`: cambia contenido/estrellas conservando el ID externo conocido;
+- `recreated`: misma cuenta + mismo place, pero aparece un nuevo ID externo;
+- `unchanged`: misma versión observada de nuevo; no crea versión.
+
+`resenas` puede seguir representando temporalmente el estado actual durante la transición, pero el histórico nuevo debe vivir en versiones inmutables.
+
+### Periodos cerrados
+
+Una semana o mes cerrado no se reescribe por una edición detectada después de su cierre.
+
+Ejemplo:
+
+- reseña publicada en abril como 5★;
+- abril cierra con esa versión;
+- se edita en agosto a 1★;
+- abril conserva su KPI cerrado;
+- agosto registra una edición 5★ → 1★;
+- el estado actual pasa a 1★.
+
+Una edición no cuenta como una reseña nueva del periodo en que se detecta.
+
+### Estado de implementación
+
+Se ha añadido diseño no aplicado a producción en:
+
+- `supabase/review_history_v2.sql`;
+- `lib/reputation/review-identity.ts`.
+
+La migración no debe ejecutarse en producción hasta validar en modo sombra los casos reales con IDs cambiantes.
