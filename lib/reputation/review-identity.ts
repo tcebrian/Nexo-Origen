@@ -29,7 +29,13 @@ export type ReviewIngestionDecision =
   | {
       kind: "recreated";
       logicalReviewId: number | string;
-      reason: "same-account-place-new-provider-id";
+      reason: "same-account-place-new-provider-id-with-strong-evidence";
+      providerReviewIdChanged: true;
+    }
+  | {
+      kind: "candidate";
+      logicalReviewId: number | string;
+      reason: "same-account-place-new-provider-id-needs-reconciliation";
       providerReviewIdChanged: true;
     };
 
@@ -58,7 +64,8 @@ export function buildReviewContentFingerprint(input: {
 
 export function decideReviewIngestion(
   incoming: IncomingReviewIdentity,
-  existing: ExistingLogicalReview | null
+  existing: ExistingLogicalReview | null,
+  evidence?: { providerSignalsEdit?: boolean; samePublishedAt?: boolean }
 ): ReviewIngestionDecision {
   if (!existing) {
     return { kind: "new", reason: "logical-review-not-found" };
@@ -84,10 +91,24 @@ export function decideReviewIngestion(
   }
 
   if (!providerIdKnown) {
+    const strongContinuity =
+      evidence?.providerSignalsEdit === true ||
+      evidence?.samePublishedAt === true ||
+      sameContent;
+
+    if (strongContinuity) {
+      return {
+        kind: "recreated",
+        logicalReviewId: existing.id,
+        reason: "same-account-place-new-provider-id-with-strong-evidence",
+        providerReviewIdChanged: true,
+      };
+    }
+
     return {
-      kind: "recreated",
+      kind: "candidate",
       logicalReviewId: existing.id,
-      reason: "same-account-place-new-provider-id",
+      reason: "same-account-place-new-provider-id-needs-reconciliation",
       providerReviewIdChanged: true,
     };
   }
