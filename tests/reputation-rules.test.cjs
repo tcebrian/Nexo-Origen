@@ -455,6 +455,40 @@ describe("logical review identity and version decisions", () => {
     assert.equal(decision.logicalReviewId, 847);
   });
 
+  it("keeps a new provider id as candidate when continuity is ambiguous", () => {
+    const decision = decideReviewIngestion(
+      {
+        provider: "google",
+        placeId: "place-tudela",
+        reviewerId: "google-user-123",
+        providerReviewId: "review-C",
+        stars: 4,
+        comment: "Una experiencia distinta",
+      },
+      existing
+    );
+
+    assert.equal(decision.kind, "candidate");
+    assert.equal(decision.logicalReviewId, 847);
+  });
+
+  it("can confirm a recreated id from an explicit provider edit signal", () => {
+    const decision = decideReviewIngestion(
+      {
+        provider: "google",
+        placeId: "place-tudela",
+        reviewerId: "google-user-123",
+        providerReviewId: "review-C",
+        stars: 1,
+        comment: "Muy mala experiencia",
+      },
+      existing,
+      { providerSignalsEdit: true }
+    );
+
+    assert.equal(decision.kind, "recreated");
+  });
+
   it("treats another reviewer at the same place as a new logical review", () => {
     const keyA = buildLogicalReviewKey({
       provider: "google",
