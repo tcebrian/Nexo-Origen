@@ -27,6 +27,12 @@ const {
 } = require("../.test-dist/lib/reputation/aggregation.js");
 
 const {
+  buildLogicalReviewKey,
+  buildReviewContentFingerprint,
+  decideReviewIngestion,
+} = require("../.test-dist/lib/reputation/review-identity.js");
+
+const {
   summarizeReputation,
   summarizeOperationalReputation,
   summarizeKpiReputation,
@@ -372,5 +378,116 @@ describe("consumer parity fixture", () => {
         negatives: row.negatives,
       });
     }
+  });
+});
+
+
+describe("logical review identity and version decisions", () => {
+  const existing = {
+    id: 847,
+    placeId: "place-tudela",
+    reviewerId: "google-user-123",
+    currentProviderReviewId: "review-A",
+    currentStars: 5,
+    currentComment: "Todo perfecto",
+    knownProviderReviewIds: ["review-A"],
+  };
+
+  it("builds identity from provider + place + reviewer, not review id", () => {
+    assert.equal(
+      buildLogicalReviewKey({
+        provider: "google",
+        placeId: "place-tudela",
+        reviewerId: "google-user-123",
+      }),
+      "google:place-tudela:google-user-123"
+    );
+  });
+
+  it("does nothing when the same review version is scraped again", () => {
+    assert.deepEqual(
+      decideReviewIngestion(
+        {
+          provider: "google",
+          placeId: "place-tudela",
+          reviewerId: "google-user-123",
+          providerReviewId: "review-A",
+          stars: 5,
+          comment: "  Todo   perfecto ",
+        },
+        existing
+      ),
+      { kind: "unchanged", logicalReviewId: 847, reason: "same-content" }
+    );
+  });
+
+  it("detects an edit when the provider id stays the same but content changes", () => {
+    assert.equal(
+      decideReviewIngestion(
+        {
+          provider: "google",
+          placeId: "place-tudela",
+          reviewerId: "google-user-123",
+          providerReviewId: "review-A",
+          stars: 1,
+          comment: "Muy mala experiencia",
+        },
+        existing
+      ).kind,
+      "edited"
+    );
+  });
+
+  it("detects the same logical review recreated with a new provider review id", () => {
+    const decision = decideReviewIngestion(
+      {
+        provider: "google",
+        placeId: "place-tudela",
+        reviewerId: "google-user-123",
+        providerReviewId: "review-B",
+        stars: 5,
+        comment: "Todo perfecto",
+      },
+      existing
+    );
+
+    assert.equal(decision.kind, "recreated");
+    assert.equal(decision.logicalReviewId, 847);
+  });
+
+  it("treats another reviewer at the same place as a new logical review", () => {
+    const keyA = buildLogicalReviewKey({
+      provider: "google",
+      placeId: "place-tudela",
+      reviewerId: "google-user-123",
+    });
+    const keyB = buildLogicalReviewKey({
+      provider: "google",
+      placeId: "place-tudela",
+      reviewerId: "google-user-999",
+    });
+
+    assert.notEqual(keyA, keyB);
+    assert.deepEqual(
+      decideReviewIngestion(
+        {
+          provider: "google",
+          placeId: "place-tudela",
+          reviewerId: "google-user-999",
+          providerReviewId: "review-Z",
+          stars: 4,
+          comment: "Bien",
+        },
+        null
+      ),
+      { kind: "new", reason: "logical-review-not-found" }
+    );
+  });
+
+  it("normalizes whitespace/case in the content fingerprint", () => {
+    assert.equal(
+      buildReviewContentFingerprint({ stars: 5, comment: "Todo   PERFECTO" }),
+      buildReviewContentFingerprint({ stars: 5, comment: " todo perfecto " })
+    );
   });
 });
