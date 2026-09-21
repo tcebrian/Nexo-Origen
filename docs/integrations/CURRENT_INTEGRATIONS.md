@@ -390,6 +390,49 @@ No modificar producción sin diseñar primero la migración de `alertas_enviadas
 
 ---
 
+# 9.1 Modo sombra de identidad
+
+## Estado
+
+**ACTIVO DESDE 2026-09-21 / SIN IMPACTO EN CONSUMIDORES**
+
+Se ha activado una instrumentación temporal para validar la identidad lógica y el versionado de reseñas.
+
+Flujo actual del shadow:
+
+```
+Make productivo
+   ↓
+resenas
+   ↓
+trigger fail-open
+   ↓
+review_identity_shadow_events
+```
+
+La tabla shadow parte de 5.626 reseñas elegibles como fotografía inicial.
+
+Clasificaciones registradas:
+
+- `new`
+- `edited`
+- `recreated`
+- `candidate`
+
+La instrumentación:
+
+- no modifica el cálculo actual de KPIs;
+- no cambia informes;
+- no interviene en WhatsApp/email;
+- no sustituye la deduplicación productiva actual;
+- si falla, no debe bloquear el INSERT/UPDATE de `resenas`.
+
+También está desplegada la Edge Function autenticada `review-identity-shadow` como futura frontera Make → Nexo. Todavía no recibe el tráfico productivo: durante esta intervención se evitó replicar una credencial server-side ya existente de Make en un módulo nuevo.
+
+El trigger de base de datos es una solución temporal de observación. La dirección definitiva sigue siendo Make → endpoint autenticado Nexo → Domain → Supabase.
+
+---
+
 # 10. Hallazgo confirmado — URL de la reseña
 
 Apify entrega URLs distintas:
