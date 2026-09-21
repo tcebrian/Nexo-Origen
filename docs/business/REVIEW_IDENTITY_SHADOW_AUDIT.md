@@ -73,3 +73,35 @@ Antes de producción, el modelo V2 debe incorporar un estado de reconciliación 
 junto con razón/confianza/evidencia.
 
 El flujo sombra debe registrar decisiones sin alterar `resenas`, informes, alertas ni Make productivo.
+
+
+## Modo sombra en vivo
+
+Activado el 2026-09-21 sin cambiar la lógica productiva.
+
+Estado inicial:
+
+- 5.626 reseñas elegibles cargadas como `baseline`;
+- tabla: `review_identity_shadow_events`;
+- trigger: `resenas_review_identity_shadow`;
+- captura: INSERT/UPDATE relevantes sobre `resenas`;
+- comportamiento de fallo: fail-open, nunca debe bloquear la escritura productiva.
+
+Se verificó el trigger con una actualización no-op de `restaurante_id` sobre una reseña existente: la fila productiva no cambió y el evento baseline actualizó únicamente `last_seen_at`.
+
+La Edge Function `review-identity-shadow` también quedó desplegada con JWT obligatorio como futura frontera Make → Nexo, pero no está conectada al escenario activo. El conector utilizado para esta intervención no permite reutilizar una credencial server-side existente de Make en un módulo nuevo sin replicarla, por lo que se evitó ese cambio de seguridad.
+
+### Histórico ya existente descubierto
+
+Producción ya tenía `resenas_historial`, alimentada por `trg_registrar_edicion_resena`.
+
+A fecha de activación:
+
+- 31 cambios registrados;
+- 29 review IDs distintos;
+- primer cambio conservado: 2026-08-23;
+- último cambio observado antes de esta auditoría: 2026-09-20.
+
+Esto permite recuperar el antes/después de una parte de las ediciones con review ID estable.
+
+No resuelve los cambios de review ID, que siguen siendo el objetivo principal del modo sombra.
