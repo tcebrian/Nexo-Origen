@@ -30,6 +30,10 @@ create table if not exists public.resena_provider_ids (
   provider_review_id text not null,
   first_seen_at timestamptz not null default now(),
   last_seen_at timestamptz not null default now(),
+  link_status text not null default 'confirmed' check (link_status in ('confirmed','candidate','rejected')),
+  link_reason text,
+  confidence numeric(4,3) check (confidence is null or (confidence >= 0 and confidence <= 1)),
+  evidence jsonb not null default '{}'::jsonb,
   unique (provider, provider_review_id)
 );
 
@@ -75,7 +79,7 @@ create table if not exists public.reputation_period_closures (
 comment on table public.resena_logicas is
   'Current state of one logical Google review: one provider account per Google place.';
 comment on table public.resena_provider_ids is
-  'All provider review IDs ever observed for a logical review.';
+  'Provider review IDs observed for a logical review, including candidate links that require reconciliation.';
 comment on table public.resena_versiones is
   'Immutable review versions. Never update historical content; insert a new version.';
 comment on table public.reputation_period_closures is
