@@ -1,7 +1,6 @@
 import { getPeriodBounds, getPeriodBoundsFromDates, periodBoundsToQuery } from "@/lib/date-utils";
 import type { PeriodBounds } from "@/lib/dates/period";
 import {
-  buildPeriodMetrics,
   dedupeResenas,
   metricsToKpiRow,
   type PeriodMetricsResult,
@@ -24,11 +23,9 @@ import { fetchAnalisisIaForResenas } from "@/lib/supabase/analisis-ia.server";
 import { fetchCanonicalReviewImpacts } from "@/lib/supabase/review-impact.server";
 import type { MediaImpactResult } from "@/lib/reviews/media-impact";
 import {
-  compareReputationMetricResults,
   fetchSupabaseCanonicalMotives,
   fetchSupabaseCanonicalReputationMetrics,
   mapSupabaseCanonicalMetrics,
-  recordMetricValidationMismatch,
 } from "@/lib/supabase/reputation-metrics.server";
 
 export type LoadSnapshotOptions = {
@@ -119,14 +116,6 @@ export async function loadNexoPeriodSnapshot(
     logAnalisisIaJoinStats(resenas, analisisByResenaId, "loadNexoPeriodSnapshot");
   }
 
-  // Shadow comparator only: never served to interfaces.
-  const legacyMetrics = buildPeriodMetrics({
-    catalog,
-    resenas,
-    kpiDiario: [],
-    analisisByResenaId,
-  });
-
   const restaurantIds = catalog.map((row) => row.restaurante_id);
   const [canonicalRows, canonicalMotives] = await Promise.all([
     fetchSupabaseCanonicalReputationMetrics(
@@ -146,20 +135,6 @@ export async function loadNexoPeriodSnapshot(
     rows: canonicalRows,
     problemDistribution: canonicalMotives,
   });
-
-  const mismatches = compareReputationMetricResults(metrics, legacyMetrics);
-  if (mismatches.length > 0) {
-    console.error(
-      `[canonical-reputation] Supabase/shadow mismatch for ${bounds.startKey}..${bounds.endKey}`,
-      mismatches.slice(0, 20)
-    );
-    await recordMetricValidationMismatch({
-      startKey: bounds.startKey,
-      endKey: bounds.endKey,
-      restaurantCount: catalog.length,
-      mismatches,
-    });
-  }
 
   const activeKpiRows = catalog.map((row) => {
     const period = metrics.byRestaurante.get(row.restaurante_id);
