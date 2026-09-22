@@ -1,0 +1,14 @@
+name: Probe Production Daily Summary Cron
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe cron endpoint
+        run: |
+          set -x
+          curl -i -sS -A "vercel-cron/1.0" https://app.nexoorigen.com/api/cron/agent-daily-summaries
