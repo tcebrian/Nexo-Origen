@@ -25,6 +25,7 @@ import { fetchCanonicalReviewImpacts } from "@/lib/supabase/review-impact.server
 import type { MediaImpactResult } from "@/lib/reviews/media-impact";
 import {
   compareReputationMetricResults,
+  fetchSupabaseCanonicalMotives,
   fetchSupabaseCanonicalReputationMetrics,
   mapSupabaseCanonicalMetrics,
   recordMetricValidationMismatch,
@@ -126,16 +127,24 @@ export async function loadNexoPeriodSnapshot(
     analisisByResenaId,
   });
 
-  const canonicalRows = await fetchSupabaseCanonicalReputationMetrics(
-    bounds.startKey,
-    bounds.endKey,
-    catalog.map((row) => row.restaurante_id)
-  );
+  const restaurantIds = catalog.map((row) => row.restaurante_id);
+  const [canonicalRows, canonicalMotives] = await Promise.all([
+    fetchSupabaseCanonicalReputationMetrics(
+      bounds.startKey,
+      bounds.endKey,
+      restaurantIds
+    ),
+    fetchSupabaseCanonicalMotives(
+      bounds.startKey,
+      bounds.endKey,
+      restaurantIds
+    ),
+  ]);
 
   const metrics = mapSupabaseCanonicalMetrics({
     catalog,
     rows: canonicalRows,
-    problemDistribution: legacyMetrics.problemDistribution,
+    problemDistribution: canonicalMotives,
   });
 
   const mismatches = compareReputationMetricResults(metrics, legacyMetrics);
