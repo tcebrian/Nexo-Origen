@@ -23,6 +23,7 @@ export const SUPABASE_TABLES = {
   nexo_bot_accesos: "nexo_bot_accesos",
   nexo_bot_conversaciones: "nexo_bot_conversaciones",
   nexo_bot_sesiones: "nexo_bot_sesiones",
+  restaurante_integraciones: "restaurante_integraciones",
 } as const;
 
 export type SupabaseView = (typeof SUPABASE_VIEWS)[keyof typeof SUPABASE_VIEWS];
