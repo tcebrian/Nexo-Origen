@@ -9,7 +9,20 @@ import type { MediaImpactResult } from "@/lib/reviews/media-impact";
 
 export type { RestaurantPeriodMetrics };
 
-export type PeriodDataSource = "kpi_diario" | "resenas" | "kpi_restaurantes";
+export type PeriodDataSource = "resenas" | "empty";
+
+export type PeriodNetworkAggregate = {
+  totalResenas: number;
+  totalPositivas: number;
+  totalNegativas: number;
+  totalNeutras: number;
+  totalAtencion: number;
+  mediaGlobal: number;
+  positivePct: number;
+  negativePct: number;
+  totalRestaurantes: number;
+  ultimaActualizacion: string | null;
+};
 
 export type PeriodAggregates = {
   totalResenas: number;
@@ -22,6 +35,7 @@ export type PeriodAggregates = {
   ultimaActualizacion: string | null;
   positivePct: number;
   negativePct: number;
+  byBrand: Record<string, PeriodNetworkAggregate>;
 };
 
 export type PeriodData = {
@@ -34,6 +48,7 @@ export type PeriodData = {
   resenas: ResenaRow[];
   fetchedAt: Date;
   problemDistribution: ProblemDistributionItem[];
+  problemDistributionByBrand: Record<string, ProblemDistributionItem[]>;
   chartSource: "kpi_diario" | "resenas" | "empty";
   analisisByResenaId: AnalisisIaIndex;
   impactByResenaId: Map<number, MediaImpactResult>;
