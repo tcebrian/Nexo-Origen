@@ -1,5 +1,8 @@
 import type { BrandId } from "@/app/dashboard/restaurantes/data";
-import { buildWeeklyReportFromKpi } from "@/lib/reports/weekly/build-from-kpi";
+import {
+  buildWeeklyReportFromKpi,
+  type CanonicalWeeklyReportNumbers,
+} from "@/lib/reports/weekly/build-from-kpi";
 import type { WeeklyTemplateId } from "@/lib/reports/weekly/types";
 import { mapEstadoToOperational, marcaToBrandId } from "./kpi-mappers";
 import type { KpiRestaurantRow, PeriodQuery } from "./kpi-restaurantes";
@@ -31,7 +34,8 @@ export function buildReportsFromKpi(
   rows: KpiRestaurantRow[],
   query: PeriodQuery,
   resenas: ResenaRow[] = [],
-  analisisByResenaId: AnalisisIaIndex = new Map()
+  analisisByResenaId: AnalisisIaIndex = new Map(),
+  canonicalByReportKey: Record<string, CanonicalWeeklyReportNumbers> = {}
 ): ReportRecord[] {
   if (rows.length === 0) return [];
 
@@ -79,7 +83,14 @@ export function buildReportsFromKpi(
         highestRisk: mostNegatives?.restaurante ?? express.highestRisk,
       },
       weeklyTemplateId: "grupo-hambar",
-      weeklyData: buildWeeklyReportFromKpi(rows, "grupo-hambar", query, resenas, analisisByResenaId),
+      weeklyData: buildWeeklyReportFromKpi(
+        rows,
+        "grupo-hambar",
+        query,
+        resenas,
+        analisisByResenaId,
+        canonicalByReportKey.network
+      ),
     },
   ];
 
@@ -116,7 +127,14 @@ export function buildReportsFromKpi(
         preventProtection: Math.round((brandOnTarget / Math.max(brandRows.length, 1)) * 100),
       },
       weeklyTemplateId: templateId,
-      weeklyData: buildWeeklyReportFromKpi(rows, templateId, query, resenas, analisisByResenaId),
+      weeklyData: buildWeeklyReportFromKpi(
+        rows,
+        templateId,
+        query,
+        resenas,
+        analisisByResenaId,
+        canonicalByReportKey[`brand:${brand}`]
+      ),
     });
   }
 
