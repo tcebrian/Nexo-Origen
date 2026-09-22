@@ -1,4 +1,3 @@
-import type { BrandId } from "@/app/dashboard/restaurantes/data";
 import { REPUTATION_TARGET } from "@/lib/restaurants/metrics";
 import { mapEstadoToOperational, marcaToBrandId } from "@/lib/supabase/kpi-mappers";
 import type { KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
