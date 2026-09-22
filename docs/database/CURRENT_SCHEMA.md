@@ -276,17 +276,20 @@ Estas limitaciones no deben corregirse todas a la vez. Se migrarán por fases.
 
 # 14. Cálculo canónico de reputación
 
-Supabase almacena los hechos de reputación y tablas auxiliares, pero las métricas de periodo oficiales de Nexo se calculan en el backend de Nexo ejecutado en Vercel.
+Supabase almacena los hechos de reputación **y calcula las métricas numéricas oficiales de periodo**.
 
-Punto de entrada canónico:
+Función SQL canónica:
 
+- `public.nexo_reputation_period_metrics(p_start, p_end, p_restaurant_ids)`
+
+Adaptadores del repositorio:
+
+- `lib/supabase/reputation-metrics.server.ts`
 - `lib/reputation/canonical-metrics.server.ts`
 
-Reglas matemáticas:
+Las interfaces Web, informes y resúmenes diarios consumen el resultado de esa función. No deben redefinir medias, porcentajes o estados.
 
-- `lib/review-metrics.ts`
-
-Las interfaces Web, informes y resúmenes diarios deben consumir ese resultado. No deben redefinir medias, porcentajes o estados.
+Durante la migración, `nexo_metric_validation_events` registra discrepancias detectadas entre el resultado SQL canónico y el cálculo TypeScript anterior ejecutado en modo sombra.
 
 La vista `kpi_restaurantes` se mantiene como catálogo/snapshot histórico compatible, pero no es la autoridad para la media de un periodo seleccionado.
 
