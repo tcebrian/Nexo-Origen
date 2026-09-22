@@ -2,11 +2,11 @@ import "server-only";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { SUPABASE_TABLES } from "@/lib/supabase/tables";
-import { buildNetworkMetrics } from "@/lib/review-metrics";
 import { toDateKey } from "@/lib/dates/period";
-import { getCanonicalReputationPeriod } from "@/lib/reputation/canonical-metrics.server";
-import { getResenaActivityDateValue } from "@/lib/supabase/resenas";
-import type { RestaurantPeriodMetrics } from "@/lib/supabase/period-types";
+import {
+  fetchSupabaseCanonicalReputationMetrics,
+  type SupabaseMetricRow,
+} from "@/lib/supabase/reputation-metrics.server";
 import type { AgentDailySummaryPreview } from "@/lib/agents/types";
 
 type AccessRow = {
@@ -99,10 +99,22 @@ function formatShortDate(dateKey: string): string {
   }).format(new Date(`${dateKey}T12:00:00Z`));
 }
 
-function statusLabel(status: RestaurantPeriodMetrics["operationalStatus"]): string {
+type OperationalStatus = "on_target" | "watch" | "critical";
+
+function statusLabel(status: OperationalStatus): string {
   if (status === "on_target") return "En objetivo";
   if (status === "watch") return "Seguimiento";
   return "Crítico";
+}
+
+function normalizeStatus(value: string | null | undefined): OperationalStatus {
+  if (value === "on_target" || value === "critical") return value;
+  return "watch";
+}
+
+function metricNumber(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function normalizeIds(values: Array<number | string>): number[] {
@@ -165,68 +177,47 @@ export async function buildAgentDailySummaryPreview(
   const weekEndKey = addDays(weekStartKey, 6);
   const yesterdayKey = addDays(todayKey, -1);
   const restaurantIds = restaurants.map((restaurant) => restaurant.id);
-  const restaurantIdSet = new Set(restaurantIds);
 
-  // CANONICAL: the same period calculator used by the web and reports.
-  // This is the only source for averages, volume, positive/negative counts
-  // and operational status in the daily supervisor summary.
-  const period = await getCanonicalReputationPeriod(
-    weekStartKey,
-    todayKey,
-    undefined,
-    { includeAnalisis: false, skipDashboardKpis: true }
+  // All deterministic numbers come directly from the canonical Supabase SQL
+  // function. Vercel only formats the already-calculated result.
+  const [weekMetricRows, yesterdayMetricRows] = await Promise.all([
+    fetchSupabaseCanonicalReputationMetrics(
+      weekStartKey,
+      todayKey,
+      restaurantIds
+    ),
+    fetchSupabaseCanonicalReputationMetrics(
+      yesterdayKey,
+      yesterdayKey,
+      restaurantIds
+    ),
+  ]);
+
+  const weekByRestaurant = new Map<number, SupabaseMetricRow>(
+    weekMetricRows.map((row) => [metricNumber(row.restaurante_id), row])
   );
 
-  const scopedMetrics = new Map<number, RestaurantPeriodMetrics>();
-  for (const restaurantId of restaurantIds) {
-    const metrics = period.aggregates.byRestaurante.get(restaurantId);
-    if (metrics) scopedMetrics.set(restaurantId, metrics);
-  }
+  const weekNetwork = weekMetricRows[0] ?? null;
+  const yesterdayNetwork = yesterdayMetricRows[0] ?? null;
 
-  const canonicalSource =
-    period.aggregates.source === "resenas"
-      ? "resenas"
-      : period.aggregates.source === "kpi_diario"
-        ? "kpi_diario"
-        : "empty";
-
-  const scopedNetwork = buildNetworkMetrics(
-    scopedMetrics,
-    canonicalSource,
-    period.aggregates.ultimaActualizacion
+  const totalWeeklyReviews = metricNumber(weekNetwork?.network_total_resenas);
+  const weeklyMedia = metricNumber(weekNetwork?.network_media_exacta);
+  const yesterdayTotal = metricNumber(
+    yesterdayNetwork?.network_total_resenas
   );
-
-  const attentionByRestaurant = new Map<number, number>();
-  let yesterdayTotal = 0;
-  let yesterdayAttention = 0;
-
-  for (const review of period.resenas) {
-    const restaurantId = Number(review.restaurante_id);
-    if (!restaurantIdSet.has(restaurantId)) continue;
-
-    if (review.estrellas <= 3) {
-      attentionByRestaurant.set(
-        restaurantId,
-        (attentionByRestaurant.get(restaurantId) ?? 0) + 1
-      );
-    }
-
-    const activityKey = toDateKey(getResenaActivityDateValue(review) ?? "");
-    if (activityKey === yesterdayKey) {
-      yesterdayTotal += 1;
-      if (review.estrellas <= 3) yesterdayAttention += 1;
-    }
-  }
+  const yesterdayAttention = metricNumber(
+    yesterdayNetwork?.network_atencion
+  );
 
   const rows = restaurants
     .map((restaurant) => {
-      const metrics = scopedMetrics.get(restaurant.id);
+      const metrics = weekByRestaurant.get(restaurant.id);
       return {
         ...restaurant,
-        total: metrics?.totalResenas ?? 0,
-        media: metrics?.media ?? 0,
-        attention: attentionByRestaurant.get(restaurant.id) ?? 0,
-        operational: metrics?.operationalStatus ?? ("watch" as const),
+        total: metricNumber(metrics?.total_resenas),
+        media: metricNumber(metrics?.media_exacta),
+        attention: metricNumber(metrics?.atencion),
+        operational: normalizeStatus(metrics?.operational_status),
       };
     })
     .sort((a, b) => {
@@ -245,8 +236,6 @@ export async function buildAgentDailySummaryPreview(
           .filter((row) => row.operational !== "on_target" || row.attention > 0)
           .slice(0, 10);
 
-  const totalWeeklyReviews = scopedNetwork.totalResenas;
-  const weeklyMedia = scopedNetwork.mediaGlobal;
   const rowsWithReviews = rows.filter((row) => row.total > 0);
   const onTargetCount = rowsWithReviews.filter(
     (row) => row.operational === "on_target"

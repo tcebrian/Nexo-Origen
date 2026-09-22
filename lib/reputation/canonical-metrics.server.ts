@@ -13,15 +13,14 @@ import type {
 /**
  * NEXO CANONICAL CALCULATOR
  *
- * Runs on the Nexo backend (Vercel).
- * Supabase supplies facts; this module returns the deterministic reputation
- * metrics consumed by every interface.
+ * Nexo server adapter for the canonical reputation metrics.
  *
- * Numeric reputation KPIs NEVER use dashboard_kpis or UI-specific overrides.
- * Source priority is defined by buildPeriodMetrics:
- *   1. canonical/deduplicated review facts
- *   2. validated kpi_diario fallback
- *   3. no period data
+ * PostgreSQL/Supabase owns the deterministic numeric calculation through
+ * public.nexo_reputation_period_metrics(...). Vercel orchestrates the request,
+ * applies authorization/scope and formats the already-calculated result.
+ *
+ * Numeric reputation KPIs NEVER come from UI formulas, prompts,
+ * dashboard_kpis or interface-specific overrides.
  */
 export async function getCanonicalReputationPeriod(
   startKey: string,
