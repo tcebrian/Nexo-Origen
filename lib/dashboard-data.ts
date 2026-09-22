@@ -53,6 +53,7 @@ export type NexoPeriodSnapshot = {
   /** Legacy eliminado del flujo. Siempre null. */
   dashboardKpis: null;
   analisisByResenaId: AnalisisIaIndex;
+  networkAggregate: import("@/lib/supabase/period-types").PeriodNetworkAggregate;
   brandAggregates: Record<string, import("@/lib/supabase/period-types").PeriodNetworkAggregate>;
   problemDistributionByBrand: Record<string, import("@/lib/review-metrics").ProblemDistributionItem[]>;
 };
@@ -169,6 +170,10 @@ export async function loadNexoPeriodSnapshot(
   }
 
   const problemDistribution = mapSupabaseMotivesToProblemDistribution(motiveRows);
+  const networkAggregate = extractCanonicalNetworkAggregate(
+    canonicalRows,
+    restaurantIds.length
+  );
   const metrics = mapSupabaseCanonicalMetrics({
     catalog,
     rows: canonicalRows,
@@ -206,6 +211,7 @@ export async function loadNexoPeriodSnapshot(
     dashboardKpis: null,
     analisisByResenaId,
     impactByResenaId,
+    networkAggregate,
     brandAggregates,
     problemDistributionByBrand,
   };
