@@ -149,7 +149,7 @@ function buildAlertasFromResenas(
   const impactIndex = buildMediaImpactIndex(resenas);
 
   return dedupeResenas(resenas)
-    .filter((row) => row.estrellas <= 3)
+    .filter((row) => row.estrellas <= 2)
     .sort((a, b) => {
       const ta = new Date(a.fecha_resena ?? a.created_at ?? 0).getTime();
       const tb = new Date(b.fecha_resena ?? b.created_at ?? 0).getTime();
