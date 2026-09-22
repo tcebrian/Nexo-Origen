@@ -1,7 +1,7 @@
 import "server-only";
 
-import { getInclusiveQueryBoundsFromDates } from "@/lib/date-utils";
-import { fetchResenasForPeriodServer } from "@/lib/supabase/resenas.server";
+import { toDateKey } from "@/lib/dates/period";
+import { fetchSupabaseCanonicalReputationMetrics } from "@/lib/supabase/reputation-metrics.server";
 
 export type WeeklyContext = {
   periodLabel: string;
@@ -11,10 +11,9 @@ export type WeeklyContext = {
   mediaAfter: number | null;
 };
 
-/** Lunes de la semana natural (lunes–domingo) que contiene `date`. Misma convención que date-range-context.tsx. */
 function mondayOfWeek(date: Date): Date {
   const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const day = normalized.getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+  const day = normalized.getDay();
   const diffToMonday = day === 0 ? 6 : day - 1;
   normalized.setDate(normalized.getDate() - diffToMonday);
   return normalized;
@@ -33,52 +32,48 @@ function formatWeekLabel(start: Date, end: Date): string {
   return `${day(start)} al ${day(end)} de ${month} de ${year}`;
 }
 
-function averageStars(rows: { estrellas: number }[]): number | null {
-  if (rows.length === 0) return null;
-  const sum = rows.reduce((acc, r) => acc + (r.estrellas || 0), 0);
-  return sum / rows.length;
+function num(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 /**
- * Compara la semana natural (lunes–domingo) en la que cae la reseña con la
- * semana natural inmediatamente anterior, para un restaurante concreto.
- * Requiere una consulta a Supabase nueva (14 días) — solo se llama al
- * generar la imagen de una reseña, no para toda la lista del informe.
+ * Semana actual vs anterior usando exclusivamente el calculador canónico
+ * public.nexo_reputation_period_metrics(...).
  */
 export async function computeWeeklyContext(
   restauranteId: number,
   reviewDateIso: string
 ): Promise<WeeklyContext> {
-  const reviewDate = new Date(reviewDateIso);
-  const currentWeekStart = mondayOfWeek(Number.isNaN(reviewDate.getTime()) ? new Date() : reviewDate);
+  const parsed = new Date(reviewDateIso);
+  const currentWeekStart = mondayOfWeek(Number.isNaN(parsed.getTime()) ? new Date() : parsed);
   const currentWeekEnd = addDays(currentWeekStart, 6);
   const previousWeekStart = addDays(currentWeekStart, -7);
+  const previousWeekEnd = addDays(currentWeekStart, -1);
 
-  const queryBounds = getInclusiveQueryBoundsFromDates(previousWeekStart, currentWeekEnd);
-  const rows = await fetchResenasForPeriodServer(
-    { start: previousWeekStart, end: currentWeekEnd },
-    { restauranteId, queryBounds }
-  );
+  const [beforeRows, afterRows] = await Promise.all([
+    fetchSupabaseCanonicalReputationMetrics(
+      toDateKey(previousWeekStart),
+      toDateKey(previousWeekEnd),
+      [restauranteId]
+    ),
+    fetchSupabaseCanonicalReputationMetrics(
+      toDateKey(currentWeekStart),
+      toDateKey(currentWeekEnd),
+      [restauranteId]
+    ),
+  ]);
 
-  const currentWeekStartKey = currentWeekStart.toISOString().slice(0, 10);
-  const before: typeof rows = [];
-  const after: typeof rows = [];
-
-  for (const row of rows) {
-    const dateKey = (row.fecha_resena ?? row.created_at ?? "").slice(0, 10);
-    if (!dateKey) continue;
-    if (dateKey >= currentWeekStartKey) {
-      after.push(row);
-    } else {
-      before.push(row);
-    }
-  }
+  const before = beforeRows[0];
+  const after = afterRows[0];
+  const beforeCount = num(before?.total_resenas);
+  const afterCount = num(after?.total_resenas);
 
   return {
     periodLabel: formatWeekLabel(currentWeekStart, currentWeekEnd),
-    reviewsBefore: before.length,
-    reviewsAfter: after.length,
-    mediaBefore: averageStars(before),
-    mediaAfter: averageStars(after),
+    reviewsBefore: beforeCount,
+    reviewsAfter: afterCount,
+    mediaBefore: beforeCount > 0 ? num(before?.media_exacta) : null,
+    mediaAfter: afterCount > 0 ? num(after?.media_exacta) : null,
   };
 }
