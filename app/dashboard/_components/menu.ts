@@ -10,6 +10,7 @@ export type MenuIcon =
   | "talento"
   | "reports"
   | "agents"
+  | "integrations"
   | "settings";
 
 export type MenuItem = {
@@ -29,6 +30,7 @@ export const menuItems: MenuItem[] = [
   { name: "Talento", icon: "talento", href: "/dashboard/talento", section: "talento" },
   { name: "Informes", icon: "reports", href: "/dashboard/informes", section: "informes" },
   { name: "Agentes", icon: "agents", href: "/dashboard/agentes", section: "agentes" },
+  { name: "Integraciones", icon: "integrations", href: "/dashboard/integraciones", section: "integraciones" },
 ];
 
 export const settingsHref = "/dashboard/ajustes";
