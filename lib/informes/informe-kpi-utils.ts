@@ -4,9 +4,9 @@ import type { InformeKpiDatos } from "@/lib/informes/types";
 import { dedupeResenas } from "@/lib/review-metrics";
 import type { ResenaRow } from "@/lib/supabase/resenas";
 
-/** Negativas: reseñas de 1, 2 o 3 estrellas. */
+/** Negativas canónicas Nexo: reseñas de 1 o 2 estrellas. 3 estrellas = neutral. */
 export function isNegativeInformeReview(stars: number): boolean {
-  return stars >= 1 && stars <= 3;
+  return stars >= 1 && stars <= 2;
 }
 
 export function countUniqueRestaurants(resenas: ResenaRow[]): number {
