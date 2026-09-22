@@ -15,6 +15,7 @@ export type KpiRestaurantRow = {
   estado: string;
   media_google: number | null;
   total_resenas_google: number | null;
+  objetivo_media: number;
 };
 
 export type PeriodQuery = {
@@ -56,6 +57,7 @@ export function normalizeKpiRow(row: Record<string, unknown>): KpiRestaurantRow 
     estado: "En riesgo",
     media_google: nullableNumber(row.media_google),
     total_resenas_google: nullableNumber(row.total_resenas_google),
+    objetivo_media: toNumber(row.objetivo_media) || 4.4,
   };
 }
 
