@@ -284,3 +284,49 @@ export async function recordMetricValidationMismatch(input: {
     console.error("[recordMetricValidationMismatch]", error);
   }
 }
+
+
+type MotiveRpcRow = {
+  categoria: string;
+  total: number | string;
+  percent: number | string;
+  restaurantes_afectados: number | string;
+};
+
+const MOTIVE_LABELS: Record<string, string> = {
+  TIEMPO_ESPERA: "Tiempo de espera",
+  ATENCION_PERSONAL: "Atención",
+  CALIDAD_PRODUCTO: "Calidad producto",
+  LIMPIEZA: "Limpieza",
+  PEDIDO_INCORRECTO: "Error pedido",
+  AMBIENTE_RUIDO: "Ruido/Saturación",
+  AMBIENTE_LOCAL: "Ruido/Saturación",
+  OTRO: "Otros",
+};
+
+export async function fetchSupabaseCanonicalMotives(
+  startKey: string,
+  endKey: string,
+  restaurantIds: number[]
+): Promise<ProblemDistributionItem[]> {
+  if (restaurantIds.length === 0) return [];
+
+  const client = await getSupabaseDataClientForServer();
+  const { data, error } = await client.rpc("nexo_reputation_period_motives", {
+    p_start: startKey,
+    p_end: endKey,
+    p_restaurant_ids: restaurantIds,
+  });
+
+  if (error) {
+    console.error("[fetchSupabaseCanonicalMotives]", error.message);
+    return [];
+  }
+
+  return ((data ?? []) as MotiveRpcRow[]).map((row) => ({
+    label: MOTIVE_LABELS[row.categoria] ?? row.categoria,
+    count: num(row.total),
+    percent: Math.round(num(row.percent) * 10) / 10,
+    provisional: false,
+  }));
+}
