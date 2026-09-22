@@ -27,6 +27,7 @@ import { logAnalisisIaJoinStats } from "@/lib/supabase/analisis-ia";
 import { fetchAnalisisIaForResenas } from "@/lib/supabase/analisis-ia.server";
 import {
   compareReputationMetricResults,
+  fetchSupabaseCanonicalProblemDistribution,
   fetchSupabaseCanonicalReputationMetrics,
   mapSupabaseCanonicalMetrics,
   recordMetricValidationMismatch,
@@ -132,16 +133,24 @@ export async function loadNexoPeriodSnapshot(
   });
 
   // Numeric reputation KPIs are calculated in PostgreSQL/Supabase.
-  const canonicalRows = await fetchSupabaseCanonicalReputationMetrics(
-    bounds.startKey,
-    bounds.endKey,
-    catalog.map((row) => row.restaurante_id)
-  );
+  const restaurantIds = catalog.map((row) => row.restaurante_id);
+  const [canonicalRows, canonicalProblemDistribution] = await Promise.all([
+    fetchSupabaseCanonicalReputationMetrics(
+      bounds.startKey,
+      bounds.endKey,
+      restaurantIds
+    ),
+    fetchSupabaseCanonicalProblemDistribution(
+      bounds.startKey,
+      bounds.endKey,
+      restaurantIds
+    ),
+  ]);
 
   const metrics = mapSupabaseCanonicalMetrics({
     catalog,
     rows: canonicalRows,
-    problemDistribution: legacyMetrics.problemDistribution,
+    problemDistribution: canonicalProblemDistribution,
   });
 
   const mismatches = compareReputationMetricResults(metrics, legacyMetrics);
