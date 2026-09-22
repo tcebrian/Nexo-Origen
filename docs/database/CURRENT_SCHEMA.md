@@ -270,3 +270,24 @@ Esto significa que el esquema actual no representa todavía todo el pipeline de 
 - La seguridad en base de datos puede reforzarse.
 
 Estas limitaciones no deben corregirse todas a la vez. Se migrarán por fases.
+
+
+---
+
+# 14. Cálculo canónico de reputación
+
+Supabase almacena los hechos de reputación y tablas auxiliares, pero las métricas de periodo oficiales de Nexo se calculan en el backend de Nexo ejecutado en Vercel.
+
+Punto de entrada canónico:
+
+- `lib/reputation/canonical-metrics.server.ts`
+
+Reglas matemáticas:
+
+- `lib/review-metrics.ts`
+
+Las interfaces Web, informes y resúmenes diarios deben consumir ese resultado. No deben redefinir medias, porcentajes o estados.
+
+La vista `kpi_restaurantes` se mantiene como catálogo/snapshot histórico compatible, pero no es la autoridad para la media de un periodo seleccionado.
+
+`dashboard_kpis` puede conservar datos legacy/auxiliares, pero no debe sobrescribir una métrica canónica.

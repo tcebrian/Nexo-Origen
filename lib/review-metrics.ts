@@ -453,7 +453,7 @@ function aggregateFromKpiDiario(
   return map;
 }
 
-function buildNetworkMetrics(
+export function buildNetworkMetrics(
   byRestaurante: Map<number, RestaurantPeriodMetrics>,
   source: NetworkPeriodMetrics["source"],
   ultimaActualizacion: string | null

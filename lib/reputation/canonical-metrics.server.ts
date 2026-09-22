@@ -1,0 +1,73 @@
+import "server-only";
+
+import type { UserScope } from "@/lib/auth/types";
+import {
+  loadNexoPeriodSnapshot,
+  type LoadSnapshotOptions,
+} from "@/lib/dashboard-data";
+import type {
+  PeriodData,
+  PeriodDataSource,
+} from "@/lib/supabase/period-types";
+
+/**
+ * NEXO CANONICAL CALCULATOR
+ *
+ * Runs on the Nexo backend (Vercel).
+ * Supabase supplies facts; this module returns the deterministic reputation
+ * metrics consumed by every interface.
+ *
+ * Numeric reputation KPIs NEVER use dashboard_kpis or UI-specific overrides.
+ * Source priority is defined by buildPeriodMetrics:
+ *   1. canonical/deduplicated review facts
+ *   2. validated kpi_diario fallback
+ *   3. no period data
+ */
+export async function getCanonicalReputationPeriod(
+  startKey: string,
+  endKey: string,
+  scope?: UserScope,
+  options?: LoadSnapshotOptions
+): Promise<PeriodData> {
+  const snapshot = await loadNexoPeriodSnapshot(startKey, endKey, scope, {
+    ...options,
+    // dashboard_kpis can still exist for legacy/diagnostic purposes, but must
+    // never override canonical numeric reputation metrics.
+    skipDashboardKpis: true,
+  });
+
+  const network = snapshot.metrics.network;
+
+  const source: PeriodDataSource =
+    network.source === "resenas"
+      ? "resenas"
+      : network.source === "kpi_diario"
+        ? "kpi_diario"
+        : "kpi_restaurantes";
+
+  return {
+    bounds: snapshot.bounds,
+    catalog: snapshot.catalog,
+    activeKpiRows: snapshot.activeKpiRows,
+    aggregates: {
+      totalResenas: network.totalResenas,
+      totalNegativas: network.totalNegativas,
+      totalPositivas: network.totalPositivas,
+      mediaGlobal: network.mediaGlobal,
+      byRestaurante: snapshot.metrics.byRestaurante,
+      hasResenasEnPeriodo: snapshot.resenas.length > 0,
+      source,
+      ultimaActualizacion: network.ultimaActualizacion,
+      positivePct: network.positivePct,
+      negativePct: network.negativePct,
+    },
+    dailySeries: snapshot.dailySeries,
+    kpiDiarioRows: snapshot.kpiDiario,
+    resenas: snapshot.resenas,
+    fetchedAt: snapshot.fetchedAt,
+    problemDistribution: snapshot.metrics.problemDistribution,
+    chartSource: snapshot.chartSource,
+    analisisByResenaId: snapshot.analisisByResenaId,
+    dashboardKpis: null,
+  };
+}
