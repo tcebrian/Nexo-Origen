@@ -32,17 +32,10 @@ export async function getDashboardOverviewServer(query: {
   const onWatch = restaurants.filter((r) => r.status === "watch").length;
   const critical = restaurants.filter((r) => r.status === "critical").length;
 
-  const networkMedia =
-    restaurants.length > 0
-      ? restaurants.reduce((s, r) => s + r.currentMedia * r.totalReviews, 0) /
-        Math.max(
-          1,
-          restaurants.reduce((s, r) => s + r.totalReviews, 0)
-        )
-      : 0;
-
-  const totalReviews = restaurants.reduce((s, r) => s + r.totalReviews, 0);
-  const totalNegatives = restaurants.reduce((s, r) => s + r.negativeReviews, 0);
+  // Canonical network KPI values come directly from Supabase.
+  const networkMedia = period.aggregates.mediaGlobal;
+  const totalReviews = period.aggregates.totalResenas;
+  const totalNegatives = period.aggregates.totalNegativas;
 
   const urgentAlerts = getUrgentAlerts(alerts).slice(0, 4);
 
