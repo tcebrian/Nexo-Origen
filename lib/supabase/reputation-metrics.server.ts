@@ -11,7 +11,7 @@ import type {
 import type { KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
 import { getSupabaseDataClientForServer } from "@/lib/supabase/data-client";
 
-type SupabaseMetricRow = {
+export type SupabaseMetricRow = {
   restaurante_id: number | string;
   total_resenas: number | string;
   rating_sum: number | string;
