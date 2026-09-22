@@ -11,6 +11,10 @@ import {
   fetchCanonicalReviewImpacts,
   type CanonicalReviewImpact,
 } from "@/lib/supabase/reputation-impact.server";
+import {
+  fetchCanonicalBrandMetrics,
+  type CanonicalBrandMetricsRow,
+} from "@/lib/supabase/reputation-brand-metrics.server";
 import { getAnalisisForResena, type AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
 import { unstable_noStore as noStore } from "next/cache";
 import type { UserScope } from "@/lib/auth/types";
@@ -190,22 +194,25 @@ function buildAlertasFromResenas(
     });
 }
 
-function buildDistribucionMarca(rows: KpiRestaurantRow[]): DistribucionMarcaItem[] {
-  const totals = new Map<string, number>();
+function buildDistribucionMarca(
+  brandMetrics: CanonicalBrandMetricsRow[]
+): DistribucionMarcaItem[] {
+  const shares = new Map<string, number>();
 
-  for (const row of rows) {
+  for (const row of brandMetrics) {
     const bucket = brandBucket(row.marca);
-    totals.set(bucket, (totals.get(bucket) ?? 0) + row.total_resenas);
+    shares.set(bucket, (shares.get(bucket) ?? 0) + row.reviewSharePct);
   }
 
-  const sum = Array.from(totals.values()).reduce((acc, n) => acc + n, 0) || 1;
   const order = ["Burger King", "Popeyes", "Santa Gloria", "Tim Hortons", "Vault", "Otros"];
 
   return order
-    .filter((name) => totals.has(name))
+    .filter((name) => shares.has(name))
     .map((name) => ({
       marca: name,
-      porcentaje: Math.round(((totals.get(name) ?? 0) / sum) * 100),
+      // Supabase already calculated each brand's share. Summing aliases into
+      // the same visual bucket is presentation only.
+      porcentaje: Math.round(shares.get(name) ?? 0),
       color: BRAND_BUCKET_COLORS[name] ?? "bg-gray-500",
     }));
 }
@@ -287,11 +294,15 @@ export async function getDashboardData(
       };
     }
 
+    const restaurantIds = rows.map((row) => row.restaurante_id);
     const negativeImpactIds = dedupeResenas(resenas)
       .filter((row) => row.estrellas <= 3)
       .map((row) => Number(row.id))
       .filter((id) => Number.isInteger(id) && id > 0);
-    const impactByResenaId = await fetchCanonicalReviewImpacts(negativeImpactIds);
+    const [impactByResenaId, brandMetrics] = await Promise.all([
+      fetchCanonicalReviewImpacts(negativeImpactIds),
+      fetchCanonicalBrandMetrics(startKey, endKey, restaurantIds),
+    ]);
 
     const peorRestaurante = toDestacado(
       [...rows].sort((a, b) => a.media_total - b.media_total)[0]
@@ -317,7 +328,7 @@ export async function getDashboardData(
         analisisByResenaId,
         impactByResenaId
       ),
-      distribucionMarca: buildDistribucionMarca(rows),
+      distribucionMarca: buildDistribucionMarca(brandMetrics),
       resumenIA: resolveResumenIA(
         dashboardKpis?.resumenIA,
         Array.from(analisisByResenaId.values())
