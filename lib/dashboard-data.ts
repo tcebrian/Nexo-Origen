@@ -222,33 +222,13 @@ export function getRestaurantMetricsList(snapshot: NexoPeriodSnapshot): Restaura
   );
 }
 
+/**
+ * @deprecated Compatibilidad temporal. dashboard_kpis nunca puede sobrescribir
+ * métricas canónicas de reputación.
+ */
 export function mergeNetworkWithDashboardKpis(
   network: NetworkPeriodMetrics,
-  dashboardKpis: NexoPeriodSnapshot["dashboardKpis"]
+  _dashboardKpis: NexoPeriodSnapshot["dashboardKpis"]
 ): NetworkPeriodMetrics {
-  if (!dashboardKpis) return network;
-  return {
-    ...network,
-    mediaGlobal: dashboardKpis.mediaGlobal || network.mediaGlobal,
-    totalResenas: dashboardKpis.totalResenas || network.totalResenas,
-    totalNegativas: dashboardKpis.totalNegativas || network.totalNegativas,
-    totalPositivas: dashboardKpis.totalPositivas || network.totalPositivas,
-    totalRestaurantes: dashboardKpis.totalRestaurantes || network.totalRestaurantes,
-    positivePct:
-      (dashboardKpis.totalResenas || network.totalResenas) > 0
-        ? Math.round(
-            ((dashboardKpis.totalPositivas || network.totalPositivas) /
-              (dashboardKpis.totalResenas || network.totalResenas)) *
-              1000
-          ) / 10
-        : network.positivePct,
-    negativePct:
-      (dashboardKpis.totalResenas || network.totalResenas) > 0
-        ? Math.round(
-            ((dashboardKpis.totalNegativas || network.totalNegativas) /
-              (dashboardKpis.totalResenas || network.totalResenas)) *
-              1000
-          ) / 10
-        : network.negativePct,
-  };
+  return network;
 }
