@@ -15,6 +15,7 @@ import { RestaurantesCard } from "./restaurantes-card";
 import { RestaurantesStatusSummary } from "./restaurantes-status-summary";
 import { RestaurantesTable } from "./restaurantes-table";
 import { RestaurantesToolbar } from "./restaurantes-toolbar";
+import { RestaurantOnboardingModal } from "./restaurant-onboarding-modal";
 import { shell } from "./ui/restaurantes-styles";
 
 const TENANT_ID = "grupo-hambar";
@@ -30,7 +31,7 @@ function IconCalendar() {
 
 export function RestaurantesPage() {
   const router = useRouter();
-  const { isRestaurantUser, primaryRestaurant } = useAuth();
+  const { isRestaurantUser, primaryRestaurant, isSuperAdmin } = useAuth();
   const { range: activeRange } = useDateRange();
   const range = useMemo(() => getSelectedRange(activeRange), [activeRange]);
   const periodLabel = formatDateRangeLabel(activeRange);
@@ -42,6 +43,7 @@ export function RestaurantesPage() {
     end: range.end,
   });
 
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [filters, setFilters] = useState<RestaurantFilters>({
     company: tenant.name,
     brand: "todas",
@@ -91,6 +93,11 @@ export function RestaurantesPage() {
 
   return (
     <div className="mx-auto max-w-[1400px] pb-12">
+      <RestaurantOnboardingModal
+        open={onboardingOpen}
+        onClose={() => setOnboardingOpen(false)}
+        onCreated={refetch}
+      />
       <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-[28px] font-semibold tracking-tight text-[var(--nexo-text)]">
@@ -101,14 +108,26 @@ export function RestaurantesPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={openPanel}
-          className="inline-flex h-10 shrink-0 items-center gap-2.5 rounded-xl border border-[var(--nexo-border)] bg-[var(--nexo-card)] px-4 text-[12px] text-[var(--nexo-text-secondary)] transition hover:border-[var(--nexo-border-strong)] hover:text-[var(--nexo-text)]"
-        >
-          <IconCalendar />
-          <span>{periodLabel}</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {isSuperAdmin ? (
+            <button
+              type="button"
+              onClick={() => setOnboardingOpen(true)}
+              className="inline-flex h-10 items-center rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 text-[12px] font-medium text-violet-100 transition hover:bg-violet-500/15"
+            >
+              + Añadir restaurante
+            </button>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={openPanel}
+            className="inline-flex h-10 shrink-0 items-center gap-2.5 rounded-xl border border-[var(--nexo-border)] bg-[var(--nexo-card)] px-4 text-[12px] text-[var(--nexo-text-secondary)] transition hover:border-[var(--nexo-border-strong)] hover:text-[var(--nexo-text)]"
+          >
+            <IconCalendar />
+            <span>{periodLabel}</span>
+          </button>
+        </div>
       </header>
 
       {loading ? (
