@@ -97,7 +97,7 @@ export async function buildAlertDataForResena(
     impact: impact?.impact ?? null,
     impactText:
       analisis?.impacto?.trim() ||
-      (impact
+      (impact?.mediaAfter != null
         ? `${impact.mediaBefore?.toFixed(2) ?? "—"} → ${impact.mediaAfter.toFixed(2)}`
         : IA_NO_DATA),
     recommendation: analisis?.recomendacion?.trim() || IA_NO_DATA,
