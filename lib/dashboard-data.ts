@@ -24,6 +24,7 @@ import {
   fetchSupabaseCanonicalDailyMetrics,
   fetchSupabaseCanonicalMotives,
   fetchSupabaseCanonicalReputationMetrics,
+  fetchSupabaseReviewImpacts,
   mapSupabaseCanonicalMetrics,
   mapSupabaseMotivesToProblemDistribution,
 } from "@/lib/supabase/reputation-metrics.server";
@@ -96,7 +97,7 @@ export async function loadNexoPeriodSnapshot(
   );
   const restaurantIds = catalog.map((row) => row.restaurante_id);
 
-  const [canonicalRows, canonicalDaily, motiveRows] = await Promise.all([
+  const [canonicalRows, canonicalDaily, motiveRows, impactByResenaId] = await Promise.all([
     fetchSupabaseCanonicalReputationMetrics(
       bounds.startKey,
       bounds.endKey,
@@ -112,6 +113,7 @@ export async function loadNexoPeriodSnapshot(
       bounds.endKey,
       restaurantIds
     ),
+    fetchSupabaseReviewImpacts(resenas.map((row) => Number(row.id))),
   ]);
 
   let analisisByResenaId: AnalisisIaIndex = new Map();
@@ -161,6 +163,7 @@ export async function loadNexoPeriodSnapshot(
     chartSource,
     dashboardKpis: null,
     analisisByResenaId,
+    impactByResenaId,
   };
 }
 
