@@ -2,9 +2,11 @@ import "server-only";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { SUPABASE_TABLES } from "@/lib/supabase/tables";
-import { dedupeResenas, classifyMediaStatus } from "@/lib/review-metrics";
+import { buildNetworkMetrics } from "@/lib/review-metrics";
 import { toDateKey } from "@/lib/dates/period";
-import type { ResenaRow } from "@/lib/supabase/resenas";
+import { getCanonicalReputationPeriod } from "@/lib/reputation/canonical-metrics.server";
+import { getResenaActivityDateValue } from "@/lib/supabase/resenas";
+import type { RestaurantPeriodMetrics } from "@/lib/supabase/period-types";
 import type { AgentDailySummaryPreview } from "@/lib/agents/types";
 
 type AccessRow = {
@@ -97,8 +99,7 @@ function formatShortDate(dateKey: string): string {
   }).format(new Date(`${dateKey}T12:00:00Z`));
 }
 
-function statusLabel(media: number, hasReviews: boolean): string {
-  const status = classifyMediaStatus(media, hasReviews).operationalStatus;
+function statusLabel(status: RestaurantPeriodMetrics["operationalStatus"]): string {
   if (status === "on_target") return "En objetivo";
   if (status === "watch") return "Seguimiento";
   return "Crítico";
@@ -163,55 +164,55 @@ export async function buildAgentDailySummaryPreview(
   const weekStartKey = mondayOf(todayKey);
   const weekEndKey = addDays(weekStartKey, 6);
   const yesterdayKey = addDays(todayKey, -1);
-  const tomorrowKey = addDays(todayKey, 1);
   const restaurantIds = restaurants.map((restaurant) => restaurant.id);
+  const restaurantIdSet = new Set(restaurantIds);
 
-  // fecha_resena se interpreta como UTC en el bot actual. Pedimos una
-  // ventana algo más amplia y aplicamos el calendario Europe/Madrid en JS
-  // para no perder reseñas cercanas a medianoche.
-  const queryStartKey = addDays(weekStartKey, -1);
-  const queryEndKey = addDays(tomorrowKey, 1);
+  // CANONICAL: the same period calculator used by the web and reports.
+  // This is the only source for averages, volume, positive/negative counts
+  // and operational status in the daily supervisor summary.
+  const period = await getCanonicalReputationPeriod(
+    weekStartKey,
+    todayKey,
+    undefined,
+    { includeAnalisis: false, skipDashboardKpis: true }
+  );
 
-  const { data: reviewData, error: reviewError } = await client
-    .from(SUPABASE_TABLES.resenas)
-    .select(
-      "id,review_id,restaurante_id,estrellas,comentario,autor,fecha_resena,created_at,editada,fecha_ultima_edicion"
-    )
-    .in("restaurante_id", restaurantIds)
-    .gte("fecha_resena", `${queryStartKey}T00:00:00`)
-    .lt("fecha_resena", `${queryEndKey}T00:00:00`)
-    .order("fecha_resena", { ascending: true });
-
-  if (reviewError) throw reviewError;
-
-  const reviews = dedupeResenas((reviewData ?? []) as ResenaRow[]).filter((review) => {
-    const key = toDateKey(review.fecha_resena ?? review.created_at ?? "");
-    return key >= weekStartKey && key <= todayKey;
-  });
-  const byRestaurant = new Map<
-    number,
-    { total: number; sum: number; attention: number; yesterday: number }
-  >();
-
-  for (const restaurant of restaurants) {
-    byRestaurant.set(restaurant.id, { total: 0, sum: 0, attention: 0, yesterday: 0 });
+  const scopedMetrics = new Map<number, RestaurantPeriodMetrics>();
+  for (const restaurantId of restaurantIds) {
+    const metrics = period.aggregates.byRestaurante.get(restaurantId);
+    if (metrics) scopedMetrics.set(restaurantId, metrics);
   }
 
+  const canonicalSource =
+    period.aggregates.source === "resenas"
+      ? "resenas"
+      : period.aggregates.source === "kpi_diario"
+        ? "kpi_diario"
+        : "empty";
+
+  const scopedNetwork = buildNetworkMetrics(
+    scopedMetrics,
+    canonicalSource,
+    period.aggregates.ultimaActualizacion
+  );
+
+  const attentionByRestaurant = new Map<number, number>();
   let yesterdayTotal = 0;
   let yesterdayAttention = 0;
 
-  for (const review of reviews) {
+  for (const review of period.resenas) {
     const restaurantId = Number(review.restaurante_id);
-    const current = byRestaurant.get(restaurantId);
-    if (!current) continue;
+    if (!restaurantIdSet.has(restaurantId)) continue;
 
-    current.total += 1;
-    current.sum += Number(review.estrellas) || 0;
-    if (review.estrellas <= 3) current.attention += 1;
+    if (review.estrellas <= 3) {
+      attentionByRestaurant.set(
+        restaurantId,
+        (attentionByRestaurant.get(restaurantId) ?? 0) + 1
+      );
+    }
 
-    const reviewDateKey = toDateKey(review.fecha_resena ?? review.created_at ?? "");
-    if (reviewDateKey === yesterdayKey) {
-      current.yesterday += 1;
+    const activityKey = toDateKey(getResenaActivityDateValue(review) ?? "");
+    if (activityKey === yesterdayKey) {
       yesterdayTotal += 1;
       if (review.estrellas <= 3) yesterdayAttention += 1;
     }
@@ -219,15 +220,13 @@ export async function buildAgentDailySummaryPreview(
 
   const rows = restaurants
     .map((restaurant) => {
-      const stats = byRestaurant.get(restaurant.id)!;
-      const media = stats.total > 0 ? stats.sum / stats.total : 0;
-      const operational = classifyMediaStatus(media, stats.total > 0).operationalStatus;
-
+      const metrics = scopedMetrics.get(restaurant.id);
       return {
         ...restaurant,
-        ...stats,
-        media,
-        operational,
+        total: metrics?.totalResenas ?? 0,
+        media: metrics?.media ?? 0,
+        attention: attentionByRestaurant.get(restaurant.id) ?? 0,
+        operational: metrics?.operationalStatus ?? ("watch" as const),
       };
     })
     .sort((a, b) => {
@@ -246,10 +245,8 @@ export async function buildAgentDailySummaryPreview(
           .filter((row) => row.operational !== "on_target" || row.attention > 0)
           .slice(0, 10);
 
-  const totalWeeklyReviews = rows.reduce((sum, row) => sum + row.total, 0);
-  const totalWeeklyStars = rows.reduce((sum, row) => sum + row.sum, 0);
-  const weeklyMedia =
-    totalWeeklyReviews > 0 ? totalWeeklyStars / totalWeeklyReviews : 0;
+  const totalWeeklyReviews = scopedNetwork.totalResenas;
+  const weeklyMedia = scopedNetwork.mediaGlobal;
   const rowsWithReviews = rows.filter((row) => row.total > 0);
   const onTargetCount = rowsWithReviews.filter(
     (row) => row.operational === "on_target"
@@ -287,7 +284,7 @@ export async function buildAgentDailySummaryPreview(
           : "🔴";
 
     lines.push(
-      `${statusEmoji} ${row.nombre}${location}: ${row.media.toFixed(2)} · ${row.total} reseñas · ${row.attention} atención · ${statusLabel(row.media, true)}`
+      `${statusEmoji} ${row.nombre}${location}: ${row.media.toFixed(2)} · ${row.total} reseñas · ${row.attention} atención · ${statusLabel(row.operational)}`
     );
   }
 
