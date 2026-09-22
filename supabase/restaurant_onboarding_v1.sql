@@ -1,19 +1,6 @@
 -- Restaurant onboarding V1.
 -- Makes restaurant IDs server-generated and tracks integration readiness.
 
-create sequence if not exists public.restaurantes_id_seq;
-
-select setval(
-  'public.restaurantes_id_seq',
-  greatest(coalesce((select max(id) from public.restaurantes), 1), 1),
-  coalesce((select max(id) from public.restaurantes), 0) > 0
-);
-
-alter sequence public.restaurantes_id_seq owned by public.restaurantes.id;
-
-alter table public.restaurantes
-  alter column id set default nextval('public.restaurantes_id_seq');
-
 create unique index if not exists restaurantes_place_id_unique
   on public.restaurantes(place_id)
   where place_id is not null and btrim(place_id) <> '';
