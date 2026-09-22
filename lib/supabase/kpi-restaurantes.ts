@@ -81,9 +81,11 @@ export async function fetchAllKpiRows(): Promise<KpiRestaurantRow[]> {
     throw new Error(error.message);
   }
 
-  return (data ?? []).map((row) =>
+  const rows = (data ?? []) as Record<string, unknown>[];
+
+  return rows.map((row) =>
     normalizeKpiRow({
-      ...(row as Record<string, unknown>),
+      ...row,
       total_resenas: 0,
       media_total: 0,
       resenas_negativas: 0,
