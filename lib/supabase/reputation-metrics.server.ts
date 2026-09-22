@@ -9,7 +9,39 @@ import type {
   RestaurantPeriodMetrics,
 } from "@/lib/review-metrics";
 import type { KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
+import type { KpiDiarioRow } from "@/lib/supabase/kpi-diario";
 import { getSupabaseDataClientForServer } from "@/lib/supabase/data-client";
+
+
+export type SupabaseDailyMetricRow = {
+  fecha: string;
+  restaurante_id: number | string;
+  total_resenas: number | string;
+  rating_sum: number | string;
+  media_exacta: number | string;
+  positivas: number | string;
+  neutras: number | string;
+  negativas: number | string;
+  atencion: number | string;
+};
+
+export type SupabaseReviewImpactRow = {
+  resena_id: number | string;
+  review_id: string | null;
+  restaurante_id: number | string;
+  media_before: number | string | null;
+  media_after: number | string | null;
+  impact: number | string;
+  reviews_before: number | string;
+  reviews_after: number | string;
+};
+
+export type SupabaseMotiveMetricRow = {
+  categoria: string;
+  motivo_count: number | string;
+  total_categorizadas: number | string;
+  percent: number | string;
+};
 
 export type SupabaseMetricRow = {
   restaurante_id: number | string;
@@ -87,6 +119,85 @@ export async function fetchSupabaseCanonicalReputationMetrics(
   }
 
   return (data ?? []) as SupabaseMetricRow[];
+}
+
+
+export async function fetchSupabaseCanonicalDailyMetrics(
+  startKey: string,
+  endKey: string,
+  restaurantIds: number[]
+): Promise<KpiDiarioRow[]> {
+  if (restaurantIds.length === 0) return [];
+
+  const client = await getSupabaseDataClientForServer();
+  const { data, error } = await client.rpc("nexo_reputation_daily_metrics", {
+    p_start: startKey,
+    p_end: endKey,
+    p_restaurant_ids: restaurantIds,
+  });
+
+  if (error) {
+    throw new Error(
+      `Supabase canonical daily metrics failed: ${error.message}`
+    );
+  }
+
+  return ((data ?? []) as SupabaseDailyMetricRow[]).map((row) => ({
+    restaurante_id: num(row.restaurante_id),
+    fecha: String(row.fecha),
+    total_resenas: num(row.total_resenas),
+    media: num(row.media_exacta),
+    positivas: num(row.positivas),
+    negativas: num(row.negativas),
+  }));
+}
+
+export async function fetchSupabaseReviewImpacts(
+  resenaIds: number[]
+): Promise<Map<number, SupabaseReviewImpactRow>> {
+  const unique = [...new Set(resenaIds.filter((id) => Number.isInteger(id) && id > 0))];
+  if (unique.length === 0) return new Map();
+
+  const client = await getSupabaseDataClientForServer();
+  const { data, error } = await client.rpc("nexo_review_rating_impacts", {
+    p_resena_ids: unique,
+  });
+
+  if (error) {
+    throw new Error(
+      `Supabase review impact calculation failed: ${error.message}`
+    );
+  }
+
+  return new Map(
+    ((data ?? []) as SupabaseReviewImpactRow[]).map((row) => [
+      num(row.resena_id),
+      row,
+    ])
+  );
+}
+
+export async function fetchSupabaseCanonicalMotives(
+  startKey: string,
+  endKey: string,
+  restaurantIds: number[]
+): Promise<SupabaseMotiveMetricRow[]> {
+  if (restaurantIds.length === 0) return [];
+
+  const client = await getSupabaseDataClientForServer();
+  const { data, error } = await client.rpc("nexo_reputation_motives_period", {
+    p_start: startKey,
+    p_end: endKey,
+    p_restaurant_ids: restaurantIds,
+  });
+
+  if (error) {
+    throw new Error(
+      `Supabase canonical motive metrics failed: ${error.message}`
+    );
+  }
+
+  return (data ?? []) as SupabaseMotiveMetricRow[];
 }
 
 export function mapSupabaseCanonicalMetrics(input: {
