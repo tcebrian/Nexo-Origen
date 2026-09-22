@@ -30,19 +30,14 @@ export async function getCanonicalReputationPeriod(
 ): Promise<PeriodData> {
   const snapshot = await loadNexoPeriodSnapshot(startKey, endKey, scope, {
     ...options,
-    // dashboard_kpis can still exist for legacy/diagnostic purposes, but must
-    // never override canonical numeric reputation metrics.
+    // Compatibility option only. Legacy KPI views are not queried.
     skipDashboardKpis: true,
   });
 
   const network = snapshot.metrics.network;
 
   const source: PeriodDataSource =
-    network.source === "resenas"
-      ? "resenas"
-      : network.source === "kpi_diario"
-        ? "kpi_diario"
-        : "kpi_restaurantes";
+    network.source === "resenas" ? "resenas" : "empty";
 
   return {
     bounds: snapshot.bounds,
@@ -68,5 +63,6 @@ export async function getCanonicalReputationPeriod(
     chartSource: snapshot.chartSource,
     analisisByResenaId: snapshot.analisisByResenaId,
     dashboardKpis: null,
+    reviewImpactsByResenaId: snapshot.reviewImpactsByResenaId,
   };
 }

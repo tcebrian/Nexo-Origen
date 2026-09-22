@@ -6,8 +6,8 @@ import type { ResenaRow } from "./resenas";
 import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
 import { aggregateResumenFromAnalisis } from "@/lib/reviews/map-analisis-ia";
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
-import { dedupeResenas, getReviewDedupKey } from "@/lib/review-metrics";
-import { buildMediaImpactIndex } from "@/lib/reviews/media-impact";
+import { dedupeResenas } from "@/lib/review-metrics";
+import type { MediaImpactResult } from "@/lib/reviews/media-impact";
 import { getAnalisisForResena, type AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
 import { unstable_noStore as noStore } from "next/cache";
 import type { UserScope } from "@/lib/auth/types";
@@ -144,9 +144,9 @@ function buildAlertasFromResenas(
   resenas: ResenaRow[],
   catalogById: Map<number, KpiRestaurantRow>,
   analisisByResenaId: AnalisisIaIndex = new Map(),
+  impactByResenaId: Record<string, MediaImpactResult> = {},
   limit = 3
 ): DashboardAlertItem[] {
-  const impactIndex = buildMediaImpactIndex(resenas);
 
   return dedupeResenas(resenas)
     .filter((row) => row.estrellas <= 3)
@@ -165,7 +165,7 @@ function buildAlertasFromResenas(
         "Restaurante";
       const marca = catalog?.marca ?? row.marca ?? "";
       const brand = resolveBrandId(row.restaurante_id, marca, catalogById);
-      const impact = impactIndex.get(getReviewDedupKey(row));
+      const impact = impactByResenaId[String(row.id)];
       const analisis = getAnalisisForResena(analisisByResenaId, row);
       const motivoPrincipal = classifyReviewReason(row, analisis);
 
@@ -238,6 +238,7 @@ export async function getDashboardData(
       chartSource,
       dashboardKpis,
       analisisByResenaId,
+      reviewImpactsByResenaId,
     } = period;
     const chartLabels = dailySeries.map((point) => point.label);
     const chartValues = dailySeries.map((point) => point.media);
@@ -257,31 +258,6 @@ export async function getDashboardData(
       return {
         ...EMPTY_DASHBOARD_DATA,
         resumenIA: "Sin datos para el periodo seleccionado.",
-      };
-    }
-
-    if (totalResenas === 0 && aggregates.source === "kpi_restaurantes") {
-      return {
-        mediaGlobal,
-        totalResenas: 0,
-        totalPositivas: 0,
-        totalNegativas: 0,
-        positivePct: 0,
-        negativePct: 0,
-        ultimaActualizacion,
-        totalRestaurantes,
-        ranking: buildRanking(rows),
-        restaurantesRiesgo: buildRestaurantesRiesgo(rows),
-        alertas: [],
-        distribucionMarca: [],
-        resumenIA: "Sin reseñas en el periodo seleccionado. Pendiente de activar histórico diario.",
-        peorRestaurante: null,
-        restauranteMasNegativas: null,
-        chartPending: chartValues.length === 0,
-        chartLabels,
-        chartValues,
-        chartSource,
-        problemDistribution,
       };
     }
 
@@ -306,7 +282,8 @@ export async function getDashboardData(
       alertas: buildAlertasFromResenas(
         resenas,
         new Map(rows.map((row) => [row.restaurante_id, row])),
-        analisisByResenaId
+        analisisByResenaId,
+        reviewImpactsByResenaId
       ),
       distribucionMarca: buildDistribucionMarca(rows),
       resumenIA: resolveResumenIA(

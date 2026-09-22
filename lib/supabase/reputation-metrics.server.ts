@@ -62,8 +62,7 @@ function statusLabel(
 }
 
 function metricSource(value: string): NetworkPeriodMetrics["source"] {
-  if (value === "resenas" || value === "kpi_diario") return value;
-  return "empty";
+  return value === "resenas" ? "resenas" : "empty";
 }
 
 export async function fetchSupabaseCanonicalReputationMetrics(
@@ -162,125 +161,52 @@ export function mapSupabaseCanonicalMetrics(input: {
   };
 }
 
-export type MetricMismatch = {
-  restaurantId: number;
-  field: string;
-  supabase: number | string;
-  legacy: number | string;
+type MotiveRpcRow = {
+  categoria: string;
+  total: number | string;
+  percent: number | string;
+  restaurantes_afectados: number | string;
 };
 
-export function compareReputationMetricResults(
-  canonical: PeriodMetricsResult,
-  legacy: PeriodMetricsResult
-): MetricMismatch[] {
-  const mismatches: MetricMismatch[] = [];
-  const epsilon = 1e-9;
+const MOTIVE_LABELS: Record<string, string> = {
+  TIEMPO_ESPERA: "Tiempo de espera",
+  ATENCION_PERSONAL: "Atención",
+  CALIDAD_PRODUCTO: "Calidad producto",
+  LIMPIEZA: "Limpieza",
+  PEDIDO_INCORRECTO: "Error pedido",
+  AMBIENTE_RUIDO: "Ruido/Saturación",
+  AMBIENTE_LOCAL: "Ruido/Saturación",
+  PRECIO: "Precio",
+  COBRO_REEMBOLSO: "Cobro/Reembolso",
+  DELIVERY: "Delivery",
+  APP_WEB: "App/Web",
+  SIN_MOTIVO: "Sin motivo identificado",
+  OTRO: "Otros",
+};
 
-  for (const [restaurantId, canonicalRow] of canonical.byRestaurante) {
-    const legacyRow = legacy.byRestaurante.get(restaurantId);
-    if (!legacyRow) {
-      mismatches.push({
-        restaurantId,
-        field: "missing_legacy_row",
-        supabase: canonicalRow.totalResenas,
-        legacy: "missing",
-      });
-      continue;
-    }
+export async function fetchSupabaseCanonicalMotives(
+  startKey: string,
+  endKey: string,
+  restaurantIds: number[]
+): Promise<ProblemDistributionItem[]> {
+  if (restaurantIds.length === 0) return [];
 
-    const numericPairs: Array<
-      [string, number, number]
-    > = [
-      ["total_resenas", canonicalRow.totalResenas, legacyRow.totalResenas],
-      ["media", canonicalRow.media, legacyRow.media],
-      ["positivas", canonicalRow.resenasPositivas, legacyRow.resenasPositivas],
-      ["negativas", canonicalRow.resenasNegativas, legacyRow.resenasNegativas],
-      ["stars_1", canonicalRow.stars.stars1, legacyRow.stars.stars1],
-      ["stars_2", canonicalRow.stars.stars2, legacyRow.stars.stars2],
-      ["stars_3", canonicalRow.stars.stars3, legacyRow.stars.stars3],
-      ["stars_4", canonicalRow.stars.stars4, legacyRow.stars.stars4],
-      ["stars_5", canonicalRow.stars.stars5, legacyRow.stars.stars5],
-    ];
+  const client = await getSupabaseDataClientForServer();
+  const { data, error } = await client.rpc("nexo_reputation_period_motives", {
+    p_start: startKey,
+    p_end: endKey,
+    p_restaurant_ids: restaurantIds,
+  });
 
-    for (const [field, supabaseValue, legacyValue] of numericPairs) {
-      if (Math.abs(supabaseValue - legacyValue) > epsilon) {
-        mismatches.push({
-          restaurantId,
-          field,
-          supabase: supabaseValue,
-          legacy: legacyValue,
-        });
-      }
-    }
-
-    if (canonicalRow.operationalStatus !== legacyRow.operationalStatus) {
-      mismatches.push({
-        restaurantId,
-        field: "operational_status",
-        supabase: canonicalRow.operationalStatus,
-        legacy: legacyRow.operationalStatus,
-      });
-    }
+  if (error) {
+    console.error("[fetchSupabaseCanonicalMotives]", error.message);
+    return [];
   }
 
-  const networkPairs: Array<[string, number, number]> = [
-    [
-      "network_total_resenas",
-      canonical.network.totalResenas,
-      legacy.network.totalResenas,
-    ],
-    [
-      "network_media",
-      canonical.network.mediaGlobal,
-      legacy.network.mediaGlobal,
-    ],
-    [
-      "network_positivas",
-      canonical.network.totalPositivas,
-      legacy.network.totalPositivas,
-    ],
-    [
-      "network_negativas",
-      canonical.network.totalNegativas,
-      legacy.network.totalNegativas,
-    ],
-  ];
-
-  for (const [field, supabaseValue, legacyValue] of networkPairs) {
-    if (Math.abs(supabaseValue - legacyValue) > epsilon) {
-      mismatches.push({
-        restaurantId: 0,
-        field,
-        supabase: supabaseValue,
-        legacy: legacyValue,
-      });
-    }
-  }
-
-  return mismatches;
-}
-
-export async function recordMetricValidationMismatch(input: {
-  startKey: string;
-  endKey: string;
-  restaurantCount: number;
-  mismatches: MetricMismatch[];
-}): Promise<void> {
-  if (input.mismatches.length === 0) return;
-
-  try {
-    const client = await getSupabaseDataClientForServer();
-    await client.from("nexo_metric_validation_events").insert({
-      metric_domain: "reputation",
-      start_date: input.startKey,
-      end_date: input.endKey,
-      restaurant_count: input.restaurantCount,
-      mismatch_count: input.mismatches.length,
-      details: {
-        mismatches: input.mismatches.slice(0, 100),
-      },
-    });
-  } catch (error) {
-    console.error("[recordMetricValidationMismatch]", error);
-  }
+  return ((data ?? []) as MotiveRpcRow[]).map((row) => ({
+    label: MOTIVE_LABELS[row.categoria] ?? row.categoria,
+    count: num(row.total),
+    percent: Math.round(num(row.percent) * 10) / 10,
+    provisional: false,
+  }));
 }

@@ -1,12 +1,16 @@
 import { isDateKeyInRange, type PeriodBounds, toDateKey } from "@/lib/dates/period";
 import { getSupabaseDataClientForServer } from "@/lib/supabase/data-client";
-import { enrichKpiRows } from "@/lib/supabase/restaurantes";
-import { SUPABASE_VIEWS } from "@/lib/supabase/tables";
+import { fetchMarcasMap } from "@/lib/supabase/marcas";
+import { classifyMediaStatus } from "@/lib/review-metrics";
 import { unstable_noStore as noStore } from "next/cache";
 
-/** Vista de lectura en Supabase (no tabla). Solo SELECT; permiso vía GRANT a anon. */
-const KPI_RESTAURANTES_VIEW = SUPABASE_VIEWS.kpi_restaurantes;
-
+/**
+ * Compatibility DTO used across Nexo.
+ *
+ * IMPORTANT: despite the historical name, this is no longer loaded from the
+ * legacy kpi_restaurantes view. Catalog metadata comes from restaurantes +
+ * marcas; period metrics come from nexo_reputation_period_metrics().
+ */
 export type KpiRestaurantRow = {
   restaurante_id: number;
   restaurante: string;
@@ -18,7 +22,6 @@ export type KpiRestaurantRow = {
   resenas_positivas: number;
   ultima_resena: string | null;
   estado: string;
-  /** Media pública de Google Maps (columna `restaurantes.media_google`, vía enrichKpiRows). */
   media_google: number | null;
   total_resenas_google: number | null;
 };
@@ -33,23 +36,6 @@ function toNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function normalizeKpiRow(row: Record<string, unknown>): KpiRestaurantRow {
-  return {
-    restaurante_id: toNumber(row.restaurante_id),
-    restaurante: String(row.restaurante ?? ""),
-    ciudad: String(row.ciudad ?? ""),
-    marca: String(row.marca ?? ""),
-    total_resenas: toNumber(row.total_resenas),
-    media_total: toNumber(row.media_total),
-    resenas_negativas: toNumber(row.resenas_negativas),
-    resenas_positivas: toNumber(row.resenas_positivas),
-    ultima_resena: row.ultima_resena ? String(row.ultima_resena) : null,
-    estado: String(row.estado ?? ""),
-    media_google: null,
-    total_resenas_google: null,
-  };
-}
-
 /** @deprecated Usar isDateKeyInRange de lib/dates/period */
 export function isInDateRange(dateValue: string | null, start: Date, end: Date): boolean {
   return isDateKeyInRange(dateValue, toDateKey(start), toDateKey(end));
@@ -59,23 +45,63 @@ export function filterKpiByPeriod(rows: KpiRestaurantRow[], bounds: PeriodBounds
   return rows.filter((row) => isDateKeyInRange(row.ultima_resena, bounds.startKey, bounds.endKey));
 }
 
-/** Lee el snapshot de cada restaurante desde la vista `kpi_restaurantes`. */
+/**
+ * Canonical restaurant catalog.
+ * No derived reputation KPI view is involved.
+ */
 export async function fetchAllKpiRows(): Promise<KpiRestaurantRow[]> {
   noStore();
 
   const client = await getSupabaseDataClientForServer();
-  const { data, error } = await client.from(KPI_RESTAURANTES_VIEW).select("*");
+  const [restaurantsResult, marcas] = await Promise.all([
+    client
+      .from("restaurantes")
+      .select("id,nombre,ciudad,marca_id,media_google,total_resenas_google,ultima_actualizacion_google,activo")
+      .eq("activo", true)
+      .order("nombre"),
+    fetchMarcasMap(),
+  ]);
 
-  if (error) {
-    console.error("[fetchAllKpiRows] Error Supabase:", error.message, error);
-    throw new Error(error.message);
+  if (restaurantsResult.error) {
+    console.error("[fetchAllKpiRows] Error Supabase:", restaurantsResult.error.message);
+    throw new Error(restaurantsResult.error.message);
   }
 
-  const rows = (data ?? []).map((row) => normalizeKpiRow(row as Record<string, unknown>));
-  return enrichKpiRows(rows);
+  return (restaurantsResult.data ?? []).map((row) => {
+    const mediaGoogle =
+      row.media_google != null && Number.isFinite(Number(row.media_google))
+        ? Number(row.media_google)
+        : null;
+    const totalGoogle =
+      row.total_resenas_google != null && Number.isFinite(Number(row.total_resenas_google))
+        ? Number(row.total_resenas_google)
+        : null;
+    const media = mediaGoogle ?? 0;
+    const total = totalGoogle ?? 0;
+    const status = classifyMediaStatus(media, total > 0);
+
+    return {
+      restaurante_id: Number(row.id),
+      restaurante: String(row.nombre ?? ""),
+      ciudad: String(row.ciudad ?? ""),
+      marca: row.marca_id != null ? marcas.get(Number(row.marca_id)) ?? "" : "",
+      // Lifetime fallback uses the public Google snapshot stored on restaurantes.
+      // Period values are overwritten by metricsToKpiRow with the canonical SQL result.
+      total_resenas: total,
+      media_total: media,
+      resenas_negativas: 0,
+      resenas_positivas: 0,
+      ultima_resena: row.ultima_actualizacion_google
+        ? String(row.ultima_actualizacion_google)
+        : null,
+      estado: status.statusLabel,
+      media_google: mediaGoogle,
+      total_resenas_google: totalGoogle,
+    };
+  });
 }
 
-/** Filas KPI ajustadas al periodo (métricas de resenas reales si existen). */
+/** Filas ajustadas al periodo con métricas canónicas de Supabase. */
 export async function fetchKpiForPeriod(query: PeriodQuery): Promise<KpiRestaurantRow[]> {
   const { loadPeriodData } = await import("./period-api");
   const { activeKpiRows } = await loadPeriodData(query.start, query.end);
@@ -91,10 +117,6 @@ export function getWeightedAverage(rows: KpiRestaurantRow[]): number {
     totalReviews += row.total_resenas;
   }
 
-  if (totalReviews > 0) {
-    return weightedSum / totalReviews;
-  }
-
-  if (rows.length === 0) return 0;
-  return rows.reduce((sum, row) => sum + row.media_total, 0) / rows.length;
+  if (totalReviews > 0) return weightedSum / totalReviews;
+  return 0;
 }

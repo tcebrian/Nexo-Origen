@@ -5,10 +5,11 @@ import type { DashboardKpisSnapshot } from "./dashboard-kpis";
 import type { DailyNetworkPoint, KpiDiarioRow } from "./kpi-diario";
 import type { KpiRestaurantRow } from "./kpi-restaurantes";
 import type { ResenaRow } from "./resenas";
+import type { MediaImpactResult } from "@/lib/reviews/media-impact";
 
 export type { RestaurantPeriodMetrics };
 
-export type PeriodDataSource = "kpi_diario" | "resenas" | "kpi_restaurantes";
+export type PeriodDataSource = "resenas" | "empty" | "kpi_diario" | "kpi_restaurantes";
 
 export type PeriodAggregates = {
   totalResenas: number;
@@ -33,7 +34,8 @@ export type PeriodData = {
   resenas: ResenaRow[];
   fetchedAt: Date;
   problemDistribution: ProblemDistributionItem[];
-  chartSource: "kpi_diario" | "resenas" | "empty";
+  chartSource: "resenas" | "empty" | "kpi_diario";
   analisisByResenaId: AnalisisIaIndex;
   dashboardKpis: DashboardKpisSnapshot | null;
+  reviewImpactsByResenaId: Record<string, MediaImpactResult>;
 };

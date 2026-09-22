@@ -1,10 +1,7 @@
 import "server-only";
 
 import { tenant } from "@/app/dashboard/tenant";
-import {
-  computeInformeKpiFromResenas,
-  getInformeQueryBounds,
-} from "@/lib/informes/informe-kpi-utils";
+import { getInformeQueryBounds } from "@/lib/informes/informe-kpi-utils";
 import {
   formatInformePeriodRange,
   formatInformePeriodTitle,
@@ -14,43 +11,30 @@ import {
 import { formatInformeVariationLabel } from "@/lib/informes/informe-cover-assets";
 import type { InformeMarcaDatos } from "@/lib/informes/types";
 import { resolveInformeEstado } from "@/lib/informes/resolve-informe-estado";
-import { dedupeResenas } from "@/lib/review-metrics";
-import type { ResenaRow } from "@/lib/supabase/resenas";
-import { fetchResenasForPeriodServer } from "@/lib/supabase/resenas.server";
-import { getInclusiveQueryBounds } from "@/lib/date-utils";
+import { marcaToBrandId } from "@/lib/restaurants/brand-resolve";
+import { fetchAllKpiRows } from "@/lib/supabase/kpi-restaurantes";
+import {
+  fetchSupabaseCanonicalReputationMetrics,
+  type SupabaseMetricRow,
+} from "@/lib/supabase/reputation-metrics.server";
 
-function resolveTopRestaurantDisplay(
-  resenas: ResenaRow[],
-  marcaLabel: string
-): string {
-  const counts = new Map<string, number>();
+function n(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
-  for (const row of resenas) {
-    const name = row.restaurante_nombre?.trim() || row.restaurante?.trim();
-    if (!name) continue;
-    counts.set(name, (counts.get(name) ?? 0) + 1);
-  }
-
-  if (counts.size === 0) {
-    return marcaLabel.toUpperCase();
-  }
-
-  let topName = "";
-  let topCount = -1;
-  for (const [name, count] of counts) {
-    if (count > topCount) {
-      topCount = count;
-      topName = name;
-    }
-  }
-
-  return topName.toUpperCase();
+function networkKpis(rows: SupabaseMetricRow[]) {
+  const first = rows[0];
+  return {
+    media: n(first?.network_media_exacta),
+    resenas: n(first?.network_total_resenas),
+    negativas: n(first?.network_negativas),
+    restaurantes: rows.filter((row) => n(row.total_resenas) > 0).length,
+  };
 }
 
 /**
- * KPIs del informe por marca desde Supabase (`resenas`).
- * Filtra por `restaurante_nombre` con ilike (%marca%).
- * Periodo por defecto: últimos 7 días (informe semanal).
+ * Informe por marca usando el mismo cálculo SQL que web, ranking y WhatsApp.
  */
 export async function fetchInformeMarcaDatos(
   marca: string,
@@ -58,27 +42,41 @@ export async function fetchInformeMarcaDatos(
   endKey?: string
 ): Promise<InformeMarcaDatos> {
   const marcaLabel = marca.trim();
-  const { bounds, queryBounds } = getInformeQueryBounds(startKey, endKey, 7);
-
-  const raw = await fetchResenasForPeriodServer(
-    { start: bounds.start, end: bounds.end },
-    { queryBounds, restauranteNombreIlike: marcaLabel }
+  const { bounds } = getInformeQueryBounds(startKey, endKey, 7);
+  const targetBrand = marcaToBrandId(marcaLabel);
+  const catalog = (await fetchAllKpiRows()).filter(
+    (row) => marcaToBrandId(row.marca) === targetBrand
   );
-
-  const resenas = dedupeResenas(raw);
-  const kpis = computeInformeKpiFromResenas(resenas);
-  const { estado, estadoLabel } = resolveInformeEstado(kpis.media);
+  const restaurantIds = catalog.map((row) => row.restaurante_id);
 
   const previousBounds = getPreviousPeriodBounds(bounds);
-  const previousQueryBounds = getInclusiveQueryBounds(
-    previousBounds.startKey,
-    previousBounds.endKey
+
+  const [currentRows, previousRows] = await Promise.all([
+    fetchSupabaseCanonicalReputationMetrics(
+      bounds.startKey,
+      bounds.endKey,
+      restaurantIds
+    ),
+    fetchSupabaseCanonicalReputationMetrics(
+      previousBounds.startKey,
+      previousBounds.endKey,
+      restaurantIds
+    ),
+  ]);
+
+  const kpis = networkKpis(currentRows);
+  const previousKpis = networkKpis(previousRows);
+  const { estado, estadoLabel } = resolveInformeEstado(kpis.media);
+
+  const currentById = new Map(
+    currentRows.map((row) => [Number(row.restaurante_id), row])
   );
-  const previousRaw = await fetchResenasForPeriodServer(
-    { start: previousBounds.start, end: previousBounds.end },
-    { queryBounds: previousQueryBounds, restauranteNombreIlike: marcaLabel }
-  );
-  const previousKpis = computeInformeKpiFromResenas(dedupeResenas(previousRaw));
+  const topRestaurant = [...catalog]
+    .sort(
+      (a, b) =>
+        n(currentById.get(b.restaurante_id)?.total_resenas) -
+        n(currentById.get(a.restaurante_id)?.total_resenas)
+    )[0];
 
   const variacionMedia =
     previousKpis.resenas > 0 ? kpis.media - previousKpis.media : null;
@@ -94,7 +92,7 @@ export async function fetchInformeMarcaDatos(
     estado,
     estadoLabel,
     cover: {
-      restauranteDisplay: resolveTopRestaurantDisplay(resenas, marcaLabel),
+      restauranteDisplay: (topRestaurant?.restaurante || marcaLabel).toUpperCase(),
       periodTitle: formatInformePeriodTitle(bounds),
       periodRange: formatInformePeriodRange(bounds),
       cliente: tenant.name,
