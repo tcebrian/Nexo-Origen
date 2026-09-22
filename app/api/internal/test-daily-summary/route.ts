@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await sendAgentDailySummaryTest(TOMAS_AGENT_ID);
-    return Response.json({ ok: true, ...result });
+    return Response.json(result, { status: result.ok ? 200 : 502 });
   } catch (error) {
     console.error("[test-daily-summary]", error);
     return Response.json(
