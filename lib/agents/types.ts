@@ -9,6 +9,7 @@ export type AgentRestaurant = {
 export type AgentControlItem = {
   id: string;
   nombre: string;
+  telefonoMasked: string;
   todosRestaurantes: boolean;
   restauranteIds: number[];
   restaurantes: AgentRestaurant[];
@@ -39,4 +40,22 @@ export type AgentControlUpdateInput = {
   resumenDiario: boolean;
   resumenHora: string;
   timezone: string;
+};
+
+export type AgentCreateInput = {
+  nombre: string;
+  telefono: string;
+  todosRestaurantes: boolean;
+  restauranteIds: number[];
+  alertas?: boolean;
+  resumenDiario?: boolean;
+  resumenHora?: string;
+  timezone?: string;
+};
+
+export type AgentDailySummaryPreview = {
+  agentId: string;
+  generatedAt: string;
+  dateKey: string;
+  message: string;
 };
