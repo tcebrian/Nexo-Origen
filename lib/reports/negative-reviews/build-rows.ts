@@ -6,7 +6,7 @@ import { dedupeResenas, getReviewDedupKey, getReviewContentKey } from "@/lib/rev
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
 import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
 import { getAnalisisForResena } from "@/lib/supabase/analisis-ia";
-import { buildMediaImpactIndex } from "@/lib/reviews/media-impact";
+import type { CanonicalReviewImpact } from "@/lib/supabase/reputation-impact.server";
 import type { PeriodData } from "@/lib/supabase/period-stats";
 import { resolveResenaRestaurantMeta } from "@/lib/supabase/resenas";
 import type { NegativeReviewReportRow, NegativeReviewsQuery } from "./types";
@@ -55,7 +55,8 @@ function formatReviewDate(raw: string | null | undefined): { iso: string; label:
 
 export function buildNegativeReviewReportRows(
   period: PeriodData,
-  query: NegativeReviewsQuery
+  query: NegativeReviewsQuery,
+  impactByResenaId: Map<number, CanonicalReviewImpact> = new Map()
 ): NegativeReviewReportRow[] {
   const allowedBrands = new Set(query.brands ?? DEFAULT_BRANDS);
   const limit = query.limit ?? 50;
@@ -63,7 +64,6 @@ export function buildNegativeReviewReportRows(
   const catalogById = new Map(
     period.catalog.map((row) => [row.restaurante_id, row])
   );
-  const impactIndex = buildMediaImpactIndex(period.resenas);
 
   const negatives = sortResenasByDateDesc(
     dedupeResenas(period.resenas).filter((row) => row.estrellas <= 3)
@@ -87,7 +87,7 @@ export function buildNegativeReviewReportRows(
 
     if (!allowedBrands.has(brand)) continue;
 
-    const impact = impactIndex.get(getReviewDedupKey(row));
+    const impact = impactByResenaId.get(Number(row.id));
     const text = row.comentario?.trim() || "Sin comentario";
     const analisis = getAnalisisForResena(period.analisisByResenaId, row);
     const motive = classifyReviewReason(row, analisis);
@@ -124,9 +124,9 @@ export function buildNegativeReviewReportRows(
           : IA_NO_DATA),
       recommendation: analisis?.recomendacion?.trim() || IA_NO_DATA,
       employeeMentioned: analisis?.empleado_mencionado?.trim() || null,
-      reviewCountAfter: impact?.reviewCountAfter ?? null,
-      totalReviews: catalog && catalog.total_resenas > 0 ? catalog.total_resenas : null,
-      lifetimeMedia: catalog && catalog.total_resenas > 0 ? catalog.media_total : null,
+      reviewCountAfter: impact?.reviewsAfter ?? null,
+      totalReviews: impact?.reviewsAfter ?? null,
+      lifetimeMedia: impact?.mediaAfter ?? null,
     });
   }
 
