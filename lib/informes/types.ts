@@ -1,7 +1,8 @@
-/** KPIs del informe — calculados desde Supabase. */
+/** KPIs del informe — calculados exclusivamente por Supabase canónico. */
 export type InformeKpiDatos = {
   media: number;
   resenas: number;
+  /** Reseñas negativas: 1–2★. Las 3★ son neutrales y requieren atención. */
   negativas: number;
   restaurantes: number;
 };

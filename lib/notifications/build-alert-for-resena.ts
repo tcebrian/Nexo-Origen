@@ -5,7 +5,7 @@ import type { ResenaRow } from "@/lib/supabase/resenas";
 import type { AnalisisIaRow } from "@/lib/supabase/analisis-ia";
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
 import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
-import { getMediaImpactForReview } from "@/lib/reviews/media-impact";
+import { fetchCanonicalReviewImpacts } from "@/lib/supabase/reputation-impact.server";
 import { mapReportRowToAlertData } from "@/lib/templates/negative-review-alert/map-from-report-row";
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
 import type { NegativeReviewReportRow } from "@/lib/reports/negative-reviews/types";
@@ -50,15 +50,8 @@ export async function buildAlertDataForResena(
     marcaNombre = marcaRow?.nombre ?? undefined;
   }
 
-  const { data: recentResenas } = await supabase
-    .from("resenas")
-    .select("id, review_id, restaurante_id, estrellas, fecha_resena, created_at")
-    .eq("restaurante_id", resena.restaurante_id)
-    .order("fecha_resena", { ascending: false })
-    .limit(300);
-
   const resenaRow = resena as ResenaRow;
-  const impact = getMediaImpactForReview((recentResenas as ResenaRow[]) ?? [resenaRow], resenaRow);
+  const impact = (await fetchCanonicalReviewImpacts([resenaId])).get(resenaId) ?? null;
 
   let analisis: AnalisisIaRow | null = null;
   if (resena.review_id != null) {
@@ -104,12 +97,12 @@ export async function buildAlertDataForResena(
     impact: impact?.impact ?? null,
     impactText:
       analisis?.impacto?.trim() ||
-      (impact
+      (impact?.mediaAfter != null
         ? `${impact.mediaBefore?.toFixed(2) ?? "—"} → ${impact.mediaAfter.toFixed(2)}`
         : IA_NO_DATA),
     recommendation: analisis?.recomendacion?.trim() || IA_NO_DATA,
     employeeMentioned: analisis?.empleado_mencionado?.trim() || null,
-    reviewCountAfter: impact?.reviewCountAfter ?? null,
+    reviewCountAfter: impact?.reviewsAfter ?? null,
     totalReviews: null,
     lifetimeMedia: null,
   };

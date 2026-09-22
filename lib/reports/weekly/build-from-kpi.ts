@@ -89,20 +89,28 @@ function buildLocations(rows: KpiRestaurantRow[]): WeeklyLocationRow[] {
     .sort((a, b) => (b.weeklyRating ?? 0) - (a.weeklyRating ?? 0));
 }
 
+export type CanonicalWeeklyReportNumbers = {
+  totalReviews: number;
+  negativeReviews: number;
+  negativePercent: number;
+  weeklyAverage: number;
+  negativeReasons?: NegativeReasonSegment[];
+};
+
 export function buildWeeklyReportFromKpi(
   allRows: KpiRestaurantRow[],
   templateId: WeeklyTemplateId,
   query: { start: Date; end: Date },
   resenas: ResenaRow[] = [],
-  analisisByResenaId: AnalisisIaIndex = new Map()
+  analisisByResenaId: AnalisisIaIndex = new Map(),
+  canonical?: CanonicalWeeklyReportNumbers
 ): WeeklyReportData {
   const rows = filterRowsForTemplate(allRows, templateId);
-  const totalReviews = rows.reduce((sum, row) => sum + row.total_resenas, 0);
-  const negativeReviews = rows.reduce((sum, row) => sum + row.resenas_negativas, 0);
-  const weightedMedia =
-    totalReviews > 0
-      ? rows.reduce((sum, row) => sum + row.media_total * row.total_resenas, 0) / totalReviews
-      : 0;
+  const totalReviews =
+    canonical?.totalReviews ?? rows.reduce((sum, row) => sum + row.total_resenas, 0);
+  const negativeReviews =
+    canonical?.negativeReviews ?? rows.reduce((sum, row) => sum + row.resenas_negativas, 0);
+  const weightedMedia = canonical?.weeklyAverage ?? 0;
 
   const belowTarget = rows.filter((row) => row.media_total < REPUTATION_TARGET && row.total_resenas > 0);
 
@@ -134,12 +142,15 @@ export function buildWeeklyReportFromKpi(
       totalReviews,
       negativeReviews,
       negativePercent:
-        totalReviews > 0 ? Math.round((negativeReviews / totalReviews) * 1000) / 10 : 0,
+        canonical?.negativePercent ??
+        (totalReviews > 0 ? Math.round((negativeReviews / totalReviews) * 1000) / 10 : 0),
       weeklyAverage: Math.round(weightedMedia * 100) / 100,
       targetAverage: REPUTATION_TARGET,
     },
     locations: buildLocations(rows),
-    negativeReasons: buildNegativeReasons(filteredResenas, analisisByResenaId),
+    negativeReasons:
+      canonical?.negativeReasons ??
+      buildNegativeReasons(filteredResenas, analisisByResenaId),
     footerMonthLabel: formatFooterMonth(query.end),
   };
 }

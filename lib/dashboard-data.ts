@@ -31,6 +31,8 @@ import {
   mapSupabaseCanonicalMetrics,
   recordMetricValidationMismatch,
 } from "@/lib/supabase/reputation-metrics.server";
+import { fetchCanonicalMotiveBreakdown } from "@/lib/supabase/reputation-motives.server";
+import { categoriaMotivoLabel } from "@/lib/supabase/resena-motivos";
 
 export type LoadSnapshotOptions = {
   /** Omitir analisis_ia (más rápido en inicio del dashboard). */
@@ -131,17 +133,44 @@ export async function loadNexoPeriodSnapshot(
     analisisByResenaId,
   });
 
-  // Numeric reputation KPIs are calculated in PostgreSQL/Supabase.
-  const canonicalRows = await fetchSupabaseCanonicalReputationMetrics(
-    bounds.startKey,
-    bounds.endKey,
-    catalog.map((row) => row.restaurante_id)
-  );
+  // Numeric reputation KPIs and motive distribution are calculated in PostgreSQL/Supabase.
+  const restaurantIds = catalog.map((row) => row.restaurante_id);
+  const [canonicalRows, canonicalMotives] = await Promise.all([
+    fetchSupabaseCanonicalReputationMetrics(
+      bounds.startKey,
+      bounds.endKey,
+      restaurantIds
+    ),
+    fetchCanonicalMotiveBreakdown(
+      bounds.startKey,
+      bounds.endKey,
+      restaurantIds
+    ),
+  ]);
+
+  const motiveByCategory = new Map<string, { count: number; percent: number }>();
+  for (const row of canonicalMotives) {
+    if (!motiveByCategory.has(row.categoria)) {
+      motiveByCategory.set(row.categoria, {
+        count: row.networkCount,
+        percent: row.networkPercent,
+      });
+    }
+  }
+
+  const problemDistribution = [...motiveByCategory.entries()]
+    .map(([categoria, values]) => ({
+      label: categoriaMotivoLabel(categoria),
+      count: values.count,
+      percent: Math.round(values.percent * 10) / 10,
+      provisional: false,
+    }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 
   const metrics = mapSupabaseCanonicalMetrics({
     catalog,
     rows: canonicalRows,
-    problemDistribution: legacyMetrics.problemDistribution,
+    problemDistribution,
   });
 
   const mismatches = compareReputationMetricResults(metrics, legacyMetrics);

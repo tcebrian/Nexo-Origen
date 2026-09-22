@@ -1,10 +1,7 @@
 import "server-only";
 
 import { tenant } from "@/app/dashboard/tenant";
-import {
-  computeInformeKpiFromResenas,
-  getInformeQueryBounds,
-} from "@/lib/informes/informe-kpi-utils";
+import { getInformeQueryBounds } from "@/lib/informes/informe-kpi-utils";
 import {
   formatInformePeriodRange,
   formatInformePeriodTitle,
@@ -14,43 +11,25 @@ import {
 import { formatInformeVariationLabel } from "@/lib/informes/informe-cover-assets";
 import type { InformeMarcaDatos } from "@/lib/informes/types";
 import { resolveInformeEstado } from "@/lib/informes/resolve-informe-estado";
-import { dedupeResenas } from "@/lib/review-metrics";
-import type { ResenaRow } from "@/lib/supabase/resenas";
-import { fetchResenasForPeriodServer } from "@/lib/supabase/resenas.server";
-import { getInclusiveQueryBounds } from "@/lib/date-utils";
+import { fetchAllKpiRows } from "@/lib/supabase/kpi-restaurantes";
+import { fetchSupabaseCanonicalReputationMetrics } from "@/lib/supabase/reputation-metrics.server";
 
-function resolveTopRestaurantDisplay(
-  resenas: ResenaRow[],
-  marcaLabel: string
-): string {
-  const counts = new Map<string, number>();
+function normalize(value: string): string {
+  return value
+    .trim()
+    .toLocaleLowerCase("es-ES")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
 
-  for (const row of resenas) {
-    const name = row.restaurante_nombre?.trim() || row.restaurante?.trim();
-    if (!name) continue;
-    counts.set(name, (counts.get(name) ?? 0) + 1);
-  }
-
-  if (counts.size === 0) {
-    return marcaLabel.toUpperCase();
-  }
-
-  let topName = "";
-  let topCount = -1;
-  for (const [name, count] of counts) {
-    if (count > topCount) {
-      topCount = count;
-      topName = name;
-    }
-  }
-
-  return topName.toUpperCase();
+function metricNumber(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 /**
- * KPIs del informe por marca desde Supabase (`resenas`).
- * Filtra por `restaurante_nombre` con ilike (%marca%).
- * Periodo por defecto: últimos 7 días (informe semanal).
+ * Informe por marca desde la única calculadora canónica de Supabase.
+ * La marca se resuelve desde restaurantes + marcas; nunca por texto de resenas.
  */
 export async function fetchInformeMarcaDatos(
   marca: string,
@@ -58,30 +37,51 @@ export async function fetchInformeMarcaDatos(
   endKey?: string
 ): Promise<InformeMarcaDatos> {
   const marcaLabel = marca.trim();
-  const { bounds, queryBounds } = getInformeQueryBounds(startKey, endKey, 7);
+  const { bounds } = getInformeQueryBounds(startKey, endKey, 7);
+  const catalog = await fetchAllKpiRows();
+  const normalizedBrand = normalize(marcaLabel);
+  const brandRows = catalog.filter((row) => normalize(row.marca) === normalizedBrand);
+  const ids = brandRows.map((row) => row.restaurante_id);
 
-  const raw = await fetchResenasForPeriodServer(
-    { start: bounds.start, end: bounds.end },
-    { queryBounds, restauranteNombreIlike: marcaLabel }
-  );
+  if (ids.length === 0) {
+    throw new Error(`No hay restaurantes activos para la marca ${marcaLabel}.`);
+  }
 
-  const resenas = dedupeResenas(raw);
-  const kpis = computeInformeKpiFromResenas(resenas);
-  const { estado, estadoLabel } = resolveInformeEstado(kpis.media);
+  const [currentRows, previousBounds] = await Promise.all([
+    fetchSupabaseCanonicalReputationMetrics(bounds.startKey, bounds.endKey, ids),
+    Promise.resolve(getPreviousPeriodBounds(bounds)),
+  ]);
 
-  const previousBounds = getPreviousPeriodBounds(bounds);
-  const previousQueryBounds = getInclusiveQueryBounds(
+  const previousRows = await fetchSupabaseCanonicalReputationMetrics(
     previousBounds.startKey,
-    previousBounds.endKey
+    previousBounds.endKey,
+    ids
   );
-  const previousRaw = await fetchResenasForPeriodServer(
-    { start: previousBounds.start, end: previousBounds.end },
-    { queryBounds: previousQueryBounds, restauranteNombreIlike: marcaLabel }
-  );
-  const previousKpis = computeInformeKpiFromResenas(dedupeResenas(previousRaw));
 
-  const variacionMedia =
-    previousKpis.resenas > 0 ? kpis.media - previousKpis.media : null;
+  const current = currentRows[0];
+  const previous = previousRows[0];
+
+  const media = metricNumber(current?.network_media_exacta);
+  const resenas = metricNumber(current?.network_total_resenas);
+  const negativas = metricNumber(current?.network_negativas);
+  const target = brandRows[0]?.objetivo_media ?? 4.4;
+  const { estado, estadoLabel } = resolveInformeEstado(media, target);
+
+  const currentByRestaurant = new Map(
+    currentRows.map((row) => [Number(row.restaurante_id), row])
+  );
+  const topRestaurant =
+    [...brandRows]
+      .sort((a, b) => {
+        const aCount = metricNumber(currentByRestaurant.get(a.restaurante_id)?.total_resenas);
+        const bCount = metricNumber(currentByRestaurant.get(b.restaurante_id)?.total_resenas);
+        if (bCount !== aCount) return bCount - aCount;
+        return a.restaurante.localeCompare(b.restaurante, "es");
+      })[0]?.restaurante ?? marcaLabel;
+
+  const previousCount = metricNumber(previous?.network_total_resenas);
+  const previousMedia = metricNumber(previous?.network_media_exacta);
+  const variacionMedia = previousCount > 0 ? media - previousMedia : null;
 
   const spanMs = bounds.end.getTime() - bounds.start.getTime();
   const spanDays = Math.round(spanMs / 86400000) + 1;
@@ -89,12 +89,15 @@ export async function fetchInformeMarcaDatos(
     spanDays >= 28 ? "mensual" : spanDays >= 14 ? "quincenal" : "semanal";
 
   return {
-    ...kpis,
+    media,
+    resenas,
+    negativas,
+    restaurantes: ids.length,
     marca: marcaLabel,
     estado,
     estadoLabel,
     cover: {
-      restauranteDisplay: resolveTopRestaurantDisplay(resenas, marcaLabel),
+      restauranteDisplay: topRestaurant.toUpperCase(),
       periodTitle: formatInformePeriodTitle(bounds),
       periodRange: formatInformePeriodRange(bounds),
       cliente: tenant.name,
