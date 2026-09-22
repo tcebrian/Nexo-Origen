@@ -9,6 +9,7 @@ import type {
   RestaurantPeriodMetrics,
 } from "@/lib/review-metrics";
 import type { KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
+import type { PeriodNetworkAggregate } from "@/lib/supabase/period-types";
 import type { DailyNetworkPoint, KpiDiarioRow } from "@/lib/supabase/kpi-diario";
 import { categoriaMotivoLabel } from "@/lib/supabase/resena-motivos";
 import type { MediaImpactResult } from "@/lib/reviews/media-impact";
@@ -244,6 +245,41 @@ export async function fetchSupabaseCanonicalMotives(
   }
 
   return (data ?? []) as SupabaseMotiveMetricRow[];
+}
+
+
+export function extractCanonicalNetworkAggregate(
+  rows: SupabaseMetricRow[],
+  fallbackRestaurantCount = 0
+): PeriodNetworkAggregate {
+  const first = rows[0];
+  if (!first) {
+    return {
+      totalResenas: 0,
+      totalPositivas: 0,
+      totalNegativas: 0,
+      totalNeutras: 0,
+      totalAtencion: 0,
+      mediaGlobal: 0,
+      positivePct: 0,
+      negativePct: 0,
+      totalRestaurantes: fallbackRestaurantCount,
+      ultimaActualizacion: null,
+    };
+  }
+
+  return {
+    totalResenas: num(first.network_total_resenas),
+    totalPositivas: num(first.network_positivas),
+    totalNegativas: num(first.network_negativas),
+    totalNeutras: num(first.network_neutras),
+    totalAtencion: num(first.network_atencion),
+    mediaGlobal: num(first.network_media_exacta),
+    positivePct: num(first.network_positive_pct),
+    negativePct: num(first.network_negative_pct),
+    totalRestaurantes: num(first.network_total_restaurantes),
+    ultimaActualizacion: first.network_ultima_resena,
+  };
 }
 
 export function mapSupabaseCanonicalMetrics(input: {
