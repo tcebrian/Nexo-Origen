@@ -52,6 +52,8 @@ export async function getCanonicalReputationPeriod(
       totalResenas: network.totalResenas,
       totalNegativas: network.totalNegativas,
       totalPositivas: network.totalPositivas,
+      totalNeutras: snapshot.networkAggregate.totalNeutras,
+      totalAtencion: snapshot.networkAggregate.totalAtencion,
       mediaGlobal: network.mediaGlobal,
       byRestaurante: snapshot.metrics.byRestaurante,
       hasResenasEnPeriodo: snapshot.resenas.length > 0,
