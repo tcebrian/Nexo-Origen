@@ -64,9 +64,9 @@
 }
 
 .tha-product--muffin {
-  top: 800px;
-  right: -130px;
-  width: 690px;
+  top: 860px;
+  right: -90px;
+  width: 480px;
   transform: perspective(750px) rotateX(22deg) rotate(-5deg);
   z-index: 4;
   filter: drop-shadow(0 26px 22px rgba(42, 24, 16, 0.42)) drop-shadow(0 6px 6px rgba(42, 24, 16, 0.32));
@@ -101,12 +101,6 @@
 
 .tha-sheet > .tha-footer {
   grid-row: 4;
-}
-
-/* Diseño extremo: sin footer ni fila espaciadora, recupera esas 2 filas y
-   sus gaps (40px) para el comentario/impacto en la media. */
-.tha-sheet.tha-sheet--extreme {
-  grid-template-rows: auto 1fr;
 }
 
 /* ---------- header editorial ---------- */
@@ -257,103 +251,18 @@
   margin-left: 40px;
 }
 
-.tha-body--extreme {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 28px;
-  padding: 10px 320px 0 330px;
-  min-height: 0;
-}
-
-.tha-review.tha-review--extreme {
-  width: 100%;
-  margin-top: 15px;
-  min-height: 720px;
-  height: auto;
-  flex-shrink: 0;
-}
-
-.tha-quote.tha-quote--extreme {
-  min-height: 593px;
-  height: auto;
-  flex-shrink: 0;
-}
-
-.tha-mini--extreme {
-  position: relative;
-  z-index: 7;
-  width: 100%;
-  margin-top: -40px;
-  padding: 24px 40px;
-}
-
-.tha-mini--extreme .tha-mini__band {
-  font-size: 18px;
-  padding: 7px 22px;
-  margin-bottom: 10px;
-}
-
-.tha-mini--extreme .tha-impact__col {
-  padding: 0 22px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.tha-mini--extreme .tha-impact__label {
-  font-size: 17px;
-  margin: 0 0 4px;
-  height: 21px;
-  display: flex;
-  align-items: center;
-}
-
-.tha-mini--extreme .tha-impact__value {
-  margin: 0;
-  font-size: 46px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1;
-  height: 54px;
-  display: flex;
-  align-items: center;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-.tha-mini--extreme .tha-impact__delta {
-  margin: 0;
-  font-size: 42px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1;
-  height: 54px;
-  gap: 6px;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-.tha-mini--extreme .tha-impact__delta svg {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-}
-
-.tha-mini--extreme .tha-impact__col + .tha-impact__col::before {
-  top: 10px;
-  bottom: 10px;
-  width: 2px;
-}
-
 .tha-review-col {
   position: relative;
   z-index: 5;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
   height: 653px;
 }
 
 .tha-review {
+  flex: 1;
   border-radius: 20px;
   background: var(--th-card);
   border: 1px solid var(--th-line);
@@ -391,9 +300,12 @@
 
 .tha-review__name {
   margin: 0;
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 800;
   color: var(--th-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tha-review__datetime {
@@ -401,7 +313,7 @@
   align-items: center;
   gap: 6px;
   margin: 5px 0 0;
-  font-size: 24px;
+  font-size: 21px;
   color: var(--th-ink-soft);
 }
 
@@ -445,7 +357,16 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 350px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tha-quote:has(.tha-quote__text--md),
+.tha-quote:has(.tha-quote__text--sm),
+.tha-quote:has(.tha-quote__text--xs),
+.tha-quote:has(.tha-quote__text--xxs) {
+  justify-content: flex-start;
 }
 
 .tha-quote__mark {
@@ -479,19 +400,22 @@
 }
 
 .tha-quote__text--md {
-  font-size: 24px;
+  font-size: 21px;
 }
 
 .tha-quote__text--sm {
-  font-size: 19px;
+  font-size: 17px;
+  line-height: 1.4;
 }
 
 .tha-quote__text--xs {
-  font-size: 20px;
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .tha-quote__text--xxs {
-  font-size: 17px;
+  font-size: 12.5px;
+  line-height: 1.3;
 }
 
 /* ---------- columna de IA ---------- */
@@ -527,6 +451,7 @@
   gap: 17.5px;
   flex-shrink: 0;
   margin-top: -9px;
+  max-width: 378px;
 }
 
 .tha-diagnostics__item {
@@ -668,7 +593,7 @@
 
 .tha-analysis__copy {
   min-width: 0;
-  max-width: 485px;
+  max-width: 300px;
 }
 
 .tha-analysis__label {
@@ -743,38 +668,8 @@
 }
 
 .tha-mini--under-quote {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -80px;
-  z-index: 3;
-  margin-left: 0;
+  flex: 0 0 auto;
   padding: 18px 38px;
-}
-
-.tha-mini--under-quote.tha-mini--short {
-  bottom: -18px;
-}
-
-.tha-mini--shift-sm {
-  margin-left: 140px;
-  padding: 26px;
-}
-
-.tha-mini--shift-sm .tha-mini__band {
-  font-size: 15px;
-  padding: 9px 18px;
-  margin-bottom: 14px;
-}
-
-.tha-mini--shift-sm .tha-impact__value {
-  font-size: 36px;
-  height: 44px;
-}
-
-.tha-mini--shift-sm .tha-impact__delta {
-  font-size: 33px;
-  height: 44px;
 }
 
 .tha-mini--under-quote .tha-mini__band {

@@ -34,10 +34,12 @@ function absUrl(base: string | undefined, path: string): string {
 }
 
 /**
- * Tamaño del comentario adaptado a su longitud real. Los comentarios cortos
- * o de longitud normal usan siempre el mismo tamaño base (el de la reseña
- * normal/larga) — la letra solo se reduce a partir de aquí, cuanto más largo
- * es el comentario.
+ * Tamaño del comentario adaptado a su longitud real. La posición de todo el
+ * layout es SIEMPRE la misma (comentario arriba-izq, impacto debajo,
+ * análisis/diagnóstico a la derecha) — lo único que cambia con la longitud
+ * del texto es el tamaño de letra, nunca la composición ni la posición de
+ * ningún bloque. Así se evita el solape que salía antes al desplazar o
+ * reestructurar cajas según el contenido.
  */
 function quoteSizeClass(length: number): string {
   if (length <= 260) return "tva-quote__text--lg";
@@ -46,15 +48,6 @@ function quoteSizeClass(length: number): string {
   if (length <= 1300) return "tva-quote__text--xs";
   return "tva-quote__text--xxs";
 }
-
-/**
- * A partir de aquí el comentario es tan largo que intentar mantenerlo en el
- * layout de dos columnas obliga a encoger demasiado el resto (Análisis,
- * Diagnóstico, Conclusión). En vez de eso se usa un diseño alternativo: solo
- * el comentario, centrado, y el Impacto en la media debajo — se quita todo
- * lo demás en vez de aplastarlo.
- */
-const EXTREME_COMMENT_CHARS = 900;
 
 const MAX_COMMENT_CHARS = 1400;
 const READ_MORE_HINT = " (pulsa el enlace para leer más)";
@@ -89,16 +82,6 @@ function footerTier(length: number): "lg" | "md" | "sm" | "xs" {
   if (length <= 180) return "md";
   if (length <= 260) return "sm";
   return "xs";
-}
-
-/**
- * Dentro del diseño normal (comentarios ≤900 caracteres — por encima de eso
- * se usa el diseño alternativo centrado), cuando el comentario ya es
- * bastante largo "Impacto en la media" se desplaza hacia la derecha y se
- * compacta un poco.
- */
-function commentShiftTier(commentLength: number): "" | "sm" {
-  return commentLength <= 650 ? "" : "sm";
 }
 
 const EMPTY_TOKENS = new Set([
@@ -201,9 +184,6 @@ export const TabernaVolapieAlertTemplate = forwardRef<HTMLDivElement, TabernaVol
     const analysisTotalLength = analysisRows.reduce((sum, row) => sum + row.value.length, 0);
     const analysisTier = insightsTier(analysisTotalLength);
 
-    const isExtremeComment = fullComment.length > EXTREME_COMMENT_CHARS;
-    const shiftTier = isExtremeComment ? "" : commentShiftTier(fullComment.length);
-
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
     const locationLabel = stripBrandPrefix(data.restaurant_name) || data.restaurant_name;
 
@@ -237,7 +217,7 @@ export const TabernaVolapieAlertTemplate = forwardRef<HTMLDivElement, TabernaVol
           aria-hidden
           className="tva-product tva-product--5"
         />
-        <div className={`tva-sheet ${isExtremeComment ? "tva-sheet--extreme" : ""}`}>
+        <div className="tva-sheet">
           {/* Header editorial */}
           <header className="tva-header">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -286,9 +266,10 @@ export const TabernaVolapieAlertTemplate = forwardRef<HTMLDivElement, TabernaVol
             />
           </div>
 
-          {isExtremeComment ? (
-            <div className="tva-body tva-body--extreme">
-              <section className="tva-review tva-review--extreme">
+          <div className="tva-body">
+            <div className="tva-review-col">
+              {/* Tarjeta grande de la reseña — protagonista */}
+              <section className="tva-review">
                 <div className="tva-review__head">
                   <span className="tva-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
                   <div className="tva-review__meta">
@@ -309,7 +290,7 @@ export const TabernaVolapieAlertTemplate = forwardRef<HTMLDivElement, TabernaVol
                   </div>
                 </div>
 
-                <div className="tva-quote tva-quote--extreme">
+                <div className="tva-quote">
                   <span className="tva-quote__mark tva-quote__mark--open" aria-hidden>
                     &ldquo;
                   </span>
@@ -322,7 +303,7 @@ export const TabernaVolapieAlertTemplate = forwardRef<HTMLDivElement, TabernaVol
                 </div>
               </section>
 
-              <section className="tva-mini tva-mini--extreme">
+              <section className="tva-mini tva-mini--under-quote">
                 <p className="tva-mini__band">IMPACTO EN LA MEDIA</p>
                 <div className="tva-impact">
                   <div className="tva-impact__col">
@@ -348,115 +329,48 @@ export const TabernaVolapieAlertTemplate = forwardRef<HTMLDivElement, TabernaVol
                 </div>
               </section>
             </div>
-          ) : (
-            <div className="tva-body">
-              <div className="tva-review-col">
-                {/* Tarjeta grande de la reseña — protagonista */}
-                <section className="tva-review">
-                  <div className="tva-review__head">
-                    <span className="tva-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
-                    <div className="tva-review__meta">
-                      <p className="tva-review__name">{data.review_author}</p>
-                      <p className="tva-review__datetime">
-                        <TvIconCalendar />
-                        <span>{data.review_date}</span>
-                        <span className="tva-review__sep" aria-hidden>
-                          |
-                        </span>
-                        <TvIconClock />
-                        <span>{data.review_time}</span>
-                      </p>
-                    </div>
-                    <div className="tva-review__rating">
-                      <StarRating stars={data.review_stars} size="lg" />
-                      <span className="tva-review__rating-value">{data.review_stars}/5</span>
-                    </div>
-                  </div>
 
-                  <div className="tva-quote">
-                    <span className="tva-quote__mark tva-quote__mark--open" aria-hidden>
-                      &ldquo;
-                    </span>
-                    <p className={`tva-quote__text ${quoteSizeClass(fullComment.length)}`}>
-                      {fullComment}
-                    </p>
-                    <span className="tva-quote__mark tva-quote__mark--close" aria-hidden>
-                      &rdquo;
-                    </span>
-                  </div>
-                </section>
+            {/* Columna de inteligencia artificial */}
+            <section className="tva-insights">
+              {analysisRows.length > 0 ? (
+                <>
+                  <p className="tva-ribbon">ANÁLISIS NEXO</p>
+                  <ul className={`tva-analysis tva-analysis--${analysisTier}`}>
+                    {analysisRows.map((row) => (
+                      <li key={row.key}>
+                        <span className="tva-analysis__icon">{row.icon}</span>
+                        <div className="tva-analysis__copy">
+                          <p className="tva-analysis__label">{row.label}</p>
+                          <p className="tva-analysis__value">{row.value}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
 
-                <section
-                  className={`tva-mini tva-mini--under-quote ${fullComment.length < 500 ? "tva-mini--short" : ""} ${shiftTier ? `tva-mini--shift-${shiftTier}` : ""}`}
-                >
-                  <p className="tva-mini__band">IMPACTO EN LA MEDIA</p>
-                  <div className="tva-impact">
-                    <div className="tva-impact__col">
-                      <p className="tva-impact__label">Media anterior</p>
-                      <p className="tva-impact__value">{data.previous_rating.toFixed(2)}</p>
-                      <span className="tva-impact__stars">
-                        <StarRating stars={data.previous_rating} size="md" />
-                      </span>
-                    </div>
-                    <div className="tva-impact__col">
-                      <p className="tva-impact__label">Media actual</p>
-                      <p className={`tva-impact__value tva-impact__value--tone-${tone}`}>
-                        {data.current_rating.toFixed(2)}
-                      </p>
-                      <span className="tva-impact__stars">
-                        <StarRating stars={data.current_rating} size="md" />
-                      </span>
-                    </div>
-                    <div className="tva-impact__col">
-                      <p className="tva-impact__label">Variación</p>
-                      <ImpactDelta delta={delta} />
-                    </div>
-                  </div>
-                </section>
-              </div>
-
-              {/* Columna de inteligencia artificial */}
-              <section className="tva-insights">
-                {analysisRows.length > 0 ? (
-                  <>
-                    <p className="tva-ribbon">ANÁLISIS NEXO</p>
-                    <ul className={`tva-analysis tva-analysis--${analysisTier}`}>
-                      {analysisRows.map((row) => (
-                        <li key={row.key}>
-                          <span className="tva-analysis__icon">{row.icon}</span>
-                          <div className="tva-analysis__copy">
-                            <p className="tva-analysis__label">{row.label}</p>
-                            <p className="tva-analysis__value">{row.value}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : null}
-
-                <p className={`tva-ribbon ${analysisRows.length > 0 ? "tva-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
-                <div className={`tva-diagnostics tva-diagnostics--${analysisTier}`}>
-                  <div className="tva-diagnostics__item">
-                    <span className="tva-diagnostics__icon tva-diagnostics__icon--neutral">
-                      <TvIconMood />
-                    </span>
-                    <p className="tva-diagnostics__label">Sentimiento</p>
-                    <p className="tva-diagnostics__value">{sentiment ?? "Sin datos"}</p>
-                  </div>
-                  <div className="tva-diagnostics__item">
-                    <span className={`tva-diagnostics__icon tva-diagnostics__icon--${riskTone(risk)}`}>
-                      <TvIconShield />
-                    </span>
-                    <p className="tva-diagnostics__label">Riesgo</p>
-                    <p className="tva-diagnostics__value">{risk ?? "Sin datos"}</p>
-                  </div>
+              <p className={`tva-ribbon ${analysisRows.length > 0 ? "tva-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
+              <div className={`tva-diagnostics tva-diagnostics--${analysisTier}`}>
+                <div className="tva-diagnostics__item">
+                  <span className="tva-diagnostics__icon tva-diagnostics__icon--neutral">
+                    <TvIconMood />
+                  </span>
+                  <p className="tva-diagnostics__label">Sentimiento</p>
+                  <p className="tva-diagnostics__value">{sentiment ?? "Sin datos"}</p>
                 </div>
-              </section>
-            </div>
-          )}
+                <div className="tva-diagnostics__item">
+                  <span className={`tva-diagnostics__icon tva-diagnostics__icon--${riskTone(risk)}`}>
+                    <TvIconShield />
+                  </span>
+                  <p className="tva-diagnostics__label">Riesgo</p>
+                  <p className="tva-diagnostics__value">{risk ?? "Sin datos"}</p>
+                </div>
+              </div>
+            </section>
+          </div>
 
-          {/* Conclusión — se omite en el diseño extremo (solo comentario + Impacto en la media) */}
-          {!isExtremeComment && conclusion
+          {/* Conclusión */}
+          {conclusion
             ? (() => {
                 const footerSizeTier = footerTier(conclusion.length);
                 return (

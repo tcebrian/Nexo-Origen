@@ -17,17 +17,6 @@ function absUrl(base: string | undefined, path: string): string {
   return `${base.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-function MapleLeaf({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 64 64" className={className} aria-hidden>
-      <path
-        fill="currentColor"
-        d="M32 2c1 4.5 2.3 8 4 10.5 1-1.6 2-3.7 3-6.3 1.2 3 1.7 5.6 1.5 7.8 2.2-1 4-2.3 5.4-4-.3 3-1.3 5.3-3 7 2.6-.2 5-1 7.1-2.4-1 3-3 5-6 6.2 2 .8 4.2 1.1 6.7 1-2 2.2-4.5 3.5-7.5 3.9 1.6 1.6 3.7 2.7 6.3 3.4-2.7 1.6-5.6 2.1-8.6 1.5.8 2 2.1 3.7 4 5.1-3 .5-5.7-.1-8.2-1.8.2 2.4 1 4.7 2.5 6.9-3-.2-5.3-1.5-7-3.9-3.1 6.8-2.2 12 .6 18.1h-11c2.8-6.1 3.7-11.3.6-18.1-1.7 2.4-4 3.7-7 3.9 1.5-2.2 2.3-4.5 2.5-6.9-2.5 1.7-5.2 2.3-8.2 1.8 1.9-1.4 3.2-3.1 4-5.1-3 .6-5.9.1-8.6-1.5 2.6-.7 4.7-1.8 6.3-3.4-3-.4-5.5-1.7-7.5-3.9 2.5.1 4.7-.2 6.7-1-3-1.2-5-3.2-6-6.2 2.1 1.4 4.5 2.2 7.1 2.4-1.7-1.7-2.7-4-3-7 1.4 1.7 3.2 3 5.4 4-.2-2.2.3-4.8 1.5-7.8 1 2.6 2 4.7 3 6.3 1.7-2.5 3-6 4-10.5Z"
-      />
-    </svg>
-  );
-}
-
 function PinIcon() {
   return (
     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -149,7 +138,6 @@ export function NetworkSummaryThTemplate({ data, visual, periodoAdjective, asset
       <header className="nwsth-header">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={absUrl(assetBaseUrl, "/design/tim-hortons/th-logo.png")} alt="Tim Hortons" className="nwsth-header__logo" />
-        <MapleLeaf className="nwsth-header__leaf" />
 
         <div className="nwsth-header__title-block">
           <p className="nwsth-header__kicker">Informe {periodoAdjective}</p>
@@ -159,6 +147,15 @@ export function NetworkSummaryThTemplate({ data, visual, periodoAdjective, asset
             <PinIcon />
             {data.groupSublabel ?? "Red de Locales"}
           </p>
+        </div>
+
+        <div className="nwsth-header__nexo">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={absUrl(assetBaseUrl, "/design/tim-hortons/nexo-origen-logo.png")}
+            alt="Nexo Origen"
+            className="nwsth-header__nexo-logo"
+          />
         </div>
 
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -295,15 +292,21 @@ export function NetworkSummaryThTemplate({ data, visual, periodoAdjective, asset
       </section>
 
       <footer className="nwsth-footer">
-        <span className="nwsth-footer__item">Nexo Origen</span>
-        <span className="nwsth-footer__sep" aria-hidden />
-        <span className="nwsth-footer__item nwsth-footer__item--web">
-          <GlobeIcon />
-          www.nexoorigen.com
+        <span className="nwsth-footer__pillar">
+          <span className="nwsth-footer__item">Nexo Origen</span>
         </span>
-        <span className="nwsth-footer__sep" aria-hidden />
-        <HeartIcon />
-        <span className="nwsth-footer__tagline">{visual.footerTagline}</span>
+        <span className="nwsth-footer__pillar">
+          <span className="nwsth-footer__item nwsth-footer__item--web">
+            <GlobeIcon />
+            www.nexoorigen.com
+          </span>
+        </span>
+        <span className="nwsth-footer__pillar">
+          <span className="nwsth-footer__item nwsth-footer__item--tagline">
+            <HeartIcon />
+            <span className="nwsth-footer__tagline">{visual.footerTagline}</span>
+          </span>
+        </span>
       </footer>
     </div>
   );

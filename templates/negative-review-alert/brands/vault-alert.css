@@ -74,12 +74,6 @@
   grid-row: 4;
 }
 
-/* Diseño extremo: sin footer ni fila espaciadora, recupera esas 2 filas y
-   sus gaps (40px) para el comentario/impacto en la media. */
-.vaa-sheet.vaa-sheet--extreme {
-  grid-template-rows: auto 1fr;
-}
-
 /* ---------- header editorial ---------- */
 
 .vaa-header {
@@ -218,103 +212,18 @@
   margin-left: 40px;
 }
 
-.vaa-body--extreme {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 28px;
-  padding: 10px 320px 0 330px;
-  min-height: 0;
-}
-
-.vaa-review.vaa-review--extreme {
-  width: 100%;
-  margin-top: 15px;
-  min-height: 720px;
-  height: auto;
-  flex-shrink: 0;
-}
-
-.vaa-quote.vaa-quote--extreme {
-  min-height: 593px;
-  height: auto;
-  flex-shrink: 0;
-}
-
-.vaa-mini--extreme {
-  position: relative;
-  z-index: 7;
-  width: 100%;
-  margin-top: -40px;
-  padding: 24px 40px;
-}
-
-.vaa-mini--extreme .vaa-mini__band {
-  font-size: 18px;
-  padding: 7px 22px;
-  margin-bottom: 10px;
-}
-
-.vaa-mini--extreme .vaa-impact__col {
-  padding: 0 22px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.vaa-mini--extreme .vaa-impact__label {
-  font-size: 17px;
-  margin: 0 0 4px;
-  height: 21px;
-  display: flex;
-  align-items: center;
-}
-
-.vaa-mini--extreme .vaa-impact__value {
-  margin: 0;
-  font-size: 46px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1;
-  height: 54px;
-  display: flex;
-  align-items: center;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-.vaa-mini--extreme .vaa-impact__delta {
-  margin: 0;
-  font-size: 42px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1;
-  height: 54px;
-  gap: 6px;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-.vaa-mini--extreme .vaa-impact__delta svg {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-}
-
-.vaa-mini--extreme .vaa-impact__col + .vaa-impact__col::before {
-  top: 10px;
-  bottom: 10px;
-  width: 2px;
-}
-
 .vaa-review-col {
   position: relative;
   z-index: 5;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
   height: 653px;
 }
 
 .vaa-review {
+  flex: 1;
   border-radius: 20px;
   background: var(--va-card);
   border: 1px solid var(--va-line);
@@ -352,9 +261,12 @@
 
 .vaa-review__name {
   margin: 0;
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 800;
   color: var(--va-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .vaa-review__datetime {
@@ -362,7 +274,7 @@
   align-items: center;
   gap: 6px;
   margin: 5px 0 0;
-  font-size: 24px;
+  font-size: 21px;
   color: var(--va-ink-soft);
 }
 
@@ -406,7 +318,16 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 350px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.vaa-quote:has(.vaa-quote__text--md),
+.vaa-quote:has(.vaa-quote__text--sm),
+.vaa-quote:has(.vaa-quote__text--xs),
+.vaa-quote:has(.vaa-quote__text--xxs) {
+  justify-content: flex-start;
 }
 
 .vaa-quote__mark {
@@ -440,19 +361,22 @@
 }
 
 .vaa-quote__text--md {
-  font-size: 24px;
+  font-size: 21px;
 }
 
 .vaa-quote__text--sm {
-  font-size: 19px;
+  font-size: 17px;
+  line-height: 1.4;
 }
 
 .vaa-quote__text--xs {
-  font-size: 20px;
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .vaa-quote__text--xxs {
-  font-size: 17px;
+  font-size: 12.5px;
+  line-height: 1.3;
 }
 
 /* ---------- columna de IA ---------- */
@@ -704,38 +628,8 @@
 }
 
 .vaa-mini--under-quote {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -80px;
-  z-index: 3;
-  margin-left: 0;
+  flex: 0 0 auto;
   padding: 18px 38px;
-}
-
-.vaa-mini--under-quote.vaa-mini--short {
-  bottom: 0px;
-}
-
-.vaa-mini--shift-sm {
-  margin-left: 140px;
-  padding: 26px;
-}
-
-.vaa-mini--shift-sm .vaa-mini__band {
-  font-size: 15px;
-  padding: 9px 18px;
-  margin-bottom: 14px;
-}
-
-.vaa-mini--shift-sm .vaa-impact__value {
-  font-size: 36px;
-  height: 44px;
-}
-
-.vaa-mini--shift-sm .vaa-impact__delta {
-  font-size: 33px;
-  height: 44px;
 }
 
 .vaa-mini--under-quote .vaa-mini__band {

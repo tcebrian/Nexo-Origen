@@ -159,12 +159,6 @@
   grid-row: 4;
 }
 
-/* Diseño extremo: sin footer ni fila espaciadora, recupera esas 2 filas y
-   sus gaps (40px) para el comentario/impacto en la media. */
-.sga-sheet.sga-sheet--extreme {
-  grid-template-rows: auto 1fr;
-}
-
 /* ---------- header editorial ---------- */
 
 .sga-header {
@@ -365,116 +359,25 @@
   margin-left: 40px;
 }
 
-/* ---------- diseño alternativo: comentario extremadamente largo ---------- */
-/* Solo comentario + Impacto en la media, centrado, sin Análisis/Diagnóstico/
-   Conclusión — evita comprimir todo lo demás para que quepa un comentario
-   enorme. El padding horizontal deja libre la zona donde sangran la
-   cesta de pollo (izquierda) y el vaso/patatas (derecha). */
-.sga-body--extreme {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 28px;
-  padding: 10px 320px 0 330px;
-  min-height: 0;
-}
-
-.sga-review.sga-review--extreme {
-  width: 100%;
-  margin-top: 15px;
-  min-height: 720px;
-  height: auto;
-  flex-shrink: 0;
-}
-
-.sga-quote.sga-quote--extreme {
-  min-height: 593px;
-  height: auto;
-  flex-shrink: 0;
-}
-
-.sga-mini--extreme {
-  position: relative;
-  z-index: 7;
-  width: 100%;
-  margin-top: -40px;
-  padding: 24px 40px;
-}
-
-.sga-mini--extreme .sga-mini__band {
-  font-size: 18px;
-  padding: 7px 22px;
-  margin-bottom: 10px;
-}
-
-.sga-mini--extreme .sga-impact__col {
-  padding: 0 22px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.sga-mini--extreme .sga-impact__label {
-  font-size: 17px;
-  margin: 0 0 4px;
-  height: 21px;
-  display: flex;
-  align-items: center;
-}
-
-.sga-mini--extreme .sga-impact__value {
-  margin: 0;
-  font-size: 46px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1;
-  height: 54px;
-  display: flex;
-  align-items: center;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
-}
-
-.sga-mini--extreme .sga-impact__delta {
-  margin: 0;
-  font-size: 42px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1;
-  height: 54px;
-  gap: 6px;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
-}
-
-.sga-mini--extreme .sga-impact__delta svg {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-}
-
-.sga-mini--extreme .sga-impact__col + .sga-impact__col::before {
-  top: 10px;
-  bottom: 10px;
-  width: 2px;
-}
-
 .sga-review-col {
   position: relative;
   z-index: 5;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
   /* Altura fija (no depende de la columna de insights ni del alto de la
-     reseña): ancla "Impacto en la media" (position:absolute, bottom:0 más
-     abajo) a un punto fijo casi pegado a donde sangra la cesta de pollo, sin
-     taparla. La cesta está anclada en posición fija dentro del canvas
-     (bottom:-46px), así que su borde superior siempre cae en el mismo punto
-     — este valor está calculado contra ese punto fijo. */
+     reseña): "Impacto en la media" siempre cae en el mismo punto relativo a
+     esta columna — dentro del flujo normal (no position:absolute), así que
+     nunca puede solaparse con el comentario por muy largo que sea: la
+     tarjeta de la reseña (flex:1) cede el espacio que le sobra, y si el
+     texto no entra ni al tamaño de letra mínimo se recorta (overflow:hidden
+     en .sga-quote) en vez de desplazar u ocultar "Impacto en la media". */
   height: 653px;
 }
 
 .sga-review {
+  flex: 1;
   border-radius: 20px;
   background: var(--sg-card);
   border: 1px solid var(--sg-line);
@@ -512,9 +415,12 @@
 
 .sga-review__name {
   margin: 0;
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 800;
   color: var(--sg-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sga-review__datetime {
@@ -522,7 +428,7 @@
   align-items: center;
   gap: 6px;
   margin: 5px 0 0;
-  font-size: 24px;
+  font-size: 21px;
   color: var(--sg-ink-soft);
 }
 
@@ -566,9 +472,24 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  /* Mismo alto que la reseña normal/larga (referencia) — un comentario corto
-     no encoge el cuadro, solo crece si el comentario es más largo que eso. */
-  min-height: 350px;
+  /* Ocupa siempre el espacio que le sobra a la tarjeta tras la cabecera
+     (avatar/nombre/fecha) — nunca crece más allá de eso. Si el texto no
+     entra ni con la letra más pequeña del tier, se recorta aquí en vez de
+     empujar "Impacto en la media" hacia abajo. */
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Con comentarios que necesitan varias líneas (tiers md/sm/xs/xxs) se
+   alinea arriba en vez de centrar — así, si el texto no llega a entender
+   entero, lo que se pierde es el final (hay elipsis + aviso de "leer más"),
+   nunca el principio de la reseña. */
+.sga-quote:has(.sga-quote__text--md),
+.sga-quote:has(.sga-quote__text--sm),
+.sga-quote:has(.sga-quote__text--xs),
+.sga-quote:has(.sga-quote__text--xxs) {
+  justify-content: flex-start;
 }
 
 .sga-quote__mark {
@@ -602,19 +523,22 @@
 }
 
 .sga-quote__text--md {
-  font-size: 24px;
+  font-size: 21px;
 }
 
 .sga-quote__text--sm {
-  font-size: 19px;
+  font-size: 17px;
+  line-height: 1.4;
 }
 
 .sga-quote__text--xs {
-  font-size: 20px;
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .sga-quote__text--xxs {
-  font-size: 17px;
+  font-size: 12.5px;
+  line-height: 1.3;
 }
 
 /* ---------- columna de IA ---------- */
@@ -652,6 +576,9 @@
   /* Acerca los dos recuadros a su título "Diagnóstico Nexo" sin tocar el
      espaciado del bloque de Análisis Nexo (comparten el mismo .sga-ribbon). */
   margin-top: -9px;
+  /* No dejar que los recuadros lleguen hasta donde sangran los platos de la
+     derecha — medido contra su posición real. */
+  max-width: 380px;
 }
 
 .sga-diagnostics__item {
@@ -793,10 +720,11 @@
 
 .sga-analysis__copy {
   min-width: 0;
-  /* No dejar que el texto llegue hasta donde sangra el vaso de refresco
-     (bleed fijo a la derecha del canvas) — se corta antes y sigue en la
-     línea de abajo en vez de quedar tapado detrás del vaso. */
-  max-width: 485px;
+  /* No dejar que el texto llegue hasta donde sangran los platos de la
+     derecha (bleed fijo al canvas) — medido contra su posición real, con
+     margen de seguridad. Se corta antes y sigue en la línea de abajo en vez
+     de quedar tapado detrás. */
+  max-width: 300px;
 }
 
 .sga-analysis__label {
@@ -882,45 +810,8 @@
 }
 
 .sga-mini--under-quote {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -80px;
-  z-index: 3;
-  margin-left: 0;
+  flex: 0 0 auto;
   padding: 18px 38px;
-}
-
-/* Con comentarios cortos (<500 caracteres) sube bastante más, ya que el
-   cuadro del comentario queda más corto y deja mucho hueco debajo. */
-.sga-mini--under-quote.sga-mini--short {
-  bottom: 0px;
-}
-
-/* Con comentarios ya bastante largos (dentro del diseño normal, ≤900
-   caracteres — por encima de eso se usa el diseño alternativo centrado) se
-   desplaza a la derecha y se compacta un poco para no quedar tapada por la
-   cesta de pollo. Con comentarios normales/cortos no se desplaza: se queda a
-   ancho completo. */
-.sga-mini--shift-sm {
-  margin-left: 140px;
-  padding: 26px;
-}
-
-.sga-mini--shift-sm .sga-mini__band {
-  font-size: 15px;
-  padding: 9px 18px;
-  margin-bottom: 14px;
-}
-
-.sga-mini--shift-sm .sga-impact__value {
-  font-size: 36px;
-  height: 44px;
-}
-
-.sga-mini--shift-sm .sga-impact__delta {
-  font-size: 33px;
-  height: 44px;
 }
 
 .sga-mini--under-quote .sga-mini__band {

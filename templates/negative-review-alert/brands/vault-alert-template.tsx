@@ -34,10 +34,12 @@ function absUrl(base: string | undefined, path: string): string {
 }
 
 /**
- * Tamaño del comentario adaptado a su longitud real. Los comentarios cortos
- * o de longitud normal usan siempre el mismo tamaño base (el de la reseña
- * normal/larga) — la letra solo se reduce a partir de aquí, cuanto más largo
- * es el comentario.
+ * Tamaño del comentario adaptado a su longitud real. La posición de todo el
+ * layout es SIEMPRE la misma (comentario arriba-izq, impacto debajo,
+ * análisis/diagnóstico a la derecha) — lo único que cambia con la longitud
+ * del texto es el tamaño de letra, nunca la composición ni la posición de
+ * ningún bloque. Así se evita el solape que salía antes al desplazar o
+ * reestructurar cajas según el contenido.
  */
 function quoteSizeClass(length: number): string {
   if (length <= 260) return "vaa-quote__text--lg";
@@ -46,15 +48,6 @@ function quoteSizeClass(length: number): string {
   if (length <= 1300) return "vaa-quote__text--xs";
   return "vaa-quote__text--xxs";
 }
-
-/**
- * A partir de aquí el comentario es tan largo que intentar mantenerlo en el
- * layout de dos columnas obliga a encoger demasiado el resto (Análisis,
- * Diagnóstico, Conclusión). En vez de eso se usa un diseño alternativo: solo
- * el comentario, centrado, y el Impacto en la media debajo — se quita todo
- * lo demás en vez de aplastarlo.
- */
-const EXTREME_COMMENT_CHARS = 900;
 
 const MAX_COMMENT_CHARS = 1400;
 const READ_MORE_HINT = " (pulsa el enlace para leer más)";
@@ -89,16 +82,6 @@ function footerTier(length: number): "lg" | "md" | "sm" | "xs" {
   if (length <= 180) return "md";
   if (length <= 260) return "sm";
   return "xs";
-}
-
-/**
- * Dentro del diseño normal (comentarios ≤900 caracteres — por encima de eso
- * se usa el diseño alternativo centrado), cuando el comentario ya es
- * bastante largo "Impacto en la media" se desplaza hacia la derecha y se
- * compacta un poco.
- */
-function commentShiftTier(commentLength: number): "" | "sm" {
-  return commentLength <= 650 ? "" : "sm";
 }
 
 const EMPTY_TOKENS = new Set([
@@ -201,15 +184,12 @@ export const VaultAlertTemplate = forwardRef<HTMLDivElement, VaultAlertTemplateP
     const analysisTotalLength = analysisRows.reduce((sum, row) => sum + row.value.length, 0);
     const analysisTier = insightsTier(analysisTotalLength);
 
-    const isExtremeComment = fullComment.length > EXTREME_COMMENT_CHARS;
-    const shiftTier = isExtremeComment ? "" : commentShiftTier(fullComment.length);
-
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
     const locationLabel = stripBrandPrefix(data.restaurant_name) || data.restaurant_name;
 
     return (
       <div ref={ref} className="vaa-canvas" style={{ width: design.width, height: design.height }}>
-        <div className={`vaa-sheet ${isExtremeComment ? "vaa-sheet--extreme" : ""}`}>
+        <div className="vaa-sheet">
           {/* Header editorial */}
           <header className="vaa-header">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -250,9 +230,10 @@ export const VaultAlertTemplate = forwardRef<HTMLDivElement, VaultAlertTemplateP
             />
           </div>
 
-          {isExtremeComment ? (
-            <div className="vaa-body vaa-body--extreme">
-              <section className="vaa-review vaa-review--extreme">
+          <div className="vaa-body">
+            <div className="vaa-review-col">
+              {/* Tarjeta grande de la reseña — protagonista */}
+              <section className="vaa-review">
                 <div className="vaa-review__head">
                   <span className="vaa-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
                   <div className="vaa-review__meta">
@@ -273,7 +254,7 @@ export const VaultAlertTemplate = forwardRef<HTMLDivElement, VaultAlertTemplateP
                   </div>
                 </div>
 
-                <div className="vaa-quote vaa-quote--extreme">
+                <div className="vaa-quote">
                   <span className="vaa-quote__mark vaa-quote__mark--open" aria-hidden>
                     &ldquo;
                   </span>
@@ -286,7 +267,7 @@ export const VaultAlertTemplate = forwardRef<HTMLDivElement, VaultAlertTemplateP
                 </div>
               </section>
 
-              <section className="vaa-mini vaa-mini--extreme">
+              <section className="vaa-mini vaa-mini--under-quote">
                 <p className="vaa-mini__band">IMPACTO EN LA MEDIA</p>
                 <div className="vaa-impact">
                   <div className="vaa-impact__col">
@@ -312,115 +293,48 @@ export const VaultAlertTemplate = forwardRef<HTMLDivElement, VaultAlertTemplateP
                 </div>
               </section>
             </div>
-          ) : (
-            <div className="vaa-body">
-              <div className="vaa-review-col">
-                {/* Tarjeta grande de la reseña — protagonista */}
-                <section className="vaa-review">
-                  <div className="vaa-review__head">
-                    <span className="vaa-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
-                    <div className="vaa-review__meta">
-                      <p className="vaa-review__name">{data.review_author}</p>
-                      <p className="vaa-review__datetime">
-                        <VaIconCalendar />
-                        <span>{data.review_date}</span>
-                        <span className="vaa-review__sep" aria-hidden>
-                          |
-                        </span>
-                        <VaIconClock />
-                        <span>{data.review_time}</span>
-                      </p>
-                    </div>
-                    <div className="vaa-review__rating">
-                      <StarRating stars={data.review_stars} size="lg" />
-                      <span className="vaa-review__rating-value">{data.review_stars}/5</span>
-                    </div>
-                  </div>
 
-                  <div className="vaa-quote">
-                    <span className="vaa-quote__mark vaa-quote__mark--open" aria-hidden>
-                      &ldquo;
-                    </span>
-                    <p className={`vaa-quote__text ${quoteSizeClass(fullComment.length)}`}>
-                      {fullComment}
-                    </p>
-                    <span className="vaa-quote__mark vaa-quote__mark--close" aria-hidden>
-                      &rdquo;
-                    </span>
-                  </div>
-                </section>
+            {/* Columna de inteligencia artificial */}
+            <section className="vaa-insights">
+              {analysisRows.length > 0 ? (
+                <>
+                  <p className="vaa-ribbon">ANÁLISIS NEXO</p>
+                  <ul className={`vaa-analysis vaa-analysis--${analysisTier}`}>
+                    {analysisRows.map((row) => (
+                      <li key={row.key}>
+                        <span className="vaa-analysis__icon">{row.icon}</span>
+                        <div className="vaa-analysis__copy">
+                          <p className="vaa-analysis__label">{row.label}</p>
+                          <p className="vaa-analysis__value">{row.value}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
 
-                <section
-                  className={`vaa-mini vaa-mini--under-quote ${fullComment.length < 500 ? "vaa-mini--short" : ""} ${shiftTier ? `vaa-mini--shift-${shiftTier}` : ""}`}
-                >
-                  <p className="vaa-mini__band">IMPACTO EN LA MEDIA</p>
-                  <div className="vaa-impact">
-                    <div className="vaa-impact__col">
-                      <p className="vaa-impact__label">Media anterior</p>
-                      <p className="vaa-impact__value">{data.previous_rating.toFixed(2)}</p>
-                      <span className="vaa-impact__stars">
-                        <StarRating stars={data.previous_rating} size="md" />
-                      </span>
-                    </div>
-                    <div className="vaa-impact__col">
-                      <p className="vaa-impact__label">Media actual</p>
-                      <p className={`vaa-impact__value vaa-impact__value--tone-${tone}`}>
-                        {data.current_rating.toFixed(2)}
-                      </p>
-                      <span className="vaa-impact__stars">
-                        <StarRating stars={data.current_rating} size="md" />
-                      </span>
-                    </div>
-                    <div className="vaa-impact__col">
-                      <p className="vaa-impact__label">Variación</p>
-                      <ImpactDelta delta={delta} />
-                    </div>
-                  </div>
-                </section>
-              </div>
-
-              {/* Columna de inteligencia artificial */}
-              <section className="vaa-insights">
-                {analysisRows.length > 0 ? (
-                  <>
-                    <p className="vaa-ribbon">ANÁLISIS NEXO</p>
-                    <ul className={`vaa-analysis vaa-analysis--${analysisTier}`}>
-                      {analysisRows.map((row) => (
-                        <li key={row.key}>
-                          <span className="vaa-analysis__icon">{row.icon}</span>
-                          <div className="vaa-analysis__copy">
-                            <p className="vaa-analysis__label">{row.label}</p>
-                            <p className="vaa-analysis__value">{row.value}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : null}
-
-                <p className={`vaa-ribbon ${analysisRows.length > 0 ? "vaa-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
-                <div className={`vaa-diagnostics vaa-diagnostics--${analysisTier}`}>
-                  <div className="vaa-diagnostics__item">
-                    <span className="vaa-diagnostics__icon vaa-diagnostics__icon--neutral">
-                      <VaIconMood />
-                    </span>
-                    <p className="vaa-diagnostics__label">Sentimiento</p>
-                    <p className="vaa-diagnostics__value">{sentiment ?? "Sin datos"}</p>
-                  </div>
-                  <div className="vaa-diagnostics__item">
-                    <span className={`vaa-diagnostics__icon vaa-diagnostics__icon--${riskTone(risk)}`}>
-                      <VaIconShield />
-                    </span>
-                    <p className="vaa-diagnostics__label">Riesgo</p>
-                    <p className="vaa-diagnostics__value">{risk ?? "Sin datos"}</p>
-                  </div>
+              <p className={`vaa-ribbon ${analysisRows.length > 0 ? "vaa-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
+              <div className={`vaa-diagnostics vaa-diagnostics--${analysisTier}`}>
+                <div className="vaa-diagnostics__item">
+                  <span className="vaa-diagnostics__icon vaa-diagnostics__icon--neutral">
+                    <VaIconMood />
+                  </span>
+                  <p className="vaa-diagnostics__label">Sentimiento</p>
+                  <p className="vaa-diagnostics__value">{sentiment ?? "Sin datos"}</p>
                 </div>
-              </section>
-            </div>
-          )}
+                <div className="vaa-diagnostics__item">
+                  <span className={`vaa-diagnostics__icon vaa-diagnostics__icon--${riskTone(risk)}`}>
+                    <VaIconShield />
+                  </span>
+                  <p className="vaa-diagnostics__label">Riesgo</p>
+                  <p className="vaa-diagnostics__value">{risk ?? "Sin datos"}</p>
+                </div>
+              </div>
+            </section>
+          </div>
 
-          {/* Conclusión — se omite en el diseño extremo (solo comentario + Impacto en la media) */}
-          {!isExtremeComment && conclusion
+          {/* Conclusión */}
+          {conclusion
             ? (() => {
                 const footerSizeTier = footerTier(conclusion.length);
                 return (

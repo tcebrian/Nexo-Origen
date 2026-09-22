@@ -50,15 +50,6 @@
   height: auto;
 }
 
-.nwsth-header__leaf {
-  position: absolute;
-  left: 167px;
-  top: 132px;
-  width: 80px;
-  height: 80px;
-  color: #c8102e;
-}
-
 .nwsth-header__title-block {
   position: absolute;
   left: 430px;
@@ -112,9 +103,22 @@
 
 .nwsth-header__photo {
   position: absolute;
-  right: -5px;
-  top: 5px;
-  width: 780px;
+  right: 300px;
+  top: -10px;
+  width: 920px;
+  height: auto;
+  object-fit: contain;
+}
+
+.nwsth-header__nexo {
+  position: absolute;
+  right: 36px;
+  top: 24px;
+  width: 280px;
+}
+
+.nwsth-header__nexo-logo {
+  width: 100%;
   height: auto;
   object-fit: contain;
 }
@@ -468,22 +472,28 @@
 
 .nwsth-footer {
   flex-shrink: 0;
-  height: 115px;
+  height: 88px;
   background: linear-gradient(90deg, #a50004 0%, #c50008 100%);
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 0 60px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
 }
 
-.nwsth-footer__sep {
-  width: 1px;
-  height: 50px;
-  background: rgba(255, 255, 255, 0.85);
-  flex-shrink: 0;
+.nwsth-footer__pillar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.nwsth-footer__pillar:first-child {
+  border-left: none;
 }
 
 .nwsth-footer__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 22px;
   font-weight: 400;
   color: #fff;
@@ -491,10 +501,11 @@
 }
 
 .nwsth-footer__item--web {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   font-size: 20px;
+}
+
+.nwsth-footer__item--tagline {
+  font-size: 19px;
 }
 
 .nwsth-footer__tagline {
