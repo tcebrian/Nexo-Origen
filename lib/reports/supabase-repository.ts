@@ -10,12 +10,8 @@ function networkAggregate(period: PeriodData): PeriodNetworkAggregate {
     totalResenas: period.aggregates.totalResenas,
     totalPositivas: period.aggregates.totalPositivas,
     totalNegativas: period.aggregates.totalNegativas,
-    totalNeutras:
-      period.aggregates.totalResenas -
-      period.aggregates.totalPositivas -
-      period.aggregates.totalNegativas,
-    totalAtencion:
-      period.problemDistribution.reduce((sum, item) => sum + item.count, 0),
+    totalNeutras: period.aggregates.totalNeutras,
+    totalAtencion: period.aggregates.totalAtencion,
     mediaGlobal: period.aggregates.mediaGlobal,
     positivePct: period.aggregates.positivePct,
     negativePct: period.aggregates.negativePct,
