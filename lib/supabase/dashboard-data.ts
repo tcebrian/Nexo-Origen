@@ -261,9 +261,9 @@ export async function getDashboardData(
       };
     }
 
-    if (totalResenas === 0 && aggregates.source === "kpi_restaurantes") {
+    if (totalResenas === 0) {
       return {
-        mediaGlobal,
+        mediaGlobal: 0,
         totalResenas: 0,
         totalPositivas: 0,
         totalNegativas: 0,
@@ -271,17 +271,17 @@ export async function getDashboardData(
         negativePct: 0,
         ultimaActualizacion,
         totalRestaurantes,
-        ranking: buildRanking(rows),
-        restaurantesRiesgo: buildRestaurantesRiesgo(rows),
+        ranking: [],
+        restaurantesRiesgo: [],
         alertas: [],
         distribucionMarca: [],
-        resumenIA: "Sin reseñas en el periodo seleccionado. Pendiente de activar histórico diario.",
+        resumenIA: "Sin reseñas en el periodo seleccionado.",
         peorRestaurante: null,
         restauranteMasNegativas: null,
-        chartPending: chartValues.length === 0,
-        chartLabels,
-        chartValues,
-        chartSource,
+        chartPending: true,
+        chartLabels: [],
+        chartValues: [],
+        chartSource: "empty",
         problemDistribution,
       };
     }
