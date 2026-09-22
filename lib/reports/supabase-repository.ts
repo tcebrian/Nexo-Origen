@@ -1,8 +1,24 @@
 import { buildAutomationsPlaceholder, buildReportsFromKpi } from "@/lib/supabase/reports-builder";
 import { loadPeriodData } from "@/lib/supabase/period-api";
-import { fetchResenasForPeriod } from "@/lib/supabase/resenas";
 import type { ReportRecord } from "./types";
+import type { PeriodData, PeriodNetworkAggregate } from "@/lib/supabase/period-types";
 import type { ReportsRepository } from "./repository";
+
+
+function networkAggregate(period: PeriodData): PeriodNetworkAggregate {
+  return {
+    totalResenas: period.aggregates.totalResenas,
+    totalPositivas: period.aggregates.totalPositivas,
+    totalNegativas: period.aggregates.totalNegativas,
+    totalNeutras: period.aggregates.totalNeutras,
+    totalAtencion: period.aggregates.totalAtencion,
+    mediaGlobal: period.aggregates.mediaGlobal,
+    positivePct: period.aggregates.positivePct,
+    negativePct: period.aggregates.negativePct,
+    totalRestaurantes: period.activeKpiRows.length,
+    ultimaActualizacion: period.aggregates.ultimaActualizacion,
+  };
+}
 
 const EMPTY_REPORT: ReportRecord = {
   id: "report-empty",
@@ -28,13 +44,16 @@ const EMPTY_REPORT: ReportRecord = {
 export const supabaseReportsRepository: ReportsRepository = {
   async getLatest(query) {
     try {
-      const { activeKpiRows: rows, bounds, analisisByResenaId } = await loadPeriodData(query.start, query.end);
-      const resenas = await fetchResenasForPeriod({ start: bounds.start, end: bounds.end });
+      const period = await loadPeriodData(query.start, query.end);
       const reports = buildReportsFromKpi(
-        rows,
-        { start: bounds.start, end: bounds.end },
-        resenas,
-        analisisByResenaId
+        period.activeKpiRows,
+        { start: period.bounds.start, end: period.bounds.end },
+        {
+          network: networkAggregate(period),
+          byBrand: period.aggregates.byBrand,
+          problemDistribution: period.problemDistribution,
+          problemDistributionByBrand: period.problemDistributionByBrand,
+        }
       );
       return reports[0] ?? { ...EMPTY_REPORT, date: query.end };
     } catch (error) {
@@ -45,13 +64,16 @@ export const supabaseReportsRepository: ReportsRepository = {
 
   async listLibrary(query) {
     try {
-      const { activeKpiRows: rows, bounds, analisisByResenaId } = await loadPeriodData(query.start, query.end);
-      const resenas = await fetchResenasForPeriod({ start: bounds.start, end: bounds.end });
+      const period = await loadPeriodData(query.start, query.end);
       return buildReportsFromKpi(
-        rows,
-        { start: bounds.start, end: bounds.end },
-        resenas,
-        analisisByResenaId
+        period.activeKpiRows,
+        { start: period.bounds.start, end: period.bounds.end },
+        {
+          network: networkAggregate(period),
+          byBrand: period.aggregates.byBrand,
+          problemDistribution: period.problemDistribution,
+          problemDistributionByBrand: period.problemDistributionByBrand,
+        }
       );
     } catch (error) {
       console.error("[supabaseReportsRepository.listLibrary]", error);

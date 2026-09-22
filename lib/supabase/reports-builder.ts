@@ -3,8 +3,8 @@ import { buildWeeklyReportFromKpi } from "@/lib/reports/weekly/build-from-kpi";
 import type { WeeklyTemplateId } from "@/lib/reports/weekly/types";
 import { mapEstadoToOperational, marcaToBrandId } from "./kpi-mappers";
 import type { KpiRestaurantRow, PeriodQuery } from "./kpi-restaurantes";
-import type { ResenaRow } from "./resenas";
-import type { AnalisisIaIndex } from "./analisis-ia";
+import type { PeriodNetworkAggregate } from "./period-types";
+import type { ProblemDistributionItem } from "@/lib/review-metrics";
 import type { ReportAutomation, ReportRecord } from "@/lib/reports/types";
 
 function formatPeriodLabel(start: Date, end: Date): string {
@@ -27,11 +27,17 @@ function weeklyTemplateForBrand(brand: BrandId): WeeklyTemplateId {
   return "grupo-hambar";
 }
 
+export type OfficialReportMetrics = {
+  network: PeriodNetworkAggregate;
+  byBrand: Record<string, PeriodNetworkAggregate>;
+  problemDistribution: ProblemDistributionItem[];
+  problemDistributionByBrand: Record<string, ProblemDistributionItem[]>;
+};
+
 export function buildReportsFromKpi(
   rows: KpiRestaurantRow[],
   query: PeriodQuery,
-  resenas: ResenaRow[] = [],
-  analisisByResenaId: AnalisisIaIndex = new Map()
+  official: OfficialReportMetrics
 ): ReportRecord[] {
   if (rows.length === 0) return [];
 
@@ -79,7 +85,13 @@ export function buildReportsFromKpi(
         highestRisk: mostNegatives?.restaurante ?? express.highestRisk,
       },
       weeklyTemplateId: "grupo-hambar",
-      weeklyData: buildWeeklyReportFromKpi(rows, "grupo-hambar", query, resenas, analisisByResenaId),
+      weeklyData: buildWeeklyReportFromKpi(
+        rows,
+        "grupo-hambar",
+        query,
+        official.network,
+        official.problemDistribution
+      ),
     },
   ];
 
@@ -116,7 +128,24 @@ export function buildReportsFromKpi(
         preventProtection: Math.round((brandOnTarget / Math.max(brandRows.length, 1)) * 100),
       },
       weeklyTemplateId: templateId,
-      weeklyData: buildWeeklyReportFromKpi(rows, templateId, query, resenas, analisisByResenaId),
+      weeklyData: buildWeeklyReportFromKpi(
+        brandRows,
+        templateId,
+        query,
+        official.byBrand[brand] ?? {
+          totalResenas: 0,
+          totalPositivas: 0,
+          totalNegativas: 0,
+          totalNeutras: 0,
+          totalAtencion: 0,
+          mediaGlobal: 0,
+          positivePct: 0,
+          negativePct: 0,
+          totalRestaurantes: brandRows.length,
+          ultimaActualizacion: null,
+        },
+        official.problemDistributionByBrand[brand] ?? []
+      ),
     });
   }
 

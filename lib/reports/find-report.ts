@@ -1,7 +1,7 @@
 import { buildReportsFromKpi } from "@/lib/supabase/reports-builder";
 import { loadPeriodData } from "@/lib/supabase/period-api";
-import { fetchResenasForPeriodServer } from "@/lib/supabase/resenas.server";
 import type { BrandId } from "@/app/dashboard/restaurantes/data";
+import type { PeriodData, PeriodNetworkAggregate } from "@/lib/supabase/period-types";
 import type { ReportRecord } from "./types";
 
 function parseReportId(id: string): { brand: BrandId | "todas"; endKey: string } | null {
@@ -15,6 +15,21 @@ function parseReportId(id: string): { brand: BrandId | "todas"; endKey: string }
   return { brand: match[1] as BrandId, endKey: match[2] };
 }
 
+function networkAggregate(period: PeriodData): PeriodNetworkAggregate {
+  return {
+    totalResenas: period.aggregates.totalResenas,
+    totalPositivas: period.aggregates.totalPositivas,
+    totalNegativas: period.aggregates.totalNegativas,
+    totalNeutras: period.aggregates.totalNeutras,
+    totalAtencion: period.aggregates.totalAtencion,
+    mediaGlobal: period.aggregates.mediaGlobal,
+    positivePct: period.aggregates.positivePct,
+    negativePct: period.aggregates.negativePct,
+    totalRestaurantes: period.activeKpiRows.length,
+    ultimaActualizacion: period.aggregates.ultimaActualizacion,
+  };
+}
+
 export async function findReportById(id: string): Promise<ReportRecord | undefined> {
   const parsed = parseReportId(id);
   if (!parsed) return undefined;
@@ -23,13 +38,16 @@ export async function findReportById(id: string): Promise<ReportRecord | undefin
   const start = new Date(end);
   start.setDate(start.getDate() - 6);
 
-  const { activeKpiRows, bounds, analisisByResenaId } = await loadPeriodData(start, end);
-  const resenas = await fetchResenasForPeriodServer({ start: bounds.start, end: bounds.end });
+  const period = await loadPeriodData(start, end);
   const reports = buildReportsFromKpi(
-    activeKpiRows,
-    { start: bounds.start, end: bounds.end },
-    resenas,
-    analisisByResenaId
+    period.activeKpiRows,
+    { start: period.bounds.start, end: period.bounds.end },
+    {
+      network: networkAggregate(period),
+      byBrand: period.aggregates.byBrand,
+      problemDistribution: period.problemDistribution,
+      problemDistributionByBrand: period.problemDistributionByBrand,
+    }
   );
 
   return reports.find((report) => report.id === id);

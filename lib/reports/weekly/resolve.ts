@@ -3,6 +3,19 @@ import type { ReportRecord } from "../types";
 import { buildWeeklyReportFromKpi } from "./build-from-kpi";
 import type { WeeklyReportData, WeeklyTemplateId } from "./types";
 
+const EMPTY_AGGREGATE = {
+  totalResenas: 0,
+  totalPositivas: 0,
+  totalNegativas: 0,
+  totalNeutras: 0,
+  totalAtencion: 0,
+  mediaGlobal: 0,
+  positivePct: 0,
+  negativePct: 0,
+  totalRestaurantes: 0,
+  ultimaActualizacion: null,
+};
+
 function inferTemplateFromBrand(brand: ReportRecord["brand"]): WeeklyTemplateId {
   if (brand === "bk") return "bk";
   if (brand === "sg") return "sg";
@@ -29,7 +42,13 @@ export function resolveWeeklyReportData(report: ReportRecord): WeeklyReportData 
   const start = new Date(end);
   start.setDate(start.getDate() - 6);
 
-  return buildWeeklyReportFromKpi([], templateId, { start, end });
+  return buildWeeklyReportFromKpi(
+    [],
+    templateId,
+    { start, end },
+    EMPTY_AGGREGATE,
+    []
+  );
 }
 
 export function isWeeklyReport(report: ReportRecord) {
