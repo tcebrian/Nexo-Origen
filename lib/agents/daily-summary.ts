@@ -39,10 +39,60 @@ function mondayOf(dateKey: string): string {
   return addDays(dateKey, offset);
 }
 
-function formatDate(dateKey: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
+function formatLongDate(dateKey: string): string {
+  const value = new Intl.DateTimeFormat("es-ES", {
+    weekday: "long",
     day: "numeric",
-    month: "short",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Madrid",
+  }).format(new Date(`${dateKey}T12:00:00Z`));
+
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function dateParts(dateKey: string): { day: number; month: string; year: number } {
+  const date = new Date(`${dateKey}T12:00:00Z`);
+  const day = Number(
+    new Intl.DateTimeFormat("es-ES", {
+      day: "numeric",
+      timeZone: "Europe/Madrid",
+    }).format(date)
+  );
+  const month = new Intl.DateTimeFormat("es-ES", {
+    month: "long",
+    timeZone: "Europe/Madrid",
+  }).format(date);
+  const year = Number(
+    new Intl.DateTimeFormat("es-ES", {
+      year: "numeric",
+      timeZone: "Europe/Madrid",
+    }).format(date)
+  );
+
+  return { day, month, year };
+}
+
+function formatWeeklyPeriod(startKey: string, endKey: string): string {
+  const start = dateParts(startKey);
+  const end = dateParts(endKey);
+
+  if (start.year === end.year && start.month === end.month) {
+    return `${start.day} al ${end.day} de ${end.month} de ${end.year}`;
+  }
+
+  if (start.year === end.year) {
+    return `${start.day} de ${start.month} al ${end.day} de ${end.month} de ${end.year}`;
+  }
+
+  return `${start.day} de ${start.month} de ${start.year} al ${end.day} de ${end.month} de ${end.year}`;
+}
+
+function formatShortDate(dateKey: string): string {
+  return new Intl.DateTimeFormat("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
     timeZone: "Europe/Madrid",
   }).format(new Date(`${dateKey}T12:00:00Z`));
 }
@@ -111,6 +161,7 @@ export async function buildAgentDailySummaryPreview(
 
   const todayKey = toDateKey(new Date());
   const weekStartKey = mondayOf(todayKey);
+  const weekEndKey = addDays(weekStartKey, 6);
   const yesterdayKey = addDays(todayKey, -1);
   const tomorrowKey = addDays(todayKey, 1);
   const restaurantIds = restaurants.map((restaurant) => restaurant.id);
@@ -137,8 +188,6 @@ export async function buildAgentDailySummaryPreview(
     const key = toDateKey(review.fecha_resena ?? review.created_at ?? "");
     return key >= weekStartKey && key <= todayKey;
   });
-  const restaurantById = new Map(restaurants.map((restaurant) => [restaurant.id, restaurant]));
-
   const byRestaurant = new Map<
     number,
     { total: number; sum: number; attention: number; yesterday: number }
@@ -197,30 +246,53 @@ export async function buildAgentDailySummaryPreview(
           .filter((row) => row.operational !== "on_target" || row.attention > 0)
           .slice(0, 10);
 
+  const totalWeeklyReviews = rows.reduce((sum, row) => sum + row.total, 0);
+  const totalWeeklyStars = rows.reduce((sum, row) => sum + row.sum, 0);
+  const weeklyMedia =
+    totalWeeklyReviews > 0 ? totalWeeklyStars / totalWeeklyReviews : 0;
+  const rowsWithReviews = rows.filter((row) => row.total > 0);
+  const onTargetCount = rowsWithReviews.filter(
+    (row) => row.operational === "on_target"
+  ).length;
+  const watchCount = rowsWithReviews.filter(
+    (row) => row.operational === "watch"
+  ).length;
+  const criticalCount = rowsWithReviews.filter(
+    (row) => row.operational === "critical"
+  ).length;
+
   const lines: string[] = [
-    "NEXO · Resumen diario",
-    `Supervisor: ${accessRow.nombre}`,
-    `Semana: ${formatDate(weekStartKey)} – ${formatDate(todayKey)}`,
+    "🤖 NEXO · Resumen diario",
+    `👤 Supervisor: ${accessRow.nombre}`,
+    `📅 Hoy: ${formatLongDate(todayKey)}`,
+    `🗓️ Periodo semanal: ${formatWeeklyPeriod(weekStartKey, weekEndKey)}`,
     "",
-    `Ayer: ${yesterdayTotal} reseñas nuevas · ${yesterdayAttention} requieren atención (1–3★)`,
+    `📥 Ayer (${formatShortDate(yesterdayKey)}): ${yesterdayTotal} reseñas nuevas · ${yesterdayAttention} requieren atención (1–3★)`,
     "",
-    "Esta semana:",
+    "📊 Esta semana:",
   ];
 
   for (const row of visibleRows) {
     const location = row.ciudad ? ` · ${row.ciudad}` : "";
     if (row.total === 0) {
-      lines.push(`- ${row.nombre}${location}: sin reseñas esta semana`);
+      lines.push(`⚪ ${row.nombre}${location}: sin reseñas esta semana`);
       continue;
     }
 
+    const statusEmoji =
+      row.operational === "on_target"
+        ? "🟢"
+        : row.operational === "watch"
+          ? "🟡"
+          : "🔴";
+
     lines.push(
-      `- ${row.nombre}${location}: ${row.media.toFixed(2)} · ${row.total} reseñas · ${row.attention} atención · ${statusLabel(row.media, true)}`
+      `${statusEmoji} ${row.nombre}${location}: ${row.media.toFixed(2)} · ${row.total} reseñas · ${row.attention} atención · ${statusLabel(row.media, true)}`
     );
   }
 
   if (rows.length > visibleRows.length) {
-    lines.push(`- +${rows.length - visibleRows.length} restaurantes sin incidencias destacadas`);
+    lines.push(`➕ +${rows.length - visibleRows.length} restaurantes sin incidencias destacadas`);
   }
 
   const attentionRows = rows.filter(
@@ -228,14 +300,42 @@ export async function buildAgentDailySummaryPreview(
   );
 
   if (attentionRows.length > 0) {
-    lines.push("", "Puntos a revisar:");
+    lines.push("", "⚠️ Puntos a revisar:");
     for (const row of attentionRows.slice(0, 5)) {
       lines.push(
-        `- ${row.nombre}: media ${row.media.toFixed(2)} y ${row.attention} reseñas de 1–3★ esta semana.`
+        `• ${row.nombre}: media ${row.media.toFixed(2)} y ${row.attention} reseñas de 1–3★ esta semana.`
       );
     }
   } else {
-    lines.push("", "Sin puntos críticos detectados en los restaurantes asignados.");
+    lines.push("", "✅ Sin puntos críticos detectados en los restaurantes con actividad.");
+  }
+
+  lines.push("");
+
+  if (totalWeeklyReviews === 0) {
+    lines.push(
+      `📌 Dato clave: todavía no hay reseñas registradas esta semana en los ${rows.length} restaurantes asignados.`
+    );
+  } else if (criticalCount > 0) {
+    const weakest = rowsWithReviews
+      .filter((row) => row.operational === "critical")
+      .sort((a, b) => a.media - b.media)[0];
+
+    lines.push(
+      `📌 Dato clave: ${criticalCount} de ${rowsWithReviews.length} locales con reseñas están en crítico. El más bajo es ${weakest.nombre} con ${weakest.media.toFixed(2)}.`
+    );
+  } else if (watchCount > 0) {
+    const weakest = rowsWithReviews
+      .filter((row) => row.operational === "watch")
+      .sort((a, b) => a.media - b.media)[0];
+
+    lines.push(
+      `📌 Dato clave: media semanal ponderada ${weeklyMedia.toFixed(2)} con ${totalWeeklyReviews} reseñas. ${watchCount} local${watchCount === 1 ? "" : "es"} está${watchCount === 1 ? "" : "n"} en seguimiento; el más bajo es ${weakest.nombre} con ${weakest.media.toFixed(2)}.`
+    );
+  } else {
+    lines.push(
+      `📌 Dato clave: media semanal ponderada ${weeklyMedia.toFixed(2)} con ${totalWeeklyReviews} reseñas. ${onTargetCount} de ${rowsWithReviews.length} locales con actividad están en objetivo.`
+    );
   }
 
   return {
