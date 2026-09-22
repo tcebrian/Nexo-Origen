@@ -9,7 +9,8 @@ import type {
   RestaurantPeriodMetrics,
 } from "@/lib/review-metrics";
 import type { KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
-import type { KpiDiarioRow } from "@/lib/supabase/kpi-diario";
+import type { DailyNetworkPoint, KpiDiarioRow } from "@/lib/supabase/kpi-diario";
+import { categoriaMotivoLabel } from "@/lib/supabase/resena-motivos";
 import { getSupabaseDataClientForServer } from "@/lib/supabase/data-client";
 
 
@@ -23,6 +24,13 @@ export type SupabaseDailyMetricRow = {
   neutras: number | string;
   negativas: number | string;
   atencion: number | string;
+  network_total_resenas: number | string;
+  network_rating_sum: number | string;
+  network_media_exacta: number | string;
+  network_positivas: number | string;
+  network_neutras: number | string;
+  network_negativas: number | string;
+  network_atencion: number | string;
 };
 
 export type SupabaseReviewImpactRow = {
@@ -126,8 +134,8 @@ export async function fetchSupabaseCanonicalDailyMetrics(
   startKey: string,
   endKey: string,
   restaurantIds: number[]
-): Promise<KpiDiarioRow[]> {
-  if (restaurantIds.length === 0) return [];
+): Promise<{ rows: KpiDiarioRow[]; networkSeries: DailyNetworkPoint[] }> {
+  if (restaurantIds.length === 0) return { rows: [], networkSeries: [] };
 
   const client = await getSupabaseDataClientForServer();
   const { data, error } = await client.rpc("nexo_reputation_daily_metrics", {
@@ -142,7 +150,8 @@ export async function fetchSupabaseCanonicalDailyMetrics(
     );
   }
 
-  return ((data ?? []) as SupabaseDailyMetricRow[]).map((row) => ({
+  const raw = (data ?? []) as SupabaseDailyMetricRow[];
+  const rows = raw.map((row) => ({
     restaurante_id: num(row.restaurante_id),
     fecha: String(row.fecha),
     total_resenas: num(row.total_resenas),
@@ -150,6 +159,28 @@ export async function fetchSupabaseCanonicalDailyMetrics(
     positivas: num(row.positivas),
     negativas: num(row.negativas),
   }));
+
+  const networkByDay = new Map<string, DailyNetworkPoint>();
+  for (const row of raw) {
+    const fecha = String(row.fecha);
+    if (networkByDay.has(fecha)) continue;
+    networkByDay.set(fecha, {
+      fecha,
+      label: new Date(`${fecha}T12:00:00`).toLocaleDateString("es-ES", {
+        day: "numeric",
+        month: "short",
+      }),
+      media: num(row.network_media_exacta),
+      totalResenas: num(row.network_total_resenas),
+    });
+  }
+
+  return {
+    rows,
+    networkSeries: [...networkByDay.values()].sort((a, b) =>
+      a.fecha.localeCompare(b.fecha)
+    ),
+  };
 }
 
 export async function fetchSupabaseReviewImpacts(
@@ -271,6 +302,18 @@ export function mapSupabaseCanonicalMetrics(input: {
     network,
     problemDistribution: input.problemDistribution ?? [],
   };
+}
+
+
+export function mapSupabaseMotivesToProblemDistribution(
+  rows: SupabaseMotiveMetricRow[]
+): ProblemDistributionItem[] {
+  return rows.map((row) => ({
+    label: categoriaMotivoLabel(row.categoria),
+    count: num(row.motivo_count),
+    percent: num(row.percent),
+    provisional: false,
+  }));
 }
 
 export type MetricMismatch = {
