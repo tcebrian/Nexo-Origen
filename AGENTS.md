@@ -1,8 +1,7 @@
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
-This project uses Next.js 16 and may differ from model training data.
-Before changing framework-specific behavior, read the relevant guide in `node_modules/next/dist/docs/`.
-Heed deprecation notices.
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
 # Nexo Origen — agent rules
