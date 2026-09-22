@@ -8,8 +8,31 @@ import type { ResenaRow } from "@/lib/supabase/resenas";
 import type { AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
 import { getAnalisisForResena } from "@/lib/supabase/analisis-ia";
 import { marcaToBrandId } from "@/lib/supabase/kpi-mappers";
+import {
+  aggregateKpiDailyByRestaurant,
+  choosePeriodMetricsSource,
+  percentageOfTotal,
+  weightedAverage,
+} from "@/lib/reputation/aggregation";
+import {
+  dedupeResenas,
+  getReviewContentKey,
+  getReviewDedupKey,
+} from "@/lib/reputation/dedupe";
+import {
+  REPUTATION_TARGET,
+  classifyMediaStatus,
+  classifyReviewStars,
+  isReviewRequiringAttention,
+} from "@/lib/reputation/rules";
 
-export const REPUTATION_TARGET = 4.4;
+export {
+  REPUTATION_TARGET,
+  classifyMediaStatus,
+  dedupeResenas,
+  getReviewContentKey,
+  getReviewDedupKey,
+};
 
 export type StarCounts = {
   stars1: number;
@@ -52,6 +75,9 @@ export type TopReasonItem = {
 };
 
 export type GetTopReasonsOptions = {
+  /** Filtra reseñas que requieren atención (1–3★). */
+  attentionOnly?: boolean;
+  /** @deprecated Nombre histórico. Equivale a attentionOnly, no al KPI oficial de negativas 1–2★. */
   negativesOnly?: boolean;
   restauranteId?: number;
   limit?: number;
@@ -87,96 +113,6 @@ const PROBLEM_LABELS = [
 
 export type ProblemLabel = (typeof PROBLEM_LABELS)[number];
 
-function normalizeReviewText(value: string | null | undefined): string {
-  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function normalizeReviewDateKey(value: string | null | undefined): string {
-  if (!value) return "";
-  const parsed = new Date(value);
-  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
-  return value.trim().slice(0, 10);
-}
-
-/** Firma de contenido: mismo local + fecha + autor + estrellas + comentario. */
-export function getReviewContentKey(row: ResenaRow): string {
-  const restauranteId = row.restaurante_id ?? 0;
-  const restaurant = normalizeReviewText(row.restaurante);
-  const fecha = normalizeReviewDateKey(row.fecha_resena ?? row.created_at);
-  const autor = normalizeReviewText(row.autor);
-  const comentario = normalizeReviewText(row.comentario);
-  const estrellas = row.estrellas;
-
-  if (!comentario && !autor) {
-    return `row_id:${row.id}`;
-  }
-
-  return `content:${restauranteId}:${restaurant}:${fecha}:${autor}:${estrellas}:${comentario}`;
-}
-
-export function getReviewDedupKey(row: ResenaRow): string {
-  const reviewId = row.review_id != null ? String(row.review_id).trim() : "";
-  if (reviewId) return `review_id:${reviewId}`;
-  return getReviewContentKey(row);
-}
-
-function hasReviewId(row: ResenaRow): boolean {
-  return row.review_id != null && String(row.review_id).trim() !== "";
-}
-
-function resenaTimestamp(row: ResenaRow): number {
-  const value = row.fecha_resena ?? row.created_at;
-  if (!value) return 0;
-  const time = new Date(value).getTime();
-  return Number.isNaN(time) ? 0 : time;
-}
-
-function choosePreferredResena(existing: ResenaRow, candidate: ResenaRow): ResenaRow {
-  const existingHasReviewId = hasReviewId(existing);
-  const candidateHasReviewId = hasReviewId(candidate);
-  if (candidateHasReviewId && !existingHasReviewId) return candidate;
-  if (existingHasReviewId && !candidateHasReviewId) return existing;
-
-  const existingTime = resenaTimestamp(existing);
-  const candidateTime = resenaTimestamp(candidate);
-  if (candidateTime !== existingTime) {
-    return candidateTime >= existingTime ? candidate : existing;
-  }
-
-  return Number(candidate.id) >= Number(existing.id) ? candidate : existing;
-}
-
-function dedupeResenasWithKey(
-  rows: ResenaRow[],
-  keyFn: (row: ResenaRow) => string
-): ResenaRow[] {
-  const byKey = new Map<string, ResenaRow>();
-
-  for (const row of rows) {
-    const key = keyFn(row);
-    const existing = byKey.get(key);
-    byKey.set(key, existing ? choosePreferredResena(existing, row) : row);
-  }
-
-  return Array.from(byKey.values());
-}
-
-/**
- * Elimina duplicados:
- * 1) por review_id (analisis_ia.review_id)
- * 2) por contenido (misma reseña importada con otro review_id)
- */
-export function dedupeResenas(rows: ResenaRow[]): ResenaRow[] {
-  if (rows.length <= 1) return rows;
-
-  const byReviewId = dedupeResenasWithKey(rows, (row) => {
-    const reviewId = row.review_id != null ? String(row.review_id).trim() : "";
-    return reviewId ? `review_id:${reviewId}` : `row_id:${row.id}`;
-  });
-
-  return dedupeResenasWithKey(byReviewId, getReviewContentKey);
-}
-
 export function emptyStarCounts(): StarCounts {
   return { stars1: 0, stars2: 0, stars3: 0, stars4: 0, stars5: 0 };
 }
@@ -187,22 +123,6 @@ function bumpStar(stars: StarCounts, rating: number) {
   else if (rating === 3) stars.stars3 += 1;
   else if (rating === 4) stars.stars4 += 1;
   else if (rating >= 5) stars.stars5 += 1;
-}
-
-export function classifyMediaStatus(media: number, hasReviews: boolean): {
-  statusLabel: RestaurantPeriodMetrics["statusLabel"];
-  operationalStatus: RestaurantPeriodMetrics["operationalStatus"];
-} {
-  if (!hasReviews) {
-    return { statusLabel: "En riesgo", operationalStatus: "watch" };
-  }
-  if (media >= REPUTATION_TARGET) {
-    return { statusLabel: "Óptimo", operationalStatus: "on_target" };
-  }
-  if (media >= 4.0) {
-    return { statusLabel: "En riesgo", operationalStatus: "watch" };
-  }
-  return { statusLabel: "Crítico", operationalStatus: "critical" };
 }
 
 export function classifyProblemLabel(text: string, rating: number): ProblemLabel {
@@ -256,7 +176,8 @@ export function getTopReasons(
   analisisByResenaId: AnalisisIaIndex = new Map(),
   options: GetTopReasonsOptions = {}
 ): TopReasonItem[] {
-  const { negativesOnly = false, restauranteId, limit } = options;
+  const { restauranteId, limit } = options;
+  const attentionOnly = options.attentionOnly ?? options.negativesOnly ?? false;
   const entries: { reason: ReviewPrimaryReason; restauranteId: number | null | undefined }[] = [];
 
   if (reviews.length === 0) return [];
@@ -266,7 +187,7 @@ export function getTopReasons(
 
   if (isDomainReview) {
     for (const review of reviews as Review[]) {
-      if (negativesOnly && review.rating > 3) continue;
+      if (attentionOnly && !isReviewRequiringAttention(review.rating)) continue;
       entries.push({
         reason: classifyReviewReason(review),
         restauranteId: undefined,
@@ -275,7 +196,7 @@ export function getTopReasons(
   } else {
     for (const row of dedupeResenas(reviews as ResenaRow[])) {
       if (restauranteId != null && row.restaurante_id !== restauranteId) continue;
-      if (negativesOnly && row.estrellas > 3) continue;
+      if (attentionOnly && !isReviewRequiringAttention(row.estrellas)) continue;
       const analisis = getAnalisisForResena(analisisByResenaId, row);
       entries.push({
         reason: classifyReviewReason(row, analisis),
@@ -292,7 +213,7 @@ export function buildProblemDistributionFromAnalisis(
   resenas: ResenaRow[],
   analisisByResenaId: AnalisisIaIndex
 ): ProblemDistributionItem[] {
-  return getTopReasons(resenas, analisisByResenaId, { negativesOnly: true }).map((item) => ({
+  return getTopReasons(resenas, analisisByResenaId, { attentionOnly: true }).map((item) => ({
     label: item.motivo,
     count: item.count,
     percent: item.percent,
@@ -302,7 +223,7 @@ export function buildProblemDistributionFromAnalisis(
 
 /** @deprecated Usar buildProblemDistributionFromAnalisis con datos de Supabase. */
 export function buildProblemDistribution(resenas: ResenaRow[]): ProblemDistributionItem[] {
-  const negatives = dedupeResenas(resenas).filter((row) => row.estrellas <= 3);
+  const negatives = dedupeResenas(resenas).filter((row) => isReviewRequiringAttention(row.estrellas));
   const counts = new Map<string, number>();
 
   for (const row of negatives) {
@@ -379,8 +300,9 @@ function aggregateFromResenas(
     );
 
     current.totalResenas += 1;
-    if (estrellas >= 4) current.resenasPositivas += 1;
-    if (estrellas <= 2) current.resenasNegativas += 1;
+    const polarity = classifyReviewStars(estrellas);
+    if (polarity === "positive") current.resenasPositivas += 1;
+    if (polarity === "negative") current.resenasNegativas += 1;
     bumpStar(current.stars, estrellas);
     current.media =
       (current.media * (current.totalResenas - 1) + estrellas) / current.totalResenas;
@@ -404,43 +326,18 @@ function aggregateFromKpiDiario(
   rows: KpiDiarioRow[],
   catalogById: Map<number, KpiRestaurantRow>
 ): Map<number, RestaurantPeriodMetrics> {
-  const acc = new Map<
-    number,
-    {
-      totalResenas: number;
-      sumRating: number;
-      negativas: number;
-      positivas: number;
-    }
-  >();
-
-  for (const row of rows) {
-    if (row.restaurante_id <= 0) continue;
-    const current = acc.get(row.restaurante_id) ?? {
-      totalResenas: 0,
-      sumRating: 0,
-      negativas: 0,
-      positivas: 0,
-    };
-    current.totalResenas += row.total_resenas;
-    current.sumRating += row.media * row.total_resenas;
-    current.negativas += row.negativas;
-    current.positivas += row.positivas;
-    acc.set(row.restaurante_id, current);
-  }
-
+  const acc = aggregateKpiDailyByRestaurant(rows);
   const map = new Map<number, RestaurantPeriodMetrics>();
 
   for (const [restauranteId, totals] of acc) {
     const catalog = catalogById.get(restauranteId);
     if (!catalog) continue;
-    const media = totals.totalResenas > 0 ? totals.sumRating / totals.totalResenas : 0;
-    const status = classifyMediaStatus(media, totals.totalResenas > 0);
+    const status = classifyMediaStatus(totals.media, totals.totalResenas > 0);
 
     map.set(restauranteId, {
       ...createRestaurantBase(catalog, {
         totalResenas: totals.totalResenas,
-        media,
+        media: totals.media,
         resenasPositivas: totals.positivas,
         resenasNegativas: totals.negativas,
         stars: emptyStarCounts(),
@@ -461,16 +358,18 @@ export function buildNetworkMetrics(
   let totalResenas = 0;
   let totalPositivas = 0;
   let totalNegativas = 0;
-  let weightedSum = 0;
-
   for (const row of byRestaurante.values()) {
     totalResenas += row.totalResenas;
     totalPositivas += row.resenasPositivas;
     totalNegativas += row.resenasNegativas;
-    weightedSum += row.media * row.totalResenas;
   }
 
-  const mediaGlobal = totalResenas > 0 ? weightedSum / totalResenas : 0;
+  const mediaGlobal = weightedAverage(
+    Array.from(byRestaurante.values()).map((row) => ({
+      value: row.media,
+      weight: row.totalResenas,
+    }))
+  );
 
   return {
     mediaGlobal,
@@ -478,8 +377,8 @@ export function buildNetworkMetrics(
     totalPositivas,
     totalNegativas,
     totalRestaurantes: byRestaurante.size,
-    positivePct: totalResenas > 0 ? Math.round((totalPositivas / totalResenas) * 1000) / 10 : 0,
-    negativePct: totalResenas > 0 ? Math.round((totalNegativas / totalResenas) * 1000) / 10 : 0,
+    positivePct: percentageOfTotal(totalPositivas, totalResenas),
+    negativePct: percentageOfTotal(totalNegativas, totalResenas),
     ultimaActualizacion,
     source,
   };
@@ -506,14 +405,12 @@ export function buildPeriodMetrics(input: {
   const deduped = dedupeResenas(input.resenas);
 
   let periodById: Map<number, RestaurantPeriodMetrics>;
-  let source: NetworkPeriodMetrics["source"] = "empty";
+  const source = choosePeriodMetricsSource(deduped.length, input.kpiDiario.length);
 
-  if (deduped.length > 0) {
+  if (source === "resenas") {
     periodById = aggregateFromResenas(deduped, catalogById);
-    source = "resenas";
-  } else if (input.kpiDiario.length > 0) {
+  } else if (source === "kpi_diario") {
     periodById = aggregateFromKpiDiario(input.kpiDiario, catalogById);
-    source = "kpi_diario";
   } else {
     periodById = new Map();
   }

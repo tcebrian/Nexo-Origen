@@ -1,4 +1,5 @@
 import type { BrandId } from "@/app/dashboard/restaurantes/data";
+import { summarizeKpiReputation } from "@/lib/reputation/summary";
 import { REPUTATION_TARGET } from "@/lib/restaurants/metrics";
 import { getTopReasons } from "@/lib/review-metrics";
 import { mapEstadoToOperational, marcaToBrandId } from "@/lib/supabase/kpi-mappers";
@@ -56,7 +57,7 @@ function shortLocationName(name: string): string {
 }
 
 function buildNegativeReasons(resenas: ResenaRow[], analisisByResenaId: AnalisisIaIndex): NegativeReasonSegment[] {
-  return getTopReasons(resenas, analisisByResenaId, { negativesOnly: true, limit: 5 }).map(
+  return getTopReasons(resenas, analisisByResenaId, { attentionOnly: true, limit: 5 }).map(
     (item, index) => ({
       label: item.motivo,
       count: item.count,
@@ -97,12 +98,10 @@ export function buildWeeklyReportFromKpi(
   analisisByResenaId: AnalisisIaIndex = new Map()
 ): WeeklyReportData {
   const rows = filterRowsForTemplate(allRows, templateId);
-  const totalReviews = rows.reduce((sum, row) => sum + row.total_resenas, 0);
-  const negativeReviews = rows.reduce((sum, row) => sum + row.resenas_negativas, 0);
-  const weightedMedia =
-    totalReviews > 0
-      ? rows.reduce((sum, row) => sum + row.media_total * row.total_resenas, 0) / totalReviews
-      : 0;
+  const reputation = summarizeKpiReputation(rows);
+  const totalReviews = reputation.reviews;
+  const negativeReviews = reputation.negatives;
+  const weightedMedia = reputation.media;
 
   const belowTarget = rows.filter((row) => row.media_total < REPUTATION_TARGET && row.total_resenas > 0);
 
@@ -133,8 +132,7 @@ export function buildWeeklyReportFromKpi(
       belowTargetLocations: belowTarget.map((row) => shortLocationName(row.restaurante)),
       totalReviews,
       negativeReviews,
-      negativePercent:
-        totalReviews > 0 ? Math.round((negativeReviews / totalReviews) * 1000) / 10 : 0,
+      negativePercent: reputation.negativePct,
       weeklyAverage: Math.round(weightedMedia * 100) / 100,
       targetAverage: REPUTATION_TARGET,
     },

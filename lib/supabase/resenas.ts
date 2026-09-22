@@ -8,6 +8,7 @@ import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
 import { resolveReviewIaFields } from "@/lib/reviews/map-analisis-ia";
 import type { Review } from "@/lib/reviews/types";
 import { dedupeResenas, getReviewDedupKey } from "@/lib/review-metrics";
+import { getResenaActivityDateValue } from "@/lib/reputation/review-date";
 import {
   buildMediaImpactIndex,
   type MediaImpactResult,
@@ -40,16 +41,7 @@ export type ResenaRow = {
   nombre_empleado?: string | null;
 };
 
-/**
- * Fecha de actividad de una reseña: si fue editada y tiene fecha de última
- * edición, esa; si no, la fecha original (o created_at como último recurso).
- * Se usa para decidir en qué periodo cae la reseña y para ordenarla — la
- * fecha original (fecha_resena) se conserva siempre para mostrarla.
- */
-export function getResenaActivityDateValue(row: ResenaRow): string | null {
-  if (row.editada === true && row.fecha_ultima_edicion) return row.fecha_ultima_edicion;
-  return row.fecha_resena ?? row.created_at ?? null;
-}
+export { getResenaActivityDateValue };
 
 function getInitials(author: string): string {
   const parts = author.trim().split(/\s+/).filter(Boolean);

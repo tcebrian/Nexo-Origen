@@ -8,6 +8,8 @@ Este documento describe tanto las **reglas actuales canónicas** como las discre
 
 Las reglas generales están en `BUSINESS_RULES.md`.
 
+El mapa de consumidores y duplicaciones está en `REPUTATION_CONSUMERS.md`.
+
 ---
 
 # 1. Fuentes actuales
@@ -38,7 +40,9 @@ Objetivo general actual:
 
 `REPUTATION_TARGET = 4.4`
 
-Este valor vive hoy en `lib/review-metrics.ts`.
+La fuente canónica inicial vive ahora en `lib/reputation/rules.ts`.
+
+`lib/review-metrics.ts` mantiene un re-export de compatibilidad para no romper consumidores existentes.
 
 Hasta introducir objetivos configurables/versionados, no crear otra copia del 4,4 en nuevos módulos.
 
@@ -399,6 +403,12 @@ La fuente de verdad debe ser el estado interno calculado, no el color CSS.
 
 # 22. Tests mínimos del dominio
 
+Comando inicial de validación:
+
+`npm run test:reputation`
+
+El primer lote ya congela objetivo, estados básicos, polaridad por estrellas y el comportamiento heredado sin reseñas.
+
 Antes de considerar reputación consolidada deben existir casos para:
 
 - 4,4 exacto → objetivo;
@@ -440,3 +450,82 @@ WhatsApp calcula C
 ```
 
 Una vez conseguido esto, reputación será el patrón para los siguientes dominios.
+
+
+---
+
+## Semántica de 3 estrellas
+
+La semántica canónica queda definida así:
+
+- **1–2★** → reseña negativa para KPIs;
+- **3★** → reseña neutral para KPIs;
+- **4–5★** → reseña positiva para KPIs.
+
+Separadamente, para flujos de atención operativa:
+
+- **1–2★** → atención crítica;
+- **3★** → seguimiento;
+- **4–5★** → sin alerta de atención.
+
+Por tanto:
+
+> “negativa KPI” y “requiere atención” no son lo mismo.
+
+La regla de atención 1–3★ permite conservar el comportamiento histórico de alertas, informes y WhatsApp sin falsear el KPI oficial de negativas.
+
+Helpers canónicos:
+
+- `isKpiNegativeReview(stars)`;
+- `isReviewRequiringAttention(stars)`;
+- `getReviewAttentionLevel(stars)`.
+
+Los nombres históricos que usan “negative” para 1–3★ deben considerarse compatibilidad heredada y migrarse gradualmente.
+
+
+---
+
+## Histórico inmutable y reseñas lógicas
+
+La identidad lógica de una reseña de Google no debe depender únicamente de `review_id`.
+
+Nexo modelará una reseña lógica por:
+
+`provider + place_id + reviewer_id`
+
+Un mismo review lógico puede observarse con varios `review_id` externos a lo largo del tiempo.
+
+### Versiones
+
+Cada cambio material de estrellas o comentario crea una versión inmutable:
+
+- `new`: primera observación;
+- `edited`: cambia contenido/estrellas conservando el ID externo conocido;
+- `recreated`: misma cuenta + mismo place, pero aparece un nuevo ID externo;
+- `unchanged`: misma versión observada de nuevo; no crea versión.
+
+`resenas` puede seguir representando temporalmente el estado actual durante la transición, pero el histórico nuevo debe vivir en versiones inmutables.
+
+### Periodos cerrados
+
+Una semana o mes cerrado no se reescribe por una edición detectada después de su cierre.
+
+Ejemplo:
+
+- reseña publicada en abril como 5★;
+- abril cierra con esa versión;
+- se edita en agosto a 1★;
+- abril conserva su KPI cerrado;
+- agosto registra una edición 5★ → 1★;
+- el estado actual pasa a 1★.
+
+Una edición no cuenta como una reseña nueva del periodo en que se detecta.
+
+### Estado de implementación
+
+Se ha añadido diseño no aplicado a producción en:
+
+- `supabase/review_history_v2.sql`;
+- `lib/reputation/review-identity.ts`.
+
+La migración no debe ejecutarse en producción hasta validar en modo sombra los casos reales con IDs cambiantes.

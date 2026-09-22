@@ -406,7 +406,7 @@ function NetworkDashboardHomeView() {
             <div>
               <h3 className="text-lg font-medium">Motivos principales</h3>
               <p className="mt-1 text-xs text-gray-500">
-                Clasificación automática desde análisis IA en reseñas negativas
+                Clasificación automática en reseñas que requieren atención (1–3★)
               </p>
             </div>
             <Link href="/dashboard/resenas" className="text-xs text-purple-300 transition hover:text-purple-200">

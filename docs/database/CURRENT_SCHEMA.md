@@ -135,6 +135,44 @@ Esta regla evita contar una misma fila en dos periodos, pero **no equivale a con
 
 Ese problema se trata en `DATA_MODEL.md`.
 
+## 6.1 resenas_historial
+
+Producción ya contiene una tabla de histórico parcial para ediciones con el mismo `review_id`.
+
+Campos verificados:
+
+- `id`
+- `review_id`
+- `resena_id`
+- `restaurante_id`
+- `place_id`
+- `estrellas_anteriores`
+- `comentario_anterior`
+- `estrellas_nuevas`
+- `comentario_nuevo`
+- `fecha_resena_original`
+- `fecha_cambio`
+
+El trigger `trg_registrar_edicion_resena` inserta una fila cuando cambian estrellas o comentario y después marca la reseña actual con `editada = true` y `fecha_ultima_edicion`.
+
+A fecha 2026-09-21 se verificaron 31 cambios históricos sobre 29 `review_id` distintos, desde 2026-08-23.
+
+Limitación: esta tabla resuelve ediciones cuando el `review_id` se conserva. No resuelve por sí sola el caso en que Google/Apify presenta un nuevo `review_id`.
+
+## 6.2 review_identity_shadow_events
+
+Tabla temporal de observación creada el 2026-09-21 para validar la identidad lógica de reseñas sin afectar consumidores productivos.
+
+- parte de una fotografía inicial de 5.626 reseñas elegibles;
+- recibe observaciones desde un trigger fail-open sobre `resenas`;
+- clasifica solo para auditoría: `baseline`, `new`, `edited`, `recreated`, `candidate`;
+- no alimenta KPIs, informes, alertas ni WhatsApp;
+- tiene RLS activado y no expone políticas de lectura al cliente.
+
+El trigger temporal es `resenas_review_identity_shadow`.
+
+Si la instrumentación sombra falla, la escritura de `resenas` continúa.
+
 ---
 
 # 7. analisis_ia

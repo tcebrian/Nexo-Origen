@@ -21,7 +21,7 @@ export function computeProtectionLevel(
   return Math.max(5, Math.min(70, Math.round(progress * 0.7)));
 }
 
-/** NPS aproximado: % promotores (5★) − % detractores (≤3★). */
+/** NPS aproximado: % promotores (5★) − % detractores (≤3★). Métrica derivada; no redefine negativa KPI (1–2★). */
 export function computeNpsFromResenas(resenas: ResenaRow[]): number {
   const rows = dedupeResenas(resenas);
   if (rows.length === 0) return 0;

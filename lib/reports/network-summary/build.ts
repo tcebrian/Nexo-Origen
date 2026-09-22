@@ -1,4 +1,5 @@
-import { REPUTATION_TARGET } from "@/lib/restaurants/metrics";
+import { summarizeKpiReputation } from "@/lib/reputation/summary";
+import { REPUTATION_TARGET, REPUTATION_WATCH_THRESHOLD, isReviewRequiringAttention } from "@/lib/reputation/rules";
 import { dedupeResenas } from "@/lib/review-metrics";
 import { marcaToBrandId } from "@/lib/supabase/kpi-mappers";
 import type { KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
@@ -25,12 +26,6 @@ function shortLocationName(name: string): string {
   );
 }
 
-// Mismo umbral de "vigilancia" que lib/informes/resolve-informe-estado.ts.
-// Se deriva directamente de media_total vs REPUTATION_TARGET (no del campo
-// `estado` de Supabase) para que la tabla nunca contradiga a la tarjeta de
-// "Locales por debajo del objetivo", que sí compara la media directamente.
-const WATCH_THRESHOLD = 4.0;
-
 /**
  * Motivos de reseñas negativas agrupados por `resena_motivos.categoria` —
  * la categoría que ya viene clasificada en Supabase, tal cual, sin pasar por
@@ -42,7 +37,7 @@ function topMotivosFromIndex(
   options: { restauranteId?: number; limit?: number; groupRestAsOtro?: boolean } = {}
 ): { label: string; categoria: string; count: number; percent: number }[] {
   const negatives = dedupeResenas(resenas).filter((row) => {
-    if (row.estrellas > 3) return false;
+    if (!isReviewRequiringAttention(row.estrellas)) return false;
     if (options.restauranteId != null && row.restaurante_id !== options.restauranteId) return false;
     return true;
   });
@@ -109,7 +104,7 @@ function topMotivosFromIndex(
 function toStatus(row: KpiRestaurantRow): { status: NetworkSummaryLocationStatus; label: string } {
   if (row.total_resenas === 0) return { status: "no_reviews", label: "Sin reseñas" };
   if (row.media_total >= REPUTATION_TARGET) return { status: "on_target", label: "Sobre el objetivo" };
-  if (row.media_total >= WATCH_THRESHOLD) return { status: "watch", label: "Cerca del objetivo" };
+  if (row.media_total >= REPUTATION_WATCH_THRESHOLD) return { status: "watch", label: "Cerca del objetivo" };
   return { status: "risk", label: "Bajo objetivo" };
 }
 
@@ -141,11 +136,11 @@ export function buildNetworkSummaryReport(
   const restauranteIds = new Set(rows.map((row) => row.restaurante_id));
   const resenas = allResenas.filter((row) => row.restaurante_id != null && restauranteIds.has(row.restaurante_id));
 
-  const totalReviews = rows.reduce((sum, row) => sum + row.total_resenas, 0);
-  const negativeReviews = rows.reduce((sum, row) => sum + row.resenas_negativas, 0);
-  const positiveReviews = rows.reduce((sum, row) => sum + row.resenas_positivas, 0);
-  const weightedAverage =
-    totalReviews > 0 ? rows.reduce((sum, row) => sum + row.media_total * row.total_resenas, 0) / totalReviews : 0;
+  const reputation = summarizeKpiReputation(rows);
+  const totalReviews = reputation.reviews;
+  const negativeReviews = reputation.negatives;
+  const positiveReviews = reputation.positives;
+  const networkWeightedAverage = reputation.media;
 
   // Ordenados de peor a mejor media — así el peor local sale primero en la
   // lista de "fuera de objetivo", que es lo más útil para leer de un vistazo.
@@ -194,10 +189,10 @@ export function buildNetworkSummaryReport(
     totalLocations: rows.length,
     totalReviews,
     positiveReviews,
-    positivePercent: totalReviews > 0 ? Math.round((positiveReviews / totalReviews) * 1000) / 10 : 0,
+    positivePercent: reputation.positivePct,
     negativeReviews,
-    negativePercent: totalReviews > 0 ? Math.round((negativeReviews / totalReviews) * 1000) / 10 : 0,
-    weightedAverage: Math.round(weightedAverage * 100) / 100,
+    negativePercent: reputation.negativePct,
+    weightedAverage: Math.round(networkWeightedAverage * 100) / 100,
     targetAverage: REPUTATION_TARGET,
     belowTargetCount: belowTarget.length,
     belowTargetLocations: belowTarget.map((row) => shortLocationName(row.restaurante)),
