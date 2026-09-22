@@ -114,7 +114,14 @@ begin
     return jsonb_build_object('ok',false,'message','No tienes restaurantes asignados.');
   end if;
 
-  if ids=array[33]::bigint[] then target:=4.7; end if;
+  if cardinality(ids)=1 then
+    select coalesce(m.objetivo_media,4.4)
+      into target
+    from public.restaurantes r
+    left join public.marcas m on m.id=r.marca_id
+    where r.id=ids[1];
+    target:=coalesce(target,4.4);
+  end if;
 
   case period
     when 'all_time' then
