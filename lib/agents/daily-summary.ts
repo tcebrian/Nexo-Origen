@@ -64,7 +64,7 @@ const BRAND_META: Record<
   { emoji: string; title: string; shortLabel: string }
 > = {
   "Burger King": { emoji: "🍔", title: "𝗕𝗨𝗥𝗚𝗘𝗥 𝗞𝗜𝗡𝗚", shortLabel: "BK" },
-  Popeyes: { emoji: "🍗", title: "𝗣𝗢𝗣𝗘𝗬𝗘𝗦", shortLabel: "PLK" },
+  Popeyes: { emoji: "🍗", title: "𝗣𝗢𝗣𝗘𝗬𝗘𝗦", shortLabel: "Popeyes" },
   "Santa Gloria": { emoji: "☕", title: "𝗦𝗔𝗡𝗧𝗔 𝗚𝗟𝗢𝗥𝗜𝗔", shortLabel: "SG" },
   Ribs: { emoji: "🥩", title: "𝗥𝗜𝗕𝗦", shortLabel: "Ribs" },
   Sibuya: { emoji: "🍣", title: "𝗦𝗜𝗕𝗨𝗬𝗔", shortLabel: "Sibuya" },

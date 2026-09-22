@@ -128,6 +128,94 @@ async function getOrCreateDelivery(
   return created as DeliveryRow;
 }
 
+export function splitWhatsAppMessage(message: string, maxChars = 3600): string[] {
+  const normalized = message.trim();
+  if (!normalized) return [];
+  if (normalized.length <= maxChars) return [normalized];
+
+  const sections = normalized.split(/\n(?=━━━━━━━━━━━━━━)/g);
+  const chunks: string[] = [];
+  let current = "";
+
+  const pushCurrent = () => {
+    if (current.trim()) chunks.push(current.trim());
+    current = "";
+  };
+
+  for (const section of sections) {
+    const candidate = current ? `${current}\n${section}` : section;
+    if (candidate.length <= maxChars) {
+      current = candidate;
+      continue;
+    }
+
+    pushCurrent();
+
+    if (section.length <= maxChars) {
+      current = section;
+      continue;
+    }
+
+    const lines = section.split("\n");
+    for (const line of lines) {
+      const lineCandidate = current ? `${current}\n${line}` : line;
+      if (lineCandidate.length <= maxChars) {
+        current = lineCandidate;
+      } else {
+        pushCurrent();
+        current = line;
+      }
+    }
+  }
+
+  pushCurrent();
+  return chunks;
+}
+
+async function sendMessageParts(
+  agent: DueAgentRow,
+  message: string,
+  localDate: string
+): Promise<
+  | { ok: true; provider: "make" | "twilio"; messageIds: string[]; parts: number }
+  | { ok: false; provider: "make" | "twilio" | "none"; error: string }
+> {
+  const parts = splitWhatsAppMessage(message);
+  if (parts.length === 0) {
+    return { ok: false, provider: "none", error: "El informe diario está vacío." };
+  }
+
+  const ids: string[] = [];
+  let provider: "make" | "twilio" = "make";
+
+  for (let index = 0; index < parts.length; index += 1) {
+    const result = await sendWhatsAppText({
+      to: agent.telefono,
+      body: parts[index],
+      metadata: {
+        agent_id: agent.id,
+        agent_name: agent.nombre,
+        local_date: localDate,
+        report_part: index + 1,
+        report_parts_total: parts.length,
+      },
+    });
+
+    if (!result.ok) {
+      return {
+        ok: false,
+        provider: result.provider,
+        error: `Parte ${index + 1}/${parts.length}: ${result.error}`,
+      };
+    }
+
+    provider = result.provider;
+    ids.push(result.messageId);
+  }
+
+  return { ok: true, provider, messageIds: ids, parts: parts.length };
+}
+
 async function deliver(agent: DueAgentRow, delivery: DeliveryRow) {
   const client = requireAdminClient();
 
@@ -153,15 +241,8 @@ async function deliver(agent: DueAgentRow, delivery: DeliveryRow) {
   if (claimError) throw claimError;
   if (!claimed) return { sent: false, skipped: true };
 
-  const result = await sendWhatsAppText({
-    to: agent.telefono,
-    body: delivery.mensaje,
-    metadata: {
-      agent_id: agent.id,
-      agent_name: agent.nombre,
-      local_date: localClock(new Date(), agent.timezone || "Europe/Madrid").dateKey,
-    },
-  });
+  const localDate = localClock(new Date(), agent.timezone || "Europe/Madrid").dateKey;
+  const result = await sendMessageParts(agent, delivery.mensaje, localDate);
 
   if (result.ok) {
     await client
@@ -169,7 +250,7 @@ async function deliver(agent: DueAgentRow, delivery: DeliveryRow) {
       .update({
         status: "sent",
         provider: result.provider,
-        provider_message_id: result.messageId,
+        provider_message_id: result.messageIds.join(","),
         sent_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -241,4 +322,29 @@ export async function processDueDailySummaries(
   }
 
   return result;
+}
+
+
+export async function sendAgentDailySummaryTest(agentId: string) {
+  const client = requireAdminClient();
+  const { data, error } = await client
+    .from(SUPABASE_TABLES.nexo_bot_accesos)
+    .select("id,telefono,nombre,modo,resumen_hora,timezone")
+    .eq("id", agentId)
+    .eq("activo", true)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) throw new Error("Agente no encontrado o inactivo.");
+
+  const agent = data as DueAgentRow;
+  const summary = await buildAgentDailySummaryPreview(agent.id);
+  const localDate = localClock(new Date(), agent.timezone || "Europe/Madrid").dateKey;
+  const result = await sendMessageParts(agent, summary.message, localDate);
+
+  return {
+    ...result,
+    preview: summary.message,
+    length: summary.message.length,
+  };
 }

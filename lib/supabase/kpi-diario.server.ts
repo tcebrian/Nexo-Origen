@@ -70,7 +70,9 @@ export async function fetchKpiDiarioForPeriod(bounds: PeriodBounds): Promise<Kpi
     throw new Error(error.message);
   }
 
-  return ((data ?? []) as Record<string, unknown>[])
+  const rows = (data ?? []) as Record<string, unknown>[];
+
+  return rows
     .map((row) => normalizeCanonicalDailyRow(row))
     .filter(
       (row: KpiDiarioRow) =>

@@ -81,7 +81,9 @@ export async function fetchAllKpiRows(): Promise<KpiRestaurantRow[]> {
     throw new Error(error.message);
   }
 
-  return ((data ?? []) as Record<string, unknown>[]).map((row) =>
+  const rows = (data ?? []) as Record<string, unknown>[];
+
+  return rows.map((row) =>
     normalizeKpiRow({
       ...row,
       total_resenas: 0,
