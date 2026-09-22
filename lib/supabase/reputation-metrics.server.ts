@@ -62,8 +62,7 @@ function statusLabel(
 }
 
 function metricSource(value: string): NetworkPeriodMetrics["source"] {
-  if (value === "resenas" || value === "kpi_diario") return value;
-  return "empty";
+  return value === "resenas" ? "resenas" : "empty";
 }
 
 export async function fetchSupabaseCanonicalReputationMetrics(
@@ -177,6 +176,11 @@ const MOTIVE_LABELS: Record<string, string> = {
   PEDIDO_INCORRECTO: "Error pedido",
   AMBIENTE_RUIDO: "Ruido/Saturación",
   AMBIENTE_LOCAL: "Ruido/Saturación",
+  PRECIO: "Precio",
+  COBRO_REEMBOLSO: "Cobro/Reembolso",
+  DELIVERY: "Delivery",
+  APP_WEB: "App/Web",
+  SIN_MOTIVO: "Sin motivo identificado",
   OTRO: "Otros",
 };
 
