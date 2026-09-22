@@ -12,8 +12,7 @@ import type { AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
 import { getAnalisisForResena } from "@/lib/supabase/analisis-ia";
 import type { PeriodData } from "@/lib/supabase/period-types";
 import { getTopReasons } from "@/lib/review-metrics";
-import { dedupeResenas, getReviewDedupKey } from "@/lib/review-metrics";
-import { buildMediaImpactIndex } from "@/lib/reviews/media-impact";
+import { dedupeResenas } from "@/lib/review-metrics";
 import {
   computeNpsFromResenas,
   sortResenasByDateDesc,
@@ -149,7 +148,6 @@ export function createRestaurantsRepository(loadPeriod: PeriodLoader): Restauran
           dedupeResenas(period.resenas).filter((row) => row.restaurante_id === baseRow.restaurante_id)
         );
 
-        const impactIndex = buildMediaImpactIndex(period.resenas);
         const detectedIssues = buildDetectedIssues(
           baseRow.restaurante_id,
           period.resenas,
@@ -188,7 +186,7 @@ export function createRestaurantsRepository(loadPeriod: PeriodLoader): Restauran
                 baseRow.restaurante,
                 baseRow.marca,
                 undefined,
-                impactIndex.get(getReviewDedupKey(resena)),
+                period.impactByResenaId.get(Number(resena.id)),
                 analisis
               );
               return {
@@ -213,7 +211,7 @@ export function createRestaurantsRepository(loadPeriod: PeriodLoader): Restauran
               baseRow.restaurante,
               baseRow.marca,
               undefined,
-              impactIndex.get(getReviewDedupKey(resena)),
+              period.impactByResenaId.get(Number(resena.id)),
               analisis
             );
             return {
