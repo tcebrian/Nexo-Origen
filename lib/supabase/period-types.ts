@@ -5,6 +5,7 @@ import type { DashboardKpisSnapshot } from "./dashboard-kpis";
 import type { DailyNetworkPoint, KpiDiarioRow } from "./kpi-diario";
 import type { KpiRestaurantRow } from "./kpi-restaurantes";
 import type { ResenaRow } from "./resenas";
+import type { MediaImpactResult } from "@/lib/reviews/media-impact";
 
 export type { RestaurantPeriodMetrics };
 
@@ -36,4 +37,5 @@ export type PeriodData = {
   chartSource: "kpi_diario" | "resenas" | "empty";
   analisisByResenaId: AnalisisIaIndex;
   dashboardKpis: DashboardKpisSnapshot | null;
+  reviewImpactsByResenaId: Record<string, MediaImpactResult>;
 };
