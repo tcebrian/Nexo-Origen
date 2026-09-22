@@ -1,13 +1,12 @@
 import { dedupeResenas } from "@/lib/review-metrics";
 import type { KpiDiarioRow, DailyNetworkPoint } from "./kpi-diario";
-import { buildDailyNetworkSeries, getRestaurantDailySeries } from "./kpi-diario";
 import { getResenaActivityDateValue, type ResenaRow } from "./resenas";
 
 export type RestaurantChartSeries = {
   labels: string[];
   values: number[];
   volumeSeries: { label: string; positive: number; negative: number }[];
-  source: "kpi_diario" | "resenas" | "empty";
+  source: "resenas" | "empty";
 };
 
 function formatDayLabel(dateKey: string) {
@@ -48,22 +47,13 @@ export function buildDailyNetworkSeriesFromResenas(resenas: ResenaRow[]): DailyN
 }
 
 export function resolveDailyNetworkSeries(
-  kpiDiario: KpiDiarioRow[],
+  _kpiDiario: KpiDiarioRow[],
   resenas: ResenaRow[]
-): { series: DailyNetworkPoint[]; source: "kpi_diario" | "resenas" | "empty" } {
-  if (kpiDiario.length > 0) {
-    const series = buildDailyNetworkSeries(kpiDiario);
-    if (series.length > 0) {
-      return { series, source: "kpi_diario" };
-    }
-  }
-
+): { series: DailyNetworkPoint[]; source: "resenas" | "empty" } {
   const fromResenas = buildDailyNetworkSeriesFromResenas(resenas);
-  if (fromResenas.length > 0) {
-    return { series: fromResenas, source: "resenas" };
-  }
-
-  return { series: [], source: "empty" };
+  return fromResenas.length > 0
+    ? { series: fromResenas, source: "resenas" }
+    : { series: [], source: "empty" };
 }
 
 function buildRestaurantSeriesFromResenas(
@@ -79,7 +69,7 @@ function buildRestaurantSeriesFromResenas(
     current.sum += row.estrellas;
     current.count += 1;
     if (row.estrellas >= 4) current.positive += 1;
-    else if (row.estrellas <= 3) current.negative += 1;
+    else if (row.estrellas <= 2) current.negative += 1;
     byDay.set(fecha, current);
   }
 
@@ -97,17 +87,12 @@ function buildRestaurantSeriesFromResenas(
   };
 }
 
-/** Series de evolución y volumen para un restaurante (kpi_diario → resenas). */
+/** Series de evolución y volumen para un restaurante, siempre desde resenas. */
 export function getRestaurantChartSeries(
-  kpiDiario: KpiDiarioRow[],
+  _kpiDiario: KpiDiarioRow[],
   resenas: ResenaRow[],
   restauranteId: number
 ): RestaurantChartSeries {
-  const fromKpi = getRestaurantDailySeries(kpiDiario, restauranteId);
-  if (fromKpi.values.length > 0) {
-    return { ...fromKpi, source: "kpi_diario" };
-  }
-
   return buildRestaurantSeriesFromResenas(resenas, restauranteId);
 }
 
