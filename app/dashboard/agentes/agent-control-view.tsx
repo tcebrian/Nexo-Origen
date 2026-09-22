@@ -60,6 +60,15 @@ export function AgentControlView({
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Record<string, string>>({});
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createPhone, setCreatePhone] = useState("");
+  const [createAllRestaurants, setCreateAllRestaurants] = useState(false);
+  const [createRestaurantIds, setCreateRestaurantIds] = useState<number[]>([]);
+  const [createFeedback, setCreateFeedback] = useState("");
+  const [previewLoadingId, setPreviewLoadingId] = useState<string | null>(null);
+  const [summaryPreviews, setSummaryPreviews] = useState<Record<string, string>>({});
 
   const stats = useMemo(() => {
     const active = snapshot.agents.filter(
@@ -134,6 +143,77 @@ export function AgentControlView({
     }
   }
 
+  async function createAgent() {
+    setCreating(true);
+    setCreateFeedback("");
+
+    try {
+      const response = await fetch("/api/agents/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre: createName,
+          telefono: createPhone,
+          todosRestaurantes: createAllRestaurants,
+          restauranteIds: createRestaurantIds,
+          alertas: false,
+          resumenDiario: false,
+          resumenHora: "09:00",
+          timezone: "Europe/Madrid",
+        }),
+      });
+
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body?.error || "No se pudo crear el agente.");
+      }
+
+      setSnapshot(body as AgentControlSnapshot);
+      setCreateName("");
+      setCreatePhone("");
+      setCreateAllRestaurants(false);
+      setCreateRestaurantIds([]);
+      setCreateFeedback("Agente creado en modo piloto.");
+      setShowCreate(false);
+    } catch (error) {
+      setCreateFeedback(
+        error instanceof Error ? error.message : "No se pudo crear el agente."
+      );
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function previewDailySummary(agentId: string) {
+    setPreviewLoadingId(agentId);
+
+    try {
+      const response = await fetch("/api/agents/daily-summary/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId }),
+      });
+
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body?.error || "No se pudo generar el resumen.");
+      }
+
+      setSummaryPreviews((current) => ({
+        ...current,
+        [agentId]: String(body.message ?? ""),
+      }));
+    } catch (error) {
+      setSummaryPreviews((current) => ({
+        ...current,
+        [agentId]:
+          error instanceof Error ? error.message : "No se pudo generar el resumen.",
+      }));
+    } finally {
+      setPreviewLoadingId(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <section className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -155,13 +235,123 @@ export function AgentControlView({
 
         <button
           type="button"
-          disabled
-          className="cursor-not-allowed rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-2.5 text-sm text-gray-500"
-          title="La alta automática se conectará en la siguiente fase."
+          onClick={() => setShowCreate((value) => !value)}
+          className="rounded-xl border border-violet-400/25 bg-violet-500/10 px-4 py-2.5 text-sm font-medium text-violet-100 transition hover:bg-violet-500/15"
         >
-          + Añadir agente · siguiente fase
+          {showCreate ? "Cerrar alta" : "+ Añadir agente"}
         </button>
       </section>
+
+      {showCreate ? (
+        <section className="rounded-3xl border border-violet-400/15 bg-violet-500/[0.045] p-5">
+          <div className="mb-5">
+            <p className="text-base font-semibold text-white">Nuevo agente supervisor</p>
+            <p className="mt-1 text-xs leading-5 text-gray-500">
+              Crea el acceso en Nexo. El agente nace en modo piloto y solo podrá consultar
+              los restaurantes que selecciones.
+            </p>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <label className="space-y-2">
+              <span className="text-xs font-medium text-gray-400">Nombre</span>
+              <input
+                value={createName}
+                onChange={(event) => setCreateName(event.target.value)}
+                placeholder="Ej. Supervisor Navarra"
+                className="w-full rounded-xl border border-white/[0.08] bg-[#0b0911] px-3 py-2.5 text-sm text-white outline-none placeholder:text-gray-700 focus:border-violet-400/30"
+              />
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-xs font-medium text-gray-400">
+                WhatsApp con prefijo de país
+              </span>
+              <input
+                value={createPhone}
+                onChange={(event) => setCreatePhone(event.target.value)}
+                placeholder="Ej. +34 600 000 000"
+                inputMode="tel"
+                className="w-full rounded-xl border border-white/[0.08] bg-[#0b0911] px-3 py-2.5 text-sm text-white outline-none placeholder:text-gray-700 focus:border-violet-400/30"
+              />
+            </label>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-white/[0.07] bg-black/20 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-white">Restaurantes permitidos</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Puedes cambiar esta asignación después desde la ficha del agente.
+                </p>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={createAllRestaurants}
+                  onChange={(event) => setCreateAllRestaurants(event.target.checked)}
+                  className="h-4 w-4 accent-violet-500"
+                />
+                Toda la red
+              </label>
+            </div>
+
+            {!createAllRestaurants ? (
+              <div className="mt-4 grid max-h-52 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+                {snapshot.restaurants.map((restaurant) => {
+                  const checked = createRestaurantIds.includes(restaurant.id);
+                  return (
+                    <label
+                      key={restaurant.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.02] px-3 py-2 hover:bg-white/[0.04]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) =>
+                          setCreateRestaurantIds((current) => {
+                            const next = new Set(current);
+                            if (event.target.checked) next.add(restaurant.id);
+                            else next.delete(restaurant.id);
+                            return Array.from(next).sort((a, b) => a - b);
+                          })
+                        }
+                        className="h-4 w-4 accent-violet-500"
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs text-gray-300">
+                          {restaurant.nombre}
+                        </span>
+                        <span className="block truncate text-[10px] text-gray-600">
+                          {restaurant.ciudad || "Sin ciudad"}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-4 rounded-xl border border-violet-400/10 bg-violet-500/[0.06] px-3 py-2 text-xs text-violet-200/80">
+                El agente podrá consultar toda la red activa.
+              </p>
+            )}
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <p className={`text-xs ${createFeedback.includes("creado") ? "text-emerald-300" : "text-rose-300"}`}>
+              {createFeedback || "El número completo solo se usa en servidor y Supabase."}
+            </p>
+            <button
+              type="button"
+              disabled={creating}
+              onClick={createAgent}
+              className="rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
+            >
+              {creating ? "Creando..." : "Crear agente piloto"}
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
@@ -223,6 +413,9 @@ export function AgentControlView({
                       {agent.activo ? modeLabel(agent.modo) : "Desactivado"}
                     </span>
                   </div>
+                  <p className="mt-1 text-xs text-gray-600">
+                    WhatsApp {agent.telefonoMasked}
+                  </p>
                   <p className="mt-1 text-xs text-gray-500">
                     Última actividad: {formatDateTime(agent.lastActivity)}
                   </p>
@@ -367,8 +560,8 @@ export function AgentControlView({
                   <div>
                     <p className="text-sm font-medium text-white">Resumen diario</p>
                     <p className="mt-1 text-xs leading-5 text-gray-500">
-                      Guardamos ya esta configuración en Nexo. El envío automático por
-                      WhatsApp se conecta en el siguiente paso.
+                      Nexo ya puede construir el mensaje con datos reales. Activa el horario
+                      que quieres usar para el envío automático.
                     </p>
                   </div>
                   <input
@@ -418,6 +611,25 @@ export function AgentControlView({
                       <option value="Europe/Andorra">Europe/Andorra</option>
                     </select>
                   </label>
+                </div>
+
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    disabled={previewLoadingId === agent.id}
+                    onClick={() => previewDailySummary(agent.id)}
+                    className="rounded-xl border border-white/[0.08] bg-white/[0.035] px-3 py-2 text-xs text-gray-300 transition hover:bg-white/[0.06] disabled:opacity-50"
+                  >
+                    {previewLoadingId === agent.id
+                      ? "Generando resumen..."
+                      : "Ver resumen de hoy"}
+                  </button>
+
+                  {summaryPreviews[agent.id] ? (
+                    <pre className="mt-3 whitespace-pre-wrap rounded-2xl border border-white/[0.07] bg-black/30 p-4 text-[11px] leading-5 text-gray-300">
+                      {summaryPreviews[agent.id]}
+                    </pre>
+                  ) : null}
                 </div>
               </div>
 
