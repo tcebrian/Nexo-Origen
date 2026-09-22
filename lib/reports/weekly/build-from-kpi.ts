@@ -1,10 +1,9 @@
 import type { BrandId } from "@/app/dashboard/restaurantes/data";
 import { REPUTATION_TARGET } from "@/lib/restaurants/metrics";
-import { getTopReasons } from "@/lib/review-metrics";
 import { mapEstadoToOperational, marcaToBrandId } from "@/lib/supabase/kpi-mappers";
 import type { KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
-import type { ResenaRow } from "@/lib/supabase/resenas";
-import type { AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
+import type { PeriodNetworkAggregate } from "@/lib/supabase/period-types";
+import type { ProblemDistributionItem } from "@/lib/review-metrics";
 import { WEEKLY_THEMES } from "./themes";
 import type {
   NegativeReasonSegment,
@@ -55,15 +54,15 @@ function shortLocationName(name: string): string {
   return name.replace(/^(BK|Burger King|Popeyes|Santa Gloria|Tim Hortons|Ribs|Sibuya|Taberna Volapie)\s+/i, "").trim() || name;
 }
 
-function buildNegativeReasons(resenas: ResenaRow[], analisisByResenaId: AnalisisIaIndex): NegativeReasonSegment[] {
-  return getTopReasons(resenas, analisisByResenaId, { negativesOnly: true, limit: 5 }).map(
-    (item, index) => ({
-      label: item.motivo,
-      count: item.count,
-      percent: item.percent,
-      color: NEGATIVE_COLORS[index % NEGATIVE_COLORS.length],
-    })
-  );
+function buildNegativeReasons(
+  distribution: ProblemDistributionItem[]
+): NegativeReasonSegment[] {
+  return distribution.slice(0, 5).map((item, index) => ({
+    label: item.label,
+    count: item.count,
+    percent: item.percent,
+    color: NEGATIVE_COLORS[index % NEGATIVE_COLORS.length],
+  }));
 }
 
 function buildLocations(rows: KpiRestaurantRow[]): WeeklyLocationRow[] {
@@ -93,34 +92,15 @@ export function buildWeeklyReportFromKpi(
   allRows: KpiRestaurantRow[],
   templateId: WeeklyTemplateId,
   query: { start: Date; end: Date },
-  resenas: ResenaRow[] = [],
-  analisisByResenaId: AnalisisIaIndex = new Map()
+  officialAggregate: PeriodNetworkAggregate,
+  officialProblemDistribution: ProblemDistributionItem[] = []
 ): WeeklyReportData {
   const rows = filterRowsForTemplate(allRows, templateId);
-  const totalReviews = rows.reduce((sum, row) => sum + row.total_resenas, 0);
-  const negativeReviews = rows.reduce((sum, row) => sum + row.resenas_negativas, 0);
-  const weightedMedia =
-    totalReviews > 0
-      ? rows.reduce((sum, row) => sum + row.media_total * row.total_resenas, 0) / totalReviews
-      : 0;
-
-  const belowTarget = rows.filter((row) => row.media_total < REPUTATION_TARGET && row.total_resenas > 0);
-
-  const filteredResenas =
-    templateId === "grupo-hambar"
-      ? resenas
-      : resenas.filter((row) => {
-          const brand = row.marca ? marcaToBrandId(row.marca) : null;
-          const templateBrand: BrandId | null =
-            templateId === "bk"
-              ? "bk"
-              : templateId === "sg"
-                ? "sg"
-                : templateId === "tim-hortons"
-                  ? "th"
-                  : null;
-          return brand === templateBrand;
-        });
+  const totalReviews = officialAggregate.totalResenas;
+  const negativeReviews = officialAggregate.totalNegativas;
+  const belowTarget = rows.filter(
+    (row) => row.media_total < REPUTATION_TARGET && row.total_resenas > 0
+  );
 
   return {
     templateId,
@@ -133,13 +113,12 @@ export function buildWeeklyReportFromKpi(
       belowTargetLocations: belowTarget.map((row) => shortLocationName(row.restaurante)),
       totalReviews,
       negativeReviews,
-      negativePercent:
-        totalReviews > 0 ? Math.round((negativeReviews / totalReviews) * 1000) / 10 : 0,
-      weeklyAverage: Math.round(weightedMedia * 100) / 100,
+      negativePercent: officialAggregate.negativePct,
+      weeklyAverage: officialAggregate.mediaGlobal,
       targetAverage: REPUTATION_TARGET,
     },
     locations: buildLocations(rows),
-    negativeReasons: buildNegativeReasons(filteredResenas, analisisByResenaId),
+    negativeReasons: buildNegativeReasons(officialProblemDistribution),
     footerMonthLabel: formatFooterMonth(query.end),
   };
 }
