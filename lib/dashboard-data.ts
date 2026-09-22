@@ -21,6 +21,8 @@ import type { ResenaRow } from "@/lib/supabase/resenas";
 import type { AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
 import { logAnalisisIaJoinStats } from "@/lib/supabase/analisis-ia";
 import { fetchAnalisisIaForResenas } from "@/lib/supabase/analisis-ia.server";
+import { fetchCanonicalReviewImpacts } from "@/lib/supabase/review-impact.server";
+import type { MediaImpactResult } from "@/lib/reviews/media-impact";
 import {
   compareReputationMetricResults,
   fetchSupabaseCanonicalReputationMetrics,
@@ -50,6 +52,7 @@ export type NexoPeriodSnapshot = {
   /** Compatibilidad API. dashboard_kpis ya no participa. */
   dashboardKpis: null;
   analisisByResenaId: AnalisisIaIndex;
+  reviewImpactsByResenaId: Record<string, MediaImpactResult>;
 };
 
 async function safeFetch<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -97,6 +100,12 @@ export async function loadNexoPeriodSnapshot(
   const catalog = scope ? filterKpiRowsByScope(catalogRaw, scope) : catalogRaw;
   const resenas = dedupeResenas(
     scope ? filterResenasByScope(rawResenas, scope) : rawResenas
+  );
+
+  const reviewImpactsByResenaId = await safeFetch(
+    "review_impacts",
+    () => fetchCanonicalReviewImpacts(resenas),
+    {} as Record<string, MediaImpactResult>
   );
 
   let analisisByResenaId: AnalisisIaIndex = new Map();
@@ -173,6 +182,7 @@ export async function loadNexoPeriodSnapshot(
     chartSource,
     dashboardKpis: null,
     analisisByResenaId,
+    reviewImpactsByResenaId,
   };
 }
 
