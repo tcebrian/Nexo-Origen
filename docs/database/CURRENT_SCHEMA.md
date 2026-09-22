@@ -29,33 +29,34 @@ Por tanto, no asumir que existe `marcas.empresa_id`.
 
 # 2. Objetos Supabase utilizados por la aplicación
 
-Definidos en `lib/supabase/tables.ts`.
-
-## Tablas
+## Datos base de reputación
 
 - `empresas`
 - `marcas`
 - `restaurantes`
 - `resenas`
-- `kpi_diario`
-- `dashboard_kpis`
-- `perfiles`
 - `analisis_ia`
 - `resena_motivos`
+
+## Autorización y usuarios
+
+- `perfiles`
 - `usuario_marcas`
 - `usuario_restaurantes`
 
-## Vistas
+## Cálculo canónico de reputación
 
-- `kpi_restaurantes`
+- `public.nexo_reputation_period_metrics(...)`
+- `public.nexo_review_rating_impacts(...)`
+- `public.nexo_reputation_period_motives(...)`
+
+La aplicación no debe consultar como fuente de reputación las antiguas tablas/vistas `kpi_diario`, `kpi_semanal`, `kpi_mensual`, `kpi_semana_actual`, `kpi_restaurantes`, `kpi_marcas`, `dashboard_kpis` o `dashboard_restaurantes`.
+
+Los nombres TypeScript históricos como `KpiRestaurantRow` pueden mantenerse temporalmente como DTO de compatibilidad, pero no implican que exista o se consulte una vista KPI en Supabase.
 
 ## Referencias directas adicionales
 
-El código actual también referencia directamente:
-
-- `whatsapp_alertas_enviadas` — utilizada por el webhook de alertas para evitar reenviar la misma reseña.
-
-Esta tabla no está actualmente centralizada en `lib/supabase/tables.ts`, por lo que debe considerarse una dependencia real aunque no aparezca en ese catálogo.
+El sistema contiene además tablas operativas de alertas, bots, integraciones y auditoría. No forman parte del cálculo matemático de reputación.
 
 ---
 
@@ -161,48 +162,46 @@ Los análisis son interpretación. No deben convertirse en fuente de verdad de c
 
 ---
 
-# 8. kpi_diario
+# 8. Capa canónica de reputación
 
-Granularidad actual:
+Las métricas oficiales no se persisten en múltiples tablas KPI precalculadas.
 
-**1 fila por restaurante y día**
+Se derivan bajo demanda en PostgreSQL a partir de los hechos base:
 
-Campos utilizados:
+- `resenas` → puntuación, volumen, distribución por estrellas y estados;
+- `resena_motivos` → distribución de motivos;
+- `restaurantes + marcas + empresas` → catálogo y alcance.
 
-- `restaurante_id`
-- `fecha`
-- `total_resenas`
-- `media`
-- `negativas`
-- `positivas`
+Funciones:
 
-Las medias de varios días/restaurantes deben agregarse de forma ponderada por volumen de reseñas.
+- `nexo_reputation_period_metrics(...)`
+- `nexo_review_rating_impacts(...)`
+- `nexo_reputation_period_motives(...)`
+
+La aplicación puede conservar campos de compatibilidad vacíos en sus contratos durante la transición, pero no debe leer tablas KPI legacy.
 
 ---
 
-# 9. kpi_restaurantes
+# 9. Objetos legacy de reputación
 
-Es una **vista de lectura**, no una tabla.
+La migración `cleanup_legacy_reputation_objects.sql` retira, después de validar el despliegue de aplicación:
 
-Campos esperados por la aplicación:
+- `dashboard_kpis`
+- `dashboard_restaurantes`
+- `kpi_marcas`
+- `kpi_restaurantes`
+- `kpi_diario`
+- `kpi_semanal`
+- `kpi_mensual`
+- `kpi_semana_actual`
+- `motivos_diarios`
+- `motivos_semanales`
+- `motivos_mensuales`
+- `v_motivos_base`
+- `get_kpis_periodo(...)`
+- `actualizar_kpi_semana_actual()`
 
-- `restaurante_id`
-- `restaurante`
-- `ciudad`
-- `marca`
-- `total_resenas`
-- `media_total`
-- `resenas_negativas`
-- `resenas_positivas`
-- `ultima_resena`
-- `estado`
-
-Después, el código puede enriquecer estas filas con:
-
-- `media_google`
-- `total_resenas_google`
-
-procedentes de `restaurantes`.
+No se usa `CASCADE`: si queda una dependencia inesperada, PostgreSQL debe detener la limpieza en vez de eliminarla silenciosamente.
 
 ---
 
@@ -289,8 +288,10 @@ Adaptadores del repositorio:
 
 Las interfaces Web, informes y resúmenes diarios consumen el resultado de esa función. No deben redefinir medias, porcentajes o estados.
 
-Durante la migración, `nexo_metric_validation_events` registra discrepancias detectadas entre el resultado SQL canónico y el cálculo TypeScript anterior ejecutado en modo sombra.
+El catálogo de restaurantes se lee directamente de `restaurantes + marcas`; la vista `kpi_restaurantes` ya no es una dependencia de aplicación.
 
-La vista `kpi_restaurantes` se mantiene como catálogo/snapshot histórico compatible, pero no es la autoridad para la media de un periodo seleccionado.
+El impacto mostrado en imágenes y alertas procede de `nexo_review_rating_impacts(...)`, calculado sobre el histórico canónico del restaurante.
 
-`dashboard_kpis` puede conservar datos legacy/auxiliares, pero no debe sobrescribir una métrica canónica.
+Los motivos agregados proceden de `nexo_reputation_period_motives(...)`, que usa `resena_motivos`.
+
+No existe un segundo calculador TypeScript de medias como fuente alternativa.
