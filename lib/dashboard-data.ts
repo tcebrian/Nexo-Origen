@@ -27,6 +27,7 @@ import { logAnalisisIaJoinStats } from "@/lib/supabase/analisis-ia";
 import { fetchAnalisisIaForResenas } from "@/lib/supabase/analisis-ia.server";
 import {
   compareReputationMetricResults,
+  fetchSupabaseCanonicalProblemDistribution,
   fetchSupabaseCanonicalReputationMetrics,
   mapSupabaseCanonicalMetrics,
   recordMetricValidationMismatch,
@@ -99,16 +100,16 @@ export async function loadNexoPeriodSnapshot(
   const catalogRaw = await safeFetch("catalog", () => fetchAllKpiRowsCached(fetchAllKpiRows), [] as KpiRestaurantRow[]);
   const catalog = scope ? filterKpiRowsByScope(catalogRaw, scope) : catalogRaw;
 
-  // El cálculo canónico en Supabase solo necesita el catálogo (ya disponible),
-  // así que se lanza aquí — en paralelo con reseñas/kpi_diario/dashboard_kpis,
-  // que suelen tardar más — en vez de esperar a que termine todo lo demás
-  // primero. Si falla, null: más abajo se cae al cálculo legacy en vez de
-  // tumbar el dashboard entero.
-  const canonicalPromise = fetchSupabaseCanonicalReputationMetrics(
-    bounds.startKey,
-    bounds.endKey,
-    catalog.map((row) => row.restaurante_id)
-  ).catch((error) => {
+  // Las llamadas canónicas a Supabase solo necesitan el catálogo (ya
+  // disponible), así que se lanzan aquí — en paralelo con
+  // reseñas/kpi_diario/dashboard_kpis, que normalmente tardan más — en vez
+  // de esperar a que termine todo lo demás primero. Si fallan, null: más
+  // abajo se cae al cálculo legacy en vez de tumbar el dashboard entero.
+  const restaurantIds = catalog.map((row) => row.restaurante_id);
+  const canonicalPromise = Promise.all([
+    fetchSupabaseCanonicalReputationMetrics(bounds.startKey, bounds.endKey, restaurantIds),
+    fetchSupabaseCanonicalProblemDistribution(bounds.startKey, bounds.endKey, restaurantIds),
+  ]).catch((error) => {
     console.error(`[canonical-reputation] fetch failed for ${bounds.startKey}..${bounds.endKey}`, error);
     return null;
   });
@@ -134,9 +135,9 @@ export async function loadNexoPeriodSnapshot(
     logAnalisisIaJoinStats(resenas, analisisByResenaId, "loadNexoPeriodSnapshot");
   }
 
-  // Cálculo legacy en TypeScript — se mantiene como red de seguridad (fallback
-  // si Supabase falla) y como referencia para detectar desviaciones, nunca
-  // como fuente servida por defecto.
+  // Cálculo legacy en TypeScript — se mantiene como red de seguridad
+  // (fallback si Supabase falla) y como referencia para detectar
+  // desviaciones, nunca como fuente servida por defecto.
   const legacyMetrics = buildPeriodMetrics({
     catalog,
     resenas,
@@ -144,18 +145,19 @@ export async function loadNexoPeriodSnapshot(
     analisisByResenaId,
   });
 
-  const canonicalRows = await canonicalPromise;
+  const canonicalResult = await canonicalPromise;
 
   let metrics: PeriodMetricsResult;
-  if (canonicalRows === null) {
+  if (canonicalResult === null) {
     // La llamada a Supabase falló — se sirve el cálculo legacy en vez de
     // romper el dashboard entero por un fallo de red puntual.
     metrics = legacyMetrics;
   } else {
+    const [canonicalRows, canonicalProblemDistribution] = canonicalResult;
     metrics = mapSupabaseCanonicalMetrics({
       catalog,
       rows: canonicalRows,
-      problemDistribution: legacyMetrics.problemDistribution,
+      problemDistribution: canonicalProblemDistribution,
     });
 
     const mismatches = compareReputationMetricResults(metrics, legacyMetrics);
@@ -229,33 +231,13 @@ export function getRestaurantMetricsList(snapshot: NexoPeriodSnapshot): Restaura
   );
 }
 
+/**
+ * @deprecated Compatibilidad temporal. dashboard_kpis nunca puede sobrescribir
+ * métricas canónicas de reputación.
+ */
 export function mergeNetworkWithDashboardKpis(
   network: NetworkPeriodMetrics,
-  dashboardKpis: NexoPeriodSnapshot["dashboardKpis"]
+  _dashboardKpis: NexoPeriodSnapshot["dashboardKpis"]
 ): NetworkPeriodMetrics {
-  if (!dashboardKpis) return network;
-  return {
-    ...network,
-    mediaGlobal: dashboardKpis.mediaGlobal || network.mediaGlobal,
-    totalResenas: dashboardKpis.totalResenas || network.totalResenas,
-    totalNegativas: dashboardKpis.totalNegativas || network.totalNegativas,
-    totalPositivas: dashboardKpis.totalPositivas || network.totalPositivas,
-    totalRestaurantes: dashboardKpis.totalRestaurantes || network.totalRestaurantes,
-    positivePct:
-      (dashboardKpis.totalResenas || network.totalResenas) > 0
-        ? Math.round(
-            ((dashboardKpis.totalPositivas || network.totalPositivas) /
-              (dashboardKpis.totalResenas || network.totalResenas)) *
-              1000
-          ) / 10
-        : network.positivePct,
-    negativePct:
-      (dashboardKpis.totalResenas || network.totalResenas) > 0
-        ? Math.round(
-            ((dashboardKpis.totalNegativas || network.totalNegativas) /
-              (dashboardKpis.totalResenas || network.totalResenas)) *
-              1000
-          ) / 10
-        : network.negativePct,
-  };
+  return network;
 }
