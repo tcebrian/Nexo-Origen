@@ -86,6 +86,29 @@ Acción sugerida a partir de hechos, reglas e hipótesis.
 
 Una métrica importante debe tener una implementación canónica.
 
+## Ubicación actual del calculador canónico
+
+Para reputación, el calculador canónico de Nexo vive en el backend de la aplicación y se ejecuta en **Vercel**, no en el navegador ni en el ordenador de Tomás.
+
+Entrada:
+- hechos almacenados en Supabase (`resenas`, catálogo de restaurantes y fallbacks validados);
+
+Implementación:
+- `lib/reputation/canonical-metrics.server.ts`;
+- reglas matemáticas compartidas en `lib/review-metrics.ts`.
+
+Salida:
+- métricas del periodo consumidas por Web, informes y resúmenes de agentes.
+
+Supabase sigue siendo la fuente de verdad de los hechos. Vercel ejecuta las reglas deterministas de Nexo. Las interfaces no recalculan las métricas.
+
+Prioridad actual de fuente para reputación:
+1. reseñas canónicas/deduplicadas del periodo;
+2. `kpi_diario` como fallback validado;
+3. sin datos de periodo.
+
+`dashboard_kpis` y `kpi_restaurantes` no deben sobrescribir las métricas numéricas canónicas de un periodo seleccionado.
+
 No debe existir:
 
 - una fórmula en Web;
