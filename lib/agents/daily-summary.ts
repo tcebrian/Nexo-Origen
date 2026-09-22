@@ -115,19 +115,28 @@ export async function buildAgentDailySummaryPreview(
   const tomorrowKey = addDays(todayKey, 1);
   const restaurantIds = restaurants.map((restaurant) => restaurant.id);
 
+  // fecha_resena se interpreta como UTC en el bot actual. Pedimos una
+  // ventana algo más amplia y aplicamos el calendario Europe/Madrid en JS
+  // para no perder reseñas cercanas a medianoche.
+  const queryStartKey = addDays(weekStartKey, -1);
+  const queryEndKey = addDays(tomorrowKey, 1);
+
   const { data: reviewData, error: reviewError } = await client
     .from(SUPABASE_TABLES.resenas)
     .select(
       "id,review_id,restaurante_id,estrellas,comentario,autor,fecha_resena,created_at,editada,fecha_ultima_edicion"
     )
     .in("restaurante_id", restaurantIds)
-    .gte("fecha_resena", `${weekStartKey}T00:00:00`)
-    .lt("fecha_resena", `${tomorrowKey}T00:00:00`)
+    .gte("fecha_resena", `${queryStartKey}T00:00:00`)
+    .lt("fecha_resena", `${queryEndKey}T00:00:00`)
     .order("fecha_resena", { ascending: true });
 
   if (reviewError) throw reviewError;
 
-  const reviews = dedupeResenas((reviewData ?? []) as ResenaRow[]);
+  const reviews = dedupeResenas((reviewData ?? []) as ResenaRow[]).filter((review) => {
+    const key = toDateKey(review.fecha_resena ?? review.created_at ?? "");
+    return key >= weekStartKey && key <= todayKey;
+  });
   const restaurantById = new Map(restaurants.map((restaurant) => [restaurant.id, restaurant]));
 
   const byRestaurant = new Map<
