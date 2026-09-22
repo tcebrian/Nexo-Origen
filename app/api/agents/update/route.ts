@@ -3,8 +3,8 @@ import { isSuperAdmin } from "@/lib/auth/permissions";
 import {
   getAgentControlSnapshot,
   updateAgentControl,
-  type AgentControlUpdateInput,
 } from "@/lib/agents/control";
+import type { AgentControlUpdateInput } from "@/lib/agents/types";
 
 export async function POST(request: Request) {
   const session = await getAuthSession();
