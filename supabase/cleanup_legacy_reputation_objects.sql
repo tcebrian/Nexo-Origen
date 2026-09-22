@@ -29,6 +29,7 @@ drop table if exists public.kpi_semana_actual;
 drop table if exists public.kpi_semanal;
 drop table if exists public.kpi_mensual;
 drop table if exists public.kpi_diario;
+drop table if exists public.nexo_metric_validation_events;
 
 comment on function public.nexo_reputation_period_metrics(date,date,bigint[]) is
   'Single canonical numeric reputation KPI source for Nexo. Reads canonical review facts only.';
