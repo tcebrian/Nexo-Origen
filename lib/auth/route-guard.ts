@@ -43,6 +43,9 @@ export function isProtectedApiPath(pathname: string): boolean {
   const publicPrefixes = [
     "/api/auth/",
     "/api/webhooks/",
+    "/api/cron/",
+    "/api/integrations/make/",
+    "/api/internal/test-hambar-daily-summary",
     "/api/notifications/whatsapp-alert-image",
   ];
   return !publicPrefixes.some((prefix) => pathname.startsWith(prefix));
