@@ -9,7 +9,7 @@ import type { MediaImpactResult } from "@/lib/reviews/media-impact";
 
 export type { RestaurantPeriodMetrics };
 
-export type PeriodDataSource = "resenas" | "empty";
+export type PeriodDataSource = "resenas" | "empty" | "kpi_diario" | "kpi_restaurantes";
 
 export type PeriodAggregates = {
   totalResenas: number;
@@ -34,7 +34,7 @@ export type PeriodData = {
   resenas: ResenaRow[];
   fetchedAt: Date;
   problemDistribution: ProblemDistributionItem[];
-  chartSource: "resenas" | "empty";
+  chartSource: "resenas" | "empty" | "kpi_diario";
   analisisByResenaId: AnalisisIaIndex;
   dashboardKpis: DashboardKpisSnapshot | null;
   reviewImpactsByResenaId: Record<string, MediaImpactResult>;
