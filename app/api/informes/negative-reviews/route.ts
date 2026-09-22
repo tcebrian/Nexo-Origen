@@ -2,6 +2,7 @@ import type { BrandId } from "@/app/dashboard/restaurantes/data";
 import { filterBrandIdsByScope } from "@/lib/auth/brand-scope";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { buildNegativeReviewReportRows } from "@/lib/reports/negative-reviews/build-rows";
+import { fetchCanonicalReviewImpacts } from "@/lib/supabase/reputation-impact.server";
 import { SUPPORTED_NEGATIVE_REVIEW_BRANDS } from "@/lib/reports/negative-reviews/templates";
 import { getPeriodData } from "@/lib/supabase/period-stats";
 import { NextResponse } from "next/server";
@@ -36,12 +37,22 @@ export async function GET(request: Request) {
           ? [brand as BrandId]
           : scopedSupported;
 
-    const rows = buildNegativeReviewReportRows(period, {
-      start: new Date(`${startKey}T12:00:00`),
-      end: new Date(`${endKey}T12:00:00`),
-      brands,
-      limit: Number.isFinite(limit) ? limit : 50,
-    });
+    const impactIds = period.resenas
+      .filter((row) => row.estrellas <= 3)
+      .map((row) => Number(row.id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+    const impacts = await fetchCanonicalReviewImpacts(impactIds);
+
+    const rows = buildNegativeReviewReportRows(
+      period,
+      {
+        start: new Date(`${startKey}T12:00:00`),
+        end: new Date(`${endKey}T12:00:00`),
+        brands,
+        limit: Number.isFinite(limit) ? limit : 50,
+      },
+      impacts
+    );
 
     return NextResponse.json({
       fetchedAt: period.fetchedAt.toISOString(),
