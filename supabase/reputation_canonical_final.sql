@@ -216,7 +216,9 @@ $function$;
 revoke all on function public.nexo_reputation_period_metrics(date,date,bigint[]) from public, anon, authenticated;
 grant execute on function public.nexo_reputation_period_metrics(date,date,bigint[]) to service_role;
 
-create or replace function public.nexo_review_rating_impacts(
+drop function if exists public.nexo_review_rating_impacts(bigint[]);
+
+create function public.nexo_review_rating_impacts(
   p_resena_ids bigint[]
 )
 returns table (
@@ -313,7 +315,9 @@ $function$;
 revoke all on function public.nexo_review_rating_impacts(bigint[]) from public, anon, authenticated;
 grant execute on function public.nexo_review_rating_impacts(bigint[]) to service_role;
 
-create or replace function public.nexo_reputation_period_motives(
+drop function if exists public.nexo_reputation_period_motives(date,date,bigint[]);
+
+create function public.nexo_reputation_period_motives(
   p_start date,
   p_end date,
   p_restaurant_ids bigint[] default null
