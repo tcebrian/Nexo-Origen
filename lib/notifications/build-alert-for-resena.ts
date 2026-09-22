@@ -5,7 +5,7 @@ import type { ResenaRow } from "@/lib/supabase/resenas";
 import type { AnalisisIaRow } from "@/lib/supabase/analisis-ia";
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
 import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
-import { getMediaImpactForReview } from "@/lib/reviews/media-impact";
+import { fetchCanonicalReviewImpactById } from "@/lib/supabase/review-impact.server";
 import { mapReportRowToAlertData } from "@/lib/templates/negative-review-alert/map-from-report-row";
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
 import type { NegativeReviewReportRow } from "@/lib/reports/negative-reviews/types";
@@ -34,7 +34,7 @@ export async function buildAlertDataForResena(
 
   const { data: restaurante } = await supabase
     .from("restaurantes")
-    .select("id, nombre, direccion, ciudad, empresa_id, marca_id")
+    .select("id, nombre, direccion, ciudad, empresa_id, marca_id, media_google, total_resenas_google")
     .eq("id", resena.restaurante_id)
     .maybeSingle();
 
@@ -50,15 +50,8 @@ export async function buildAlertDataForResena(
     marcaNombre = marcaRow?.nombre ?? undefined;
   }
 
-  const { data: recentResenas } = await supabase
-    .from("resenas")
-    .select("id, review_id, restaurante_id, estrellas, fecha_resena, created_at")
-    .eq("restaurante_id", resena.restaurante_id)
-    .order("fecha_resena", { ascending: false })
-    .limit(300);
-
   const resenaRow = resena as ResenaRow;
-  const impact = getMediaImpactForReview((recentResenas as ResenaRow[]) ?? [resenaRow], resenaRow);
+  const impact = await fetchCanonicalReviewImpactById(resenaId);
 
   let analisis: AnalisisIaRow | null = null;
   if (resena.review_id != null) {
@@ -110,8 +103,8 @@ export async function buildAlertDataForResena(
     recommendation: analisis?.recomendacion?.trim() || IA_NO_DATA,
     employeeMentioned: analisis?.empleado_mencionado?.trim() || null,
     reviewCountAfter: impact?.reviewCountAfter ?? null,
-    totalReviews: null,
-    lifetimeMedia: null,
+    totalReviews: restaurante.total_resenas_google != null ? Number(restaurante.total_resenas_google) : null,
+    lifetimeMedia: restaurante.media_google != null ? Number(restaurante.media_google) : null,
   };
 
   return mapReportRowToAlertData(row);
