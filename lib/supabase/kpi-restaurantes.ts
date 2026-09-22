@@ -1,11 +1,6 @@
 import { isDateKeyInRange, type PeriodBounds, toDateKey } from "@/lib/dates/period";
 import { getSupabaseDataClientForServer } from "@/lib/supabase/data-client";
-import { enrichKpiRows } from "@/lib/supabase/restaurantes";
-import { SUPABASE_VIEWS } from "@/lib/supabase/tables";
 import { unstable_noStore as noStore } from "next/cache";
-
-/** Vista de lectura en Supabase (no tabla). Solo SELECT; permiso vía GRANT a anon. */
-const KPI_RESTAURANTES_VIEW = SUPABASE_VIEWS.kpi_restaurantes;
 
 export type KpiRestaurantRow = {
   restaurante_id: number;
@@ -18,7 +13,6 @@ export type KpiRestaurantRow = {
   resenas_positivas: number;
   ultima_resena: string | null;
   estado: string;
-  /** Media pública de Google Maps (columna `restaurantes.media_google`, vía enrichKpiRows). */
   media_google: number | null;
   total_resenas_google: number | null;
 };
@@ -33,20 +27,35 @@ function toNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function nullableNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Compatibility row for the existing UI/report layer.
+ *
+ * IMPORTANT: period reputation numbers are intentionally zero here.
+ * They are filled later from public.nexo_reputation_period_metrics(...).
+ * This function is metadata only and no longer reads kpi_restaurantes.
+ */
 export function normalizeKpiRow(row: Record<string, unknown>): KpiRestaurantRow {
   return {
     restaurante_id: toNumber(row.restaurante_id),
     restaurante: String(row.restaurante ?? ""),
     ciudad: String(row.ciudad ?? ""),
     marca: String(row.marca ?? ""),
-    total_resenas: toNumber(row.total_resenas),
-    media_total: toNumber(row.media_total),
-    resenas_negativas: toNumber(row.resenas_negativas),
-    resenas_positivas: toNumber(row.resenas_positivas),
-    ultima_resena: row.ultima_resena ? String(row.ultima_resena) : null,
-    estado: String(row.estado ?? ""),
-    media_google: null,
-    total_resenas_google: null,
+    total_resenas: 0,
+    media_total: 0,
+    resenas_negativas: 0,
+    resenas_positivas: 0,
+    ultima_resena: row.ultima_actualizacion_google
+      ? String(row.ultima_actualizacion_google)
+      : null,
+    estado: "En riesgo",
+    media_google: nullableNumber(row.media_google),
+    total_resenas_google: nullableNumber(row.total_resenas_google),
   };
 }
 
@@ -59,29 +68,40 @@ export function filterKpiByPeriod(rows: KpiRestaurantRow[], bounds: PeriodBounds
   return rows.filter((row) => isDateKeyInRange(row.ultima_resena, bounds.startKey, bounds.endKey));
 }
 
-/** Lee el snapshot de cada restaurante desde la vista `kpi_restaurantes`. */
+/**
+ * Canonical restaurant metadata.
+ * Reads restaurantes + marcas + empresas through a service-role-only Supabase RPC.
+ * No KPI calculation is performed here.
+ */
 export async function fetchAllKpiRows(): Promise<KpiRestaurantRow[]> {
   noStore();
 
   const client = await getSupabaseDataClientForServer();
-  const { data, error } = await client.from(KPI_RESTAURANTES_VIEW).select("*");
+  const { data, error } = await client.rpc("nexo_reputation_restaurant_catalog", {
+    p_restaurant_ids: null,
+  });
 
   if (error) {
-    console.error("[fetchAllKpiRows] Error Supabase:", error.message, error);
+    console.error("[fetchAllKpiRows] Canonical catalog error:", error.message, error);
     throw new Error(error.message);
   }
 
-  const rows = (data ?? []).map((row) => normalizeKpiRow(row as Record<string, unknown>));
-  return enrichKpiRows(rows);
+  return (data ?? []).map((row) =>
+    normalizeKpiRow(row as Record<string, unknown>)
+  );
 }
 
-/** Filas KPI ajustadas al periodo (métricas de resenas reales si existen). */
+/** Filas ajustadas al periodo con métricas oficiales de Supabase. */
 export async function fetchKpiForPeriod(query: PeriodQuery): Promise<KpiRestaurantRow[]> {
   const { loadPeriodData } = await import("./period-api");
   const { activeKpiRows } = await loadPeriodData(query.start, query.end);
   return activeKpiRows;
 }
 
+/**
+ * Legacy helper kept only for source compatibility.
+ * Do not use this to calculate official network KPIs.
+ */
 export function getWeightedAverage(rows: KpiRestaurantRow[]): number {
   let weightedSum = 0;
   let totalReviews = 0;
@@ -91,10 +111,6 @@ export function getWeightedAverage(rows: KpiRestaurantRow[]): number {
     totalReviews += row.total_resenas;
   }
 
-  if (totalReviews > 0) {
-    return weightedSum / totalReviews;
-  }
-
-  if (rows.length === 0) return 0;
-  return rows.reduce((sum, row) => sum + row.media_total, 0) / rows.length;
+  if (totalReviews > 0) return weightedSum / totalReviews;
+  return 0;
 }
