@@ -6,6 +6,7 @@ import type {
   AgentControlItem,
   AgentControlSnapshot,
   AgentControlUpdateInput,
+  AgentCreateInput,
   AgentMode,
   AgentRestaurant,
 } from "@/lib/agents/types";
@@ -31,6 +32,20 @@ function requireAdminClient() {
     throw new Error("Supabase admin client is not configured.");
   }
   return client;
+}
+
+function maskPhone(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length <= 4) return "••••";
+  return `••••••${digits.slice(-4)}`;
+}
+
+function normalizePhone(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length < 8 || digits.length > 15) {
+    throw new Error("Introduce un teléfono válido con prefijo de país.");
+  }
+  return digits;
 }
 
 function normalizeTime(value: string | null | undefined): string {
@@ -103,6 +118,7 @@ export async function getAgentControlSnapshot(): Promise<AgentControlSnapshot> {
       return {
         id: row.id,
         nombre: row.nombre,
+        telefonoMasked: maskPhone(row.telefono),
         todosRestaurantes: row.todos_restaurantes,
         restauranteIds,
         restaurantes: assignedRestaurants,
@@ -178,4 +194,58 @@ export async function updateAgentControl(input: AgentControlUpdateInput): Promis
     .eq("id", input.id);
 
   if (error) throw error;
+}
+
+
+export async function createAgentControl(input: AgentCreateInput): Promise<void> {
+  const client = requireAdminClient();
+
+  const nombre = String(input.nombre ?? "").trim();
+  if (nombre.length < 2) {
+    throw new Error("Introduce el nombre del supervisor.");
+  }
+
+  const telefono = normalizePhone(input.telefono);
+  const restauranteIds = normalizeRestaurantIds(input.restauranteIds);
+  const todosRestaurantes = Boolean(input.todosRestaurantes);
+
+  if (!todosRestaurantes && restauranteIds.length === 0) {
+    throw new Error("Selecciona al menos un restaurante.");
+  }
+
+  if (!todosRestaurantes) {
+    const { data, error } = await client
+      .from(SUPABASE_TABLES.restaurantes)
+      .select("id")
+      .in("id", restauranteIds);
+
+    if (error) throw error;
+    if ((data ?? []).length !== restauranteIds.length) {
+      throw new Error("Hay restaurantes seleccionados que no existen.");
+    }
+  }
+
+  const resumenHora = input.resumenHora || "09:00";
+  assertClockTime(resumenHora);
+
+  const { error } = await client.from(SUPABASE_TABLES.nexo_bot_accesos).insert({
+    telefono,
+    nombre,
+    todos_restaurantes: todosRestaurantes,
+    restaurante_ids: todosRestaurantes ? [] : restauranteIds,
+    activo: true,
+    alertas: Boolean(input.alertas),
+    modo: "piloto",
+    resumen_diario: Boolean(input.resumenDiario),
+    resumen_hora: `${resumenHora}:00`,
+    timezone: input.timezone || "Europe/Madrid",
+    actualizado_en: new Date().toISOString(),
+  });
+
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("Ese teléfono ya tiene un agente configurado.");
+    }
+    throw error;
+  }
 }
