@@ -7,7 +7,10 @@ import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
 import { aggregateResumenFromAnalisis } from "@/lib/reviews/map-analisis-ia";
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
 import { dedupeResenas, getReviewDedupKey } from "@/lib/review-metrics";
-import { buildMediaImpactIndex } from "@/lib/reviews/media-impact";
+import {
+  fetchCanonicalReviewImpacts,
+  type CanonicalReviewImpact,
+} from "@/lib/supabase/reputation-impact.server";
 import { getAnalisisForResena, type AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
 import { unstable_noStore as noStore } from "next/cache";
 import type { UserScope } from "@/lib/auth/types";
@@ -144,10 +147,9 @@ function buildAlertasFromResenas(
   resenas: ResenaRow[],
   catalogById: Map<number, KpiRestaurantRow>,
   analisisByResenaId: AnalisisIaIndex = new Map(),
+  impactByResenaId: Map<number, CanonicalReviewImpact> = new Map(),
   limit = 3
 ): DashboardAlertItem[] {
-  const impactIndex = buildMediaImpactIndex(resenas);
-
   return dedupeResenas(resenas)
     .filter((row) => row.estrellas <= 3)
     .sort((a, b) => {
@@ -165,7 +167,7 @@ function buildAlertasFromResenas(
         "Restaurante";
       const marca = catalog?.marca ?? row.marca ?? "";
       const brand = resolveBrandId(row.restaurante_id, marca, catalogById);
-      const impact = impactIndex.get(getReviewDedupKey(row));
+      const impact = impactByResenaId.get(Number(row.id));
       const analisis = getAnalisisForResena(analisisByResenaId, row);
       const motivoPrincipal = classifyReviewReason(row, analisis);
 
@@ -285,6 +287,12 @@ export async function getDashboardData(
       };
     }
 
+    const negativeImpactIds = dedupeResenas(resenas)
+      .filter((row) => row.estrellas <= 3)
+      .map((row) => Number(row.id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+    const impactByResenaId = await fetchCanonicalReviewImpacts(negativeImpactIds);
+
     const peorRestaurante = toDestacado(
       [...rows].sort((a, b) => a.media_total - b.media_total)[0]
     );
@@ -306,7 +314,8 @@ export async function getDashboardData(
       alertas: buildAlertasFromResenas(
         resenas,
         new Map(rows.map((row) => [row.restaurante_id, row])),
-        analisisByResenaId
+        analisisByResenaId,
+        impactByResenaId
       ),
       distribucionMarca: buildDistribucionMarca(rows),
       resumenIA: resolveResumenIA(
