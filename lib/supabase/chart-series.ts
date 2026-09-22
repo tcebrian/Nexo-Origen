@@ -7,6 +7,11 @@ export type RestaurantChartSeries = {
   labels: string[];
   values: number[];
   volumeSeries: { label: string; positive: number; negative: number }[];
+  /**
+   * "kpi_diario" se conserva como etiqueta de compatibilidad visual.
+   * Los datos que llegan por esa rama ya proceden de
+   * nexo_reputation_daily_metrics(), no de la tabla legacy kpi_diario.
+   */
   source: "kpi_diario" | "resenas" | "empty";
 };
 
@@ -24,7 +29,11 @@ export function getResenaDateKey(row: ResenaRow): string {
   return raw.slice(0, 10);
 }
 
-/** Evolución diaria de la red calculada desde reseñas deduplicadas. */
+/**
+ * Fallback defensivo desde reseñas.
+ * Mantiene exactamente la semántica canónica:
+ * 4-5 positiva, 3 neutral, 1-2 negativa.
+ */
 export function buildDailyNetworkSeriesFromResenas(resenas: ResenaRow[]): DailyNetworkPoint[] {
   const byDay = new Map<string, { sum: number; count: number }>();
 
@@ -79,7 +88,8 @@ function buildRestaurantSeriesFromResenas(
     current.sum += row.estrellas;
     current.count += 1;
     if (row.estrellas >= 4) current.positive += 1;
-    else if (row.estrellas <= 3) current.negative += 1;
+    else if (row.estrellas <= 2) current.negative += 1;
+    // 3 estrellas = neutral: no se suma ni a positive ni a negative.
     byDay.set(fecha, current);
   }
 
@@ -97,7 +107,10 @@ function buildRestaurantSeriesFromResenas(
   };
 }
 
-/** Series de evolución y volumen para un restaurante (kpi_diario → resenas). */
+/**
+ * Series de evolución y volumen para un restaurante.
+ * La rama primaria recibe métricas diarias canónicas de Supabase.
+ */
 export function getRestaurantChartSeries(
   kpiDiario: KpiDiarioRow[],
   resenas: ResenaRow[],
