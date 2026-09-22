@@ -78,35 +78,47 @@ export async function loadNexoPeriodSnapshot(
   const bounds = getPeriodBounds(startKey, endKey);
   const query = periodBoundsToQuery(bounds);
 
-  const fetches: [
-    Promise<KpiRestaurantRow[]>,
-    Promise<ResenaRow[]>,
-    Promise<KpiDiarioRow[]>,
-    Promise<Awaited<ReturnType<typeof fetchDashboardKpisForPeriod>> | null>,
-  ] = [
-    safeFetch("catalog", () => fetchAllKpiRowsCached(fetchAllKpiRows), [] as KpiRestaurantRow[]),
-    safeFetch(
-      "resenas",
-      () =>
-        fetchResenasForPeriodServer(
-          { start: bounds.start, end: bounds.end },
-          { queryBounds: query }
-        ),
-      [] as ResenaRow[]
-    ),
-    safeFetch("kpi_diario", () => fetchKpiDiarioForPeriod(bounds), [] as KpiDiarioRow[]),
-    skipDashboardKpis
-      ? Promise.resolve(null)
-      : safeFetch(
-          "dashboard_kpis",
-          () => fetchDashboardKpisForPeriod(bounds.startKey, bounds.endKey),
-          null
-        ),
-  ];
+  const resenasPromise = safeFetch(
+    "resenas",
+    () =>
+      fetchResenasForPeriodServer(
+        { start: bounds.start, end: bounds.end },
+        { queryBounds: query }
+      ),
+    [] as ResenaRow[]
+  );
+  const kpiDiarioPromise = safeFetch("kpi_diario", () => fetchKpiDiarioForPeriod(bounds), [] as KpiDiarioRow[]);
+  const dashboardKpisPromise = skipDashboardKpis
+    ? Promise.resolve(null)
+    : safeFetch(
+        "dashboard_kpis",
+        () => fetchDashboardKpisForPeriod(bounds.startKey, bounds.endKey),
+        null
+      );
 
-  const [catalogRaw, rawResenas, kpiDiarioRaw, dashboardKpis] = await Promise.all(fetches);
-
+  const catalogRaw = await safeFetch("catalog", () => fetchAllKpiRowsCached(fetchAllKpiRows), [] as KpiRestaurantRow[]);
   const catalog = scope ? filterKpiRowsByScope(catalogRaw, scope) : catalogRaw;
+
+  // El cálculo canónico en Supabase solo necesita el catálogo (ya disponible),
+  // así que se lanza aquí — en paralelo con reseñas/kpi_diario/dashboard_kpis,
+  // que suelen tardar más — en vez de esperar a que termine todo lo demás
+  // primero. Si falla, null: más abajo se cae al cálculo legacy en vez de
+  // tumbar el dashboard entero.
+  const canonicalPromise = fetchSupabaseCanonicalReputationMetrics(
+    bounds.startKey,
+    bounds.endKey,
+    catalog.map((row) => row.restaurante_id)
+  ).catch((error) => {
+    console.error(`[canonical-reputation] fetch failed for ${bounds.startKey}..${bounds.endKey}`, error);
+    return null;
+  });
+
+  const [rawResenas, kpiDiarioRaw, dashboardKpis] = await Promise.all([
+    resenasPromise,
+    kpiDiarioPromise,
+    dashboardKpisPromise,
+  ]);
+
   const kpiDiario = scope ? filterKpiDiarioByScope(kpiDiarioRaw, scope) : kpiDiarioRaw;
   const resenas = dedupeResenas(
     scope ? filterResenasByScope(rawResenas, scope) : rawResenas
@@ -122,8 +134,9 @@ export async function loadNexoPeriodSnapshot(
     logAnalisisIaJoinStats(resenas, analisisByResenaId, "loadNexoPeriodSnapshot");
   }
 
-  // Legacy TypeScript calculation remains shadow-only during migration.
-  // It is NEVER served to interfaces after this point.
+  // Cálculo legacy en TypeScript — se mantiene como red de seguridad (fallback
+  // si Supabase falla) y como referencia para detectar desviaciones, nunca
+  // como fuente servida por defecto.
   const legacyMetrics = buildPeriodMetrics({
     catalog,
     resenas,
@@ -131,31 +144,34 @@ export async function loadNexoPeriodSnapshot(
     analisisByResenaId,
   });
 
-  // Numeric reputation KPIs are calculated in PostgreSQL/Supabase.
-  const canonicalRows = await fetchSupabaseCanonicalReputationMetrics(
-    bounds.startKey,
-    bounds.endKey,
-    catalog.map((row) => row.restaurante_id)
-  );
+  const canonicalRows = await canonicalPromise;
 
-  const metrics = mapSupabaseCanonicalMetrics({
-    catalog,
-    rows: canonicalRows,
-    problemDistribution: legacyMetrics.problemDistribution,
-  });
-
-  const mismatches = compareReputationMetricResults(metrics, legacyMetrics);
-  if (mismatches.length > 0) {
-    console.error(
-      `[canonical-reputation] Supabase/legacy mismatch for ${bounds.startKey}..${bounds.endKey}`,
-      mismatches.slice(0, 20)
-    );
-    await recordMetricValidationMismatch({
-      startKey: bounds.startKey,
-      endKey: bounds.endKey,
-      restaurantCount: catalog.length,
-      mismatches,
+  let metrics: PeriodMetricsResult;
+  if (canonicalRows === null) {
+    // La llamada a Supabase falló — se sirve el cálculo legacy en vez de
+    // romper el dashboard entero por un fallo de red puntual.
+    metrics = legacyMetrics;
+  } else {
+    metrics = mapSupabaseCanonicalMetrics({
+      catalog,
+      rows: canonicalRows,
+      problemDistribution: legacyMetrics.problemDistribution,
     });
+
+    const mismatches = compareReputationMetricResults(metrics, legacyMetrics);
+    if (mismatches.length > 0) {
+      console.error(
+        `[canonical-reputation] Supabase/legacy mismatch for ${bounds.startKey}..${bounds.endKey}`,
+        mismatches.slice(0, 20)
+      );
+      // No bloquea la respuesta al usuario por un insert de diagnóstico.
+      recordMetricValidationMismatch({
+        startKey: bounds.startKey,
+        endKey: bounds.endKey,
+        restaurantCount: catalog.length,
+        mismatches,
+      }).catch((error) => console.error("[recordMetricValidationMismatch]", error));
+    }
   }
 
   const activeKpiRows = catalog.map((row) => {
