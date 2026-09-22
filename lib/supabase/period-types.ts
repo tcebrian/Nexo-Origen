@@ -28,6 +28,8 @@ export type PeriodAggregates = {
   totalResenas: number;
   totalNegativas: number;
   totalPositivas: number;
+  totalNeutras: number;
+  totalAtencion: number;
   mediaGlobal: number;
   byRestaurante: Map<number, RestaurantPeriodMetrics>;
   hasResenasEnPeriodo: boolean;
