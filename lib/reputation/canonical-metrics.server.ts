@@ -41,8 +41,8 @@ export async function getCanonicalReputationPeriod(
     network.source === "resenas"
       ? "resenas"
       : network.source === "kpi_diario"
-        ? "kpi_diario"
-        : "kpi_restaurantes";
+        ? "resenas"
+        : "empty";
 
   return {
     bounds: snapshot.bounds,
@@ -59,12 +59,14 @@ export async function getCanonicalReputationPeriod(
       ultimaActualizacion: network.ultimaActualizacion,
       positivePct: network.positivePct,
       negativePct: network.negativePct,
+      byBrand: snapshot.brandAggregates,
     },
     dailySeries: snapshot.dailySeries,
     kpiDiarioRows: snapshot.kpiDiario,
     resenas: snapshot.resenas,
     fetchedAt: snapshot.fetchedAt,
     problemDistribution: snapshot.metrics.problemDistribution,
+    problemDistributionByBrand: snapshot.problemDistributionByBrand,
     chartSource: snapshot.chartSource,
     analisisByResenaId: snapshot.analisisByResenaId,
     dashboardKpis: null,
