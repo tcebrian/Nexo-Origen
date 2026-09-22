@@ -1,41 +1,37 @@
 import { getPeriodBounds, getPeriodBoundsFromDates, periodBoundsToQuery } from "@/lib/date-utils";
 import type { PeriodBounds } from "@/lib/dates/period";
 import {
-  buildPeriodMetrics,
   dedupeResenas,
   metricsToKpiRow,
   type NetworkPeriodMetrics,
   type PeriodMetricsResult,
   type RestaurantPeriodMetrics,
 } from "@/lib/review-metrics";
-import { resolveDailyNetworkSeries } from "@/lib/supabase/chart-series";
 import {
-  filterKpiDiarioByScope,
   filterKpiRowsByScope,
   filterResenasByScope,
 } from "@/lib/auth/data-scope";
 import type { UserScope } from "@/lib/auth/types";
-import { fetchKpiDiarioForPeriod } from "@/lib/supabase/kpi-diario.server";
 import type { KpiDiarioRow, DailyNetworkPoint } from "@/lib/supabase/kpi-diario";
 import { fetchAllKpiRowsCached } from "@/lib/cache/kpi-catalog-cache";
 import { fetchAllKpiRows, type KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
 import { fetchResenasForPeriodServer } from "@/lib/supabase/resenas.server";
 import type { ResenaRow } from "@/lib/supabase/resenas";
-import { fetchDashboardKpisForPeriod } from "@/lib/supabase/dashboard-kpis";
 import type { AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
 import { logAnalisisIaJoinStats } from "@/lib/supabase/analisis-ia";
 import { fetchAnalisisIaForResenas } from "@/lib/supabase/analisis-ia.server";
 import {
-  compareReputationMetricResults,
+  fetchSupabaseCanonicalDailyMetrics,
+  fetchSupabaseCanonicalMotives,
   fetchSupabaseCanonicalReputationMetrics,
   mapSupabaseCanonicalMetrics,
-  recordMetricValidationMismatch,
+  mapSupabaseMotivesToProblemDistribution,
 } from "@/lib/supabase/reputation-metrics.server";
 
 export type LoadSnapshotOptions = {
   /** Omitir analisis_ia (más rápido en inicio del dashboard). */
   includeAnalisis?: boolean;
-  /** No consultar dashboard_kpis (tabla opcional / a menudo ausente). */
+  /** @deprecated Se conserva solo por compatibilidad. dashboard_kpis ya no se consulta. */
   skipDashboardKpis?: boolean;
 };
 
@@ -44,13 +40,15 @@ export type NexoPeriodSnapshot = {
   fetchedAt: Date;
   catalog: KpiRestaurantRow[];
   resenas: ResenaRow[];
+  /** Compatibilidad de tipo: ahora contiene la serie diaria CANÓNICA calculada por Supabase. */
   kpiDiario: KpiDiarioRow[];
   metrics: PeriodMetricsResult;
   activeKpiRows: KpiRestaurantRow[];
   dailySeries: DailyNetworkPoint[];
   chartPending: boolean;
   chartSource: "kpi_diario" | "resenas" | "empty";
-  dashboardKpis: Awaited<ReturnType<typeof fetchDashboardKpisForPeriod>>;
+  /** Legacy eliminado del flujo. Siempre null. */
+  dashboardKpis: null;
   analisisByResenaId: AnalisisIaIndex;
 };
 
@@ -64,8 +62,15 @@ async function safeFetch<T>(label: string, fn: () => Promise<T>, fallback: T): P
 }
 
 /**
- * Capa única de datos del periodo para todo el dashboard.
- * Agrupa siempre por restaurante_id.
+ * Capa única de datos del periodo.
+ *
+ * Fuente oficial:
+ * - catálogo: restaurantes + marcas
+ * - métricas: nexo_reputation_period_metrics(...)
+ * - serie diaria: nexo_reputation_daily_metrics(...)
+ * - motivos: nexo_reputation_motives_period(...)
+ *
+ * No consulta dashboard_kpis, kpi_diario ni kpi_restaurantes.
  */
 export async function loadNexoPeriodSnapshot(
   startKey: string,
@@ -74,43 +79,40 @@ export async function loadNexoPeriodSnapshot(
   options?: LoadSnapshotOptions
 ): Promise<NexoPeriodSnapshot> {
   const includeAnalisis = options?.includeAnalisis ?? true;
-  const skipDashboardKpis = options?.skipDashboardKpis ?? false;
   const bounds = getPeriodBounds(startKey, endKey);
   const query = periodBoundsToQuery(bounds);
 
-  const fetches: [
-    Promise<KpiRestaurantRow[]>,
-    Promise<ResenaRow[]>,
-    Promise<KpiDiarioRow[]>,
-    Promise<Awaited<ReturnType<typeof fetchDashboardKpisForPeriod>> | null>,
-  ] = [
-    safeFetch("catalog", () => fetchAllKpiRowsCached(fetchAllKpiRows), [] as KpiRestaurantRow[]),
-    safeFetch(
-      "resenas",
-      () =>
-        fetchResenasForPeriodServer(
-          { start: bounds.start, end: bounds.end },
-          { queryBounds: query }
-        ),
-      [] as ResenaRow[]
+  const [catalogRaw, rawResenas] = await Promise.all([
+    fetchAllKpiRowsCached(fetchAllKpiRows),
+    fetchResenasForPeriodServer(
+      { start: bounds.start, end: bounds.end },
+      { queryBounds: query }
     ),
-    safeFetch("kpi_diario", () => fetchKpiDiarioForPeriod(bounds), [] as KpiDiarioRow[]),
-    skipDashboardKpis
-      ? Promise.resolve(null)
-      : safeFetch(
-          "dashboard_kpis",
-          () => fetchDashboardKpisForPeriod(bounds.startKey, bounds.endKey),
-          null
-        ),
-  ];
-
-  const [catalogRaw, rawResenas, kpiDiarioRaw, dashboardKpis] = await Promise.all(fetches);
+  ]);
 
   const catalog = scope ? filterKpiRowsByScope(catalogRaw, scope) : catalogRaw;
-  const kpiDiario = scope ? filterKpiDiarioByScope(kpiDiarioRaw, scope) : kpiDiarioRaw;
   const resenas = dedupeResenas(
     scope ? filterResenasByScope(rawResenas, scope) : rawResenas
   );
+  const restaurantIds = catalog.map((row) => row.restaurante_id);
+
+  const [canonicalRows, canonicalDaily, motiveRows] = await Promise.all([
+    fetchSupabaseCanonicalReputationMetrics(
+      bounds.startKey,
+      bounds.endKey,
+      restaurantIds
+    ),
+    fetchSupabaseCanonicalDailyMetrics(
+      bounds.startKey,
+      bounds.endKey,
+      restaurantIds
+    ),
+    fetchSupabaseCanonicalMotives(
+      bounds.startKey,
+      bounds.endKey,
+      restaurantIds
+    ),
+  ]);
 
   let analisisByResenaId: AnalisisIaIndex = new Map();
   if (includeAnalisis && resenas.length > 0) {
@@ -122,61 +124,42 @@ export async function loadNexoPeriodSnapshot(
     logAnalisisIaJoinStats(resenas, analisisByResenaId, "loadNexoPeriodSnapshot");
   }
 
-  // Legacy TypeScript calculation remains shadow-only during migration.
-  // It is NEVER served to interfaces after this point.
-  const legacyMetrics = buildPeriodMetrics({
-    catalog,
-    resenas,
-    kpiDiario,
-    analisisByResenaId,
-  });
-
-  // Numeric reputation KPIs are calculated in PostgreSQL/Supabase.
-  const canonicalRows = await fetchSupabaseCanonicalReputationMetrics(
-    bounds.startKey,
-    bounds.endKey,
-    catalog.map((row) => row.restaurante_id)
-  );
-
+  const problemDistribution = mapSupabaseMotivesToProblemDistribution(motiveRows);
   const metrics = mapSupabaseCanonicalMetrics({
     catalog,
     rows: canonicalRows,
-    problemDistribution: legacyMetrics.problemDistribution,
+    problemDistribution,
   });
-
-  const mismatches = compareReputationMetricResults(metrics, legacyMetrics);
-  if (mismatches.length > 0) {
-    console.error(
-      `[canonical-reputation] Supabase/legacy mismatch for ${bounds.startKey}..${bounds.endKey}`,
-      mismatches.slice(0, 20)
-    );
-    await recordMetricValidationMismatch({
-      startKey: bounds.startKey,
-      endKey: bounds.endKey,
-      restaurantCount: catalog.length,
-      mismatches,
-    });
-  }
 
   const activeKpiRows = catalog.map((row) => {
     const period = metrics.byRestaurante.get(row.restaurante_id);
-    return period ? metricsToKpiRow(row, period) : { ...row, total_resenas: 0, resenas_negativas: 0, resenas_positivas: 0 };
+    return period
+      ? metricsToKpiRow(row, period)
+      : {
+          ...row,
+          total_resenas: 0,
+          media_total: 0,
+          resenas_negativas: 0,
+          resenas_positivas: 0,
+          estado: "En riesgo",
+        };
   });
 
-  const { series: dailySeries, source: chartSource } = resolveDailyNetworkSeries(kpiDiario, resenas);
+  const dailySeries = canonicalDaily.networkSeries;
+  const chartSource = dailySeries.length > 0 ? ("resenas" as const) : ("empty" as const);
 
   return {
     bounds,
     fetchedAt: new Date(),
     catalog,
     resenas,
-    kpiDiario,
+    kpiDiario: canonicalDaily.rows,
     metrics,
     activeKpiRows,
     dailySeries,
     chartPending: dailySeries.length === 0,
     chartSource,
-    dashboardKpis,
+    dashboardKpis: null,
     analisisByResenaId,
   };
 }
@@ -213,33 +196,13 @@ export function getRestaurantMetricsList(snapshot: NexoPeriodSnapshot): Restaura
   );
 }
 
+/**
+ * @deprecated dashboard_kpis ya no participa en el cálculo.
+ * Se conserva como identidad mientras desaparecen imports legacy.
+ */
 export function mergeNetworkWithDashboardKpis(
   network: NetworkPeriodMetrics,
-  dashboardKpis: NexoPeriodSnapshot["dashboardKpis"]
+  _dashboardKpis: null
 ): NetworkPeriodMetrics {
-  if (!dashboardKpis) return network;
-  return {
-    ...network,
-    mediaGlobal: dashboardKpis.mediaGlobal || network.mediaGlobal,
-    totalResenas: dashboardKpis.totalResenas || network.totalResenas,
-    totalNegativas: dashboardKpis.totalNegativas || network.totalNegativas,
-    totalPositivas: dashboardKpis.totalPositivas || network.totalPositivas,
-    totalRestaurantes: dashboardKpis.totalRestaurantes || network.totalRestaurantes,
-    positivePct:
-      (dashboardKpis.totalResenas || network.totalResenas) > 0
-        ? Math.round(
-            ((dashboardKpis.totalPositivas || network.totalPositivas) /
-              (dashboardKpis.totalResenas || network.totalResenas)) *
-              1000
-          ) / 10
-        : network.positivePct,
-    negativePct:
-      (dashboardKpis.totalResenas || network.totalResenas) > 0
-        ? Math.round(
-            ((dashboardKpis.totalNegativas || network.totalNegativas) /
-              (dashboardKpis.totalResenas || network.totalResenas)) *
-              1000
-          ) / 10
-        : network.negativePct,
-  };
+  return network;
 }
