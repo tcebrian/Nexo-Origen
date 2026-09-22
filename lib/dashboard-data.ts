@@ -53,6 +53,7 @@ export type NexoPeriodSnapshot = {
   /** Legacy eliminado del flujo. Siempre null. */
   dashboardKpis: null;
   analisisByResenaId: AnalisisIaIndex;
+  impactByResenaId: Map<number, import("@/lib/reviews/media-impact").MediaImpactResult>;
   networkAggregate: import("@/lib/supabase/period-types").PeriodNetworkAggregate;
   brandAggregates: Record<string, import("@/lib/supabase/period-types").PeriodNetworkAggregate>;
   problemDistributionByBrand: Record<string, import("@/lib/review-metrics").ProblemDistributionItem[]>;
