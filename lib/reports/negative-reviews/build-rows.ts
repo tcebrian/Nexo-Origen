@@ -2,7 +2,7 @@ import { restaurantSlug } from "@/app/dashboard/restaurantes/utils";
 import type { BrandId } from "@/app/dashboard/restaurantes/data";
 import { marcaToBrandId } from "@/lib/restaurants/brand-resolve";
 import { sortResenasByDateDesc } from "@/lib/restaurants/reputation-metrics";
-import { dedupeResenas, getReviewDedupKey, getReviewContentKey } from "@/lib/review-metrics";
+import { dedupeResenas, getReviewContentKey } from "@/lib/review-metrics";
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
 import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
 import { getAnalisisForResena } from "@/lib/supabase/analisis-ia";
@@ -119,7 +119,7 @@ export function buildNegativeReviewReportRows(
       impact: impact?.impact ?? null,
       impactText:
         analisis?.impacto?.trim() ||
-        (impact
+        (impact?.mediaAfter != null
           ? `${impact.mediaBefore?.toFixed(2) ?? "—"} → ${impact.mediaAfter.toFixed(2)}`
           : IA_NO_DATA),
       recommendation: analisis?.recomendacion?.trim() || IA_NO_DATA,
