@@ -18,6 +18,8 @@ export type CanonicalBrandMetricsRow = {
   onTargetCount: number;
   watchCount: number;
   criticalCount: number;
+  networkTotalResenas: number;
+  reviewSharePct: number;
 };
 
 function num(value: unknown): number {
@@ -61,6 +63,8 @@ export async function fetchCanonicalBrandMetrics(
       onTargetCount: num(row.on_target_count),
       watchCount: num(row.watch_count),
       criticalCount: num(row.critical_count),
+      networkTotalResenas: num(row.network_total_resenas),
+      reviewSharePct: num(row.review_share_pct),
     };
   });
 }
