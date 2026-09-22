@@ -54,11 +54,11 @@ export function RestaurantOnboardingModal({
       })
       .then((body) => {
         setOptions(body);
-        if (!marcaId && body.marcas[0]) {
-          setMarcaId(String(body.marcas[0].id));
+        if (body.marcas[0]) {
+          setMarcaId((current) => current || String(body.marcas[0].id));
         }
-        if (!empresaId && body.empresas[0]) {
-          setEmpresaId(String(body.empresas[0].id));
+        if (body.empresas[0]) {
+          setEmpresaId((current) => current || String(body.empresas[0].id));
         }
       })
       .catch((reason) => {
@@ -69,7 +69,7 @@ export function RestaurantOnboardingModal({
         );
       })
       .finally(() => setLoadingOptions(false));
-  }, [open, marcaId, empresaId]);
+  }, [open]);
 
   function reset() {
     setNombre("");
