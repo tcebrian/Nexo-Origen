@@ -29,7 +29,8 @@ export type DashboardSection =
   | "talento"
   | "informes"
   | "ajustes"
-  | "insights-ia";
+  | "insights-ia"
+  | "agentes";
 
 export type Perfil = {
   id: string;

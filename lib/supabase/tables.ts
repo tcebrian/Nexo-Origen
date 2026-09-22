@@ -20,6 +20,9 @@ export const SUPABASE_TABLES = {
   empresas: "empresas",
   usuario_marcas: "usuario_marcas",
   usuario_restaurantes: "usuario_restaurantes",
+  nexo_bot_accesos: "nexo_bot_accesos",
+  nexo_bot_conversaciones: "nexo_bot_conversaciones",
+  nexo_bot_sesiones: "nexo_bot_sesiones",
 } as const;
 
 export type SupabaseView = (typeof SUPABASE_VIEWS)[keyof typeof SUPABASE_VIEWS];
