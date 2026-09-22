@@ -12,6 +12,7 @@ import {
   filterResenasByScope,
 } from "@/lib/auth/data-scope";
 import type { UserScope } from "@/lib/auth/types";
+import { marcaToBrandId } from "@/lib/restaurants/brand-resolve";
 import type { KpiDiarioRow, DailyNetworkPoint } from "@/lib/supabase/kpi-diario";
 import { fetchAllKpiRowsCached } from "@/lib/cache/kpi-catalog-cache";
 import { fetchAllKpiRows, type KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
@@ -21,6 +22,7 @@ import type { AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
 import { logAnalisisIaJoinStats } from "@/lib/supabase/analisis-ia";
 import { fetchAnalisisIaForResenas } from "@/lib/supabase/analisis-ia.server";
 import {
+  extractCanonicalNetworkAggregate,
   fetchSupabaseCanonicalDailyMetrics,
   fetchSupabaseCanonicalMotives,
   fetchSupabaseCanonicalReputationMetrics,
@@ -51,6 +53,8 @@ export type NexoPeriodSnapshot = {
   /** Legacy eliminado del flujo. Siempre null. */
   dashboardKpis: null;
   analisisByResenaId: AnalisisIaIndex;
+  brandAggregates: Record<string, import("@/lib/supabase/period-types").PeriodNetworkAggregate>;
+  problemDistributionByBrand: Record<string, import("@/lib/review-metrics").ProblemDistributionItem[]>;
 };
 
 async function safeFetch<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -116,6 +120,44 @@ export async function loadNexoPeriodSnapshot(
     fetchSupabaseReviewImpacts(resenas.map((row) => Number(row.id))),
   ]);
 
+  const restaurantIdsByBrand = new Map<string, number[]>();
+  for (const row of catalog) {
+    const brand = marcaToBrandId(row.marca);
+    const ids = restaurantIdsByBrand.get(brand) ?? [];
+    ids.push(row.restaurante_id);
+    restaurantIdsByBrand.set(brand, ids);
+  }
+
+  const brandEntries = await Promise.all(
+    [...restaurantIdsByBrand.entries()].map(async ([brand, ids]) => {
+      const [metricRows, brandMotiveRows] = await Promise.all([
+        fetchSupabaseCanonicalReputationMetrics(
+          bounds.startKey,
+          bounds.endKey,
+          ids
+        ),
+        fetchSupabaseCanonicalMotives(
+          bounds.startKey,
+          bounds.endKey,
+          ids
+        ),
+      ]);
+
+      return {
+        brand,
+        aggregate: extractCanonicalNetworkAggregate(metricRows, ids.length),
+        motives: mapSupabaseMotivesToProblemDistribution(brandMotiveRows),
+      };
+    })
+  );
+
+  const brandAggregates = Object.fromEntries(
+    brandEntries.map((entry) => [entry.brand, entry.aggregate])
+  );
+  const problemDistributionByBrand = Object.fromEntries(
+    brandEntries.map((entry) => [entry.brand, entry.motives])
+  );
+
   let analisisByResenaId: AnalisisIaIndex = new Map();
   if (includeAnalisis && resenas.length > 0) {
     analisisByResenaId = await safeFetch(
@@ -164,6 +206,8 @@ export async function loadNexoPeriodSnapshot(
     dashboardKpis: null,
     analisisByResenaId,
     impactByResenaId,
+    brandAggregates,
+    problemDistributionByBrand,
   };
 }
 
