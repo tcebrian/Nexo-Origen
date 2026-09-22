@@ -30,8 +30,7 @@ export async function getCanonicalReputationPeriod(
 ): Promise<PeriodData> {
   const snapshot = await loadNexoPeriodSnapshot(startKey, endKey, scope, {
     ...options,
-    // dashboard_kpis can still exist for legacy/diagnostic purposes, but must
-    // never override canonical numeric reputation metrics.
+    // Compatibility option only. Legacy KPI views are not queried.
     skipDashboardKpis: true,
   });
 
