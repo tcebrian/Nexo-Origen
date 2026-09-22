@@ -11,6 +11,7 @@ import type {
 import type { KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
 import type { DailyNetworkPoint, KpiDiarioRow } from "@/lib/supabase/kpi-diario";
 import { categoriaMotivoLabel } from "@/lib/supabase/resena-motivos";
+import type { MediaImpactResult } from "@/lib/reviews/media-impact";
 import { getSupabaseDataClientForServer } from "@/lib/supabase/data-client";
 
 
@@ -185,27 +186,41 @@ export async function fetchSupabaseCanonicalDailyMetrics(
 
 export async function fetchSupabaseReviewImpacts(
   resenaIds: number[]
-): Promise<Map<number, SupabaseReviewImpactRow>> {
+): Promise<Map<number, MediaImpactResult>> {
   const unique = [...new Set(resenaIds.filter((id) => Number.isInteger(id) && id > 0))];
   if (unique.length === 0) return new Map();
 
   const client = await getSupabaseDataClientForServer();
-  const { data, error } = await client.rpc("nexo_review_rating_impacts", {
-    p_resena_ids: unique,
-  });
+  const index = new Map<number, MediaImpactResult>();
 
-  if (error) {
-    throw new Error(
-      `Supabase review impact calculation failed: ${error.message}`
-    );
+  for (let offset = 0; offset < unique.length; offset += 500) {
+    const batch = unique.slice(offset, offset + 500);
+    const { data, error } = await client.rpc("nexo_review_rating_impacts", {
+      p_resena_ids: batch,
+    });
+
+    if (error) {
+      throw new Error(
+        `Supabase review impact calculation failed: ${error.message}`
+      );
+    }
+
+    for (const row of (data ?? []) as SupabaseReviewImpactRow[]) {
+      const mediaAfter =
+        row.media_after == null ? null : num(row.media_after);
+      if (mediaAfter == null) continue;
+
+      index.set(num(row.resena_id), {
+        mediaBefore: row.media_before == null ? null : num(row.media_before),
+        mediaAfter,
+        impact: num(row.impact),
+        reviewCountBefore: num(row.reviews_before),
+        reviewCountAfter: num(row.reviews_after),
+      });
+    }
   }
 
-  return new Map(
-    ((data ?? []) as SupabaseReviewImpactRow[]).map((row) => [
-      num(row.resena_id),
-      row,
-    ])
-  );
+  return index;
 }
 
 export async function fetchSupabaseCanonicalMotives(
