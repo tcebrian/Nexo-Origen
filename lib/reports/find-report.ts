@@ -1,7 +1,7 @@
-import { buildReportsFromKpi } from "@/lib/supabase/reports-builder";
-import { loadPeriodData } from "@/lib/supabase/period-api";
-import { fetchResenasForPeriodServer } from "@/lib/supabase/resenas.server";
+import "server-only";
+
 import type { BrandId } from "@/app/dashboard/restaurantes/data";
+import { loadCanonicalReports } from "@/lib/reports/canonical-reports.server";
 import type { ReportRecord } from "./types";
 
 function parseReportId(id: string): { brand: BrandId | "todas"; endKey: string } | null {
@@ -23,15 +23,7 @@ export async function findReportById(id: string): Promise<ReportRecord | undefin
   const start = new Date(end);
   start.setDate(start.getDate() - 6);
 
-  const { activeKpiRows, bounds, analisisByResenaId } = await loadPeriodData(start, end);
-  const resenas = await fetchResenasForPeriodServer({ start: bounds.start, end: bounds.end });
-  const reports = buildReportsFromKpi(
-    activeKpiRows,
-    { start: bounds.start, end: bounds.end },
-    resenas,
-    analisisByResenaId
-  );
-
+  const reports = await loadCanonicalReports({ start, end });
   return reports.find((report) => report.id === id);
 }
 
