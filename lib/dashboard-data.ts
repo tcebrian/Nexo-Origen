@@ -25,6 +25,12 @@ import { fetchDashboardKpisForPeriod } from "@/lib/supabase/dashboard-kpis";
 import type { AnalisisIaIndex } from "@/lib/supabase/analisis-ia";
 import { logAnalisisIaJoinStats } from "@/lib/supabase/analisis-ia";
 import { fetchAnalisisIaForResenas } from "@/lib/supabase/analisis-ia.server";
+import {
+  compareReputationMetricResults,
+  fetchSupabaseCanonicalReputationMetrics,
+  mapSupabaseCanonicalMetrics,
+  recordMetricValidationMismatch,
+} from "@/lib/supabase/reputation-metrics.server";
 
 export type LoadSnapshotOptions = {
   /** Omitir analisis_ia (más rápido en inicio del dashboard). */
@@ -116,7 +122,41 @@ export async function loadNexoPeriodSnapshot(
     logAnalisisIaJoinStats(resenas, analisisByResenaId, "loadNexoPeriodSnapshot");
   }
 
-  const metrics = buildPeriodMetrics({ catalog, resenas, kpiDiario, analisisByResenaId });
+  // Legacy TypeScript calculation remains shadow-only during migration.
+  // It is NEVER served to interfaces after this point.
+  const legacyMetrics = buildPeriodMetrics({
+    catalog,
+    resenas,
+    kpiDiario,
+    analisisByResenaId,
+  });
+
+  // Numeric reputation KPIs are calculated in PostgreSQL/Supabase.
+  const canonicalRows = await fetchSupabaseCanonicalReputationMetrics(
+    bounds.startKey,
+    bounds.endKey,
+    catalog.map((row) => row.restaurante_id)
+  );
+
+  const metrics = mapSupabaseCanonicalMetrics({
+    catalog,
+    rows: canonicalRows,
+    problemDistribution: legacyMetrics.problemDistribution,
+  });
+
+  const mismatches = compareReputationMetricResults(metrics, legacyMetrics);
+  if (mismatches.length > 0) {
+    console.error(
+      `[canonical-reputation] Supabase/legacy mismatch for ${bounds.startKey}..${bounds.endKey}`,
+      mismatches.slice(0, 20)
+    );
+    await recordMetricValidationMismatch({
+      startKey: bounds.startKey,
+      endKey: bounds.endKey,
+      restaurantCount: catalog.length,
+      mismatches,
+    });
+  }
 
   const activeKpiRows = catalog.map((row) => {
     const period = metrics.byRestaurante.get(row.restaurante_id);
