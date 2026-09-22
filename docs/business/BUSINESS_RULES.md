@@ -92,7 +92,10 @@ Para reputación, **PostgreSQL/Supabase calcula las métricas numéricas oficial
 
 Entrada:
 - hechos almacenados en Supabase (`resenas`);
-- `kpi_diario` solo como fallback validado cuando no existen hechos individuales del periodo.
+- catálogo base en `restaurantes`, `marcas` y `empresas`;
+- clasificación de motivos en `resena_motivos`.
+
+No existe fallback a tablas KPI precalculadas. Si no hay hechos válidos en `resenas`, el resultado canónico es `no_data/empty`.
 
 Implementación canónica:
 - función SQL `public.nexo_reputation_period_metrics(...)`;
@@ -104,14 +107,16 @@ Responsabilidades:
 - Vercel aplica permisos, pide el periodo/alcance y formatea el resultado;
 - Web, WhatsApp e informes muestran el resultado sin recalcular medias o porcentajes.
 
-Durante la migración, la implementación TypeScript anterior puede ejecutarse en modo sombra exclusivamente para comparar resultados. Nunca debe ser el valor mostrado si Supabase está disponible.
+Funciones canónicas de reputación:
+1. `nexo_reputation_period_metrics(...)` → KPI de periodo y red;
+2. `nexo_review_rating_impacts(...)` → impacto histórico antes/después de cada reseña;
+3. `nexo_reputation_period_motives(...)` → distribución de motivos.
 
-Prioridad actual de fuente para reputación:
-1. reseñas canónicas/deduplicadas del periodo;
-2. `kpi_diario` como fallback validado;
-3. sin datos de periodo.
+Fuente actual:
+1. hechos canónicos/deduplicados en `resenas`;
+2. si no existen hechos válidos, `empty/no_data`.
 
-`dashboard_kpis` y `kpi_restaurantes` no deben sobrescribir las métricas numéricas canónicas de un periodo seleccionado.
+Las tablas/vistas KPI legacy no forman parte de la arquitectura canónica y se eliminan mediante una migración controlada cuando la versión de aplicación que ya no las consulta está desplegada.
 
 No debe existir:
 
