@@ -46,6 +46,67 @@ function num(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+type SupabaseMotiveRow = {
+  categoria: string;
+  total: number | string;
+  percent: number | string;
+  restaurantes_afectados: number | string;
+};
+
+const MOTIVE_LABELS: Record<string, string> = {
+  TIEMPO_ESPERA: "Tiempo de espera",
+  PEDIDO_INCORRECTO: "Pedido incorrecto",
+  ATENCION_PERSONAL: "Atención al cliente",
+  CALIDAD_PRODUCTO: "Calidad producto",
+  LIMPIEZA: "Limpieza",
+  FALTA_PRODUCTO: "Falta de producto",
+  PRECIO: "Precio",
+  AMBIENTE_LOCAL: "Ambiente/local",
+  COBRO_REEMBOLSO: "Cobro/Reembolso",
+  EMPLEADO_MENCIONADO: "Empleado mencionado",
+  SIN_MOTIVO: "Sin comentario",
+  OTRO: "Otros",
+};
+
+function motiveLabel(category: string): string {
+  const key = category.trim().toUpperCase();
+  return MOTIVE_LABELS[key] ?? category
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/^./, (char) => char.toUpperCase());
+}
+
+export async function fetchSupabaseCanonicalProblemDistribution(
+  startKey: string,
+  endKey: string,
+  restaurantIds: number[]
+): Promise<ProblemDistributionItem[]> {
+  if (restaurantIds.length === 0) return [];
+
+  const client = await getSupabaseDataClientForServer();
+  const { data, error } = await client.rpc("nexo_reputation_period_motives", {
+    p_start: startKey,
+    p_end: endKey,
+    p_restaurant_ids: restaurantIds,
+  });
+
+  if (error) {
+    throw new Error(
+      `Supabase canonical reputation motives failed: ${error.message}`
+    );
+  }
+
+  return ((data ?? []) as SupabaseMotiveRow[])
+    .filter((row) => num(row.total) > 0)
+    .map((row) => ({
+      label: motiveLabel(String(row.categoria ?? "")),
+      count: num(row.total),
+      percent: num(row.percent),
+      provisional: false,
+    }));
+}
+
 function operationalStatus(
   value: string
 ): RestaurantPeriodMetrics["operationalStatus"] {
