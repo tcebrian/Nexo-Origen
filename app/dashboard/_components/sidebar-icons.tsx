@@ -64,6 +64,13 @@ export function SidebarIcon({
           <path {...stroke} d="M7 4h7l3 3v13H7V4Zm7 0v3h3M9 12h6M9 16h4" />
         </svg>
       );
+    case "agents":
+      return (
+        <svg className={className} viewBox="0 0 24 24" aria-hidden>
+          <circle {...stroke} cx="9" cy="8" r="3" />
+          <path {...stroke} d="M3.5 19c.7-3.2 2.6-5 5.5-5s4.8 1.8 5.5 5M16 8.5h4M18 6.5v4" />
+        </svg>
+      );
     case "settings":
       return (
         <svg className={className} viewBox="0 0 24 24" aria-hidden>
