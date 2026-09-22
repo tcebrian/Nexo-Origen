@@ -18,7 +18,7 @@
   "crons": [
     {
       "path": "/api/cron/agent-daily-summaries",
-      "schedule": "0 7 * * *"
+      "schedule": "0 6,7 * * *"
     }
   ]
 }
