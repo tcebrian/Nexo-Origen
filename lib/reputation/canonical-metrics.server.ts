@@ -71,6 +71,7 @@ export async function getCanonicalReputationPeriod(
     problemDistributionByBrand: snapshot.problemDistributionByBrand,
     chartSource: snapshot.chartSource,
     analisisByResenaId: snapshot.analisisByResenaId,
+    impactByResenaId: snapshot.impactByResenaId,
     dashboardKpis: null,
   };
 }
