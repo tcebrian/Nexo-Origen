@@ -2,9 +2,10 @@ import { toDateKey } from "@/lib/dates/period";
 import type { AnalisisIaRow } from "./analisis-ia";
 import type { PeriodData, RestaurantPeriodMetrics } from "./period-types";
 
-type SerializedPeriodPayload = Omit<PeriodData, "aggregates" | "fetchedAt" | "analisisByResenaId"> & {
+type SerializedPeriodPayload = Omit<PeriodData, "aggregates" | "fetchedAt" | "analisisByResenaId" | "impactByResenaId"> & {
   fetchedAt: string;
   analisisByResenaId: Record<string, AnalisisIaRow>;
+  impactByResenaId: Record<string, PeriodData["impactByResenaId"] extends Map<number, infer V> ? V : never>;
   aggregates: Omit<PeriodData["aggregates"], "byRestaurante"> & {
     byRestaurante: Record<string, RestaurantPeriodMetrics>;
   };
@@ -15,6 +16,9 @@ export function serializePeriodData(data: PeriodData): SerializedPeriodPayload {
     ...data,
     fetchedAt: data.fetchedAt.toISOString(),
     analisisByResenaId: Object.fromEntries(data.analisisByResenaId),
+    impactByResenaId: Object.fromEntries(
+      [...data.impactByResenaId.entries()].map(([key, value]) => [String(key), value])
+    ),
     aggregates: {
       ...data.aggregates,
       byRestaurante: Object.fromEntries(data.aggregates.byRestaurante),
@@ -27,6 +31,9 @@ export function deserializePeriodData(raw: SerializedPeriodPayload): PeriodData 
     ...raw,
     fetchedAt: new Date(raw.fetchedAt),
     analisisByResenaId: new Map(Object.entries(raw.analisisByResenaId ?? {})),
+    impactByResenaId: new Map(
+      Object.entries(raw.impactByResenaId ?? {}).map(([key, value]) => [Number(key), value])
+    ),
     aggregates: {
       ...raw.aggregates,
       byRestaurante: new Map(
