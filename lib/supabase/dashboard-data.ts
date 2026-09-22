@@ -6,7 +6,7 @@ import type { ResenaRow } from "./resenas";
 import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
 import { aggregateResumenFromAnalisis } from "@/lib/reviews/map-analisis-ia";
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
-import { dedupeResenas, getReviewDedupKey } from "@/lib/review-metrics";
+import { dedupeResenas } from "@/lib/review-metrics";
 import {
   fetchCanonicalReviewImpacts,
   type CanonicalReviewImpact,
