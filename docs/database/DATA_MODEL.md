@@ -649,3 +649,21 @@ Antes de crear una tabla nueva, preguntar:
 > ¿estoy almacenando un hecho, un agregado, una configuración o una interpretación?
 
 Si no sabemos responderlo, el modelo todavía no está suficientemente definido.
+
+---
+
+# 25. Nombres reales en la base de datos
+
+Este documento usa nombres conceptuales en inglés. La base de datos usa el idioma y estilo ya existentes (español). Equivalencias de lo ya creado:
+
+| Concepto (este documento) | Tabla real | Estado |
+|---|---|---|
+| restaurant_external_ids | `restaurante_integraciones` (`provider`, `external_ref`) | en producción |
+| catálogo de canales (§8) | `canales` | creada, con datos iniciales |
+| catálogo de métricas (§9-11) | `metricas_catalogo` | creada, con datos iniciales |
+| sales_metrics / service_time_metrics / labour_metrics / cost_metrics | **una sola** `restaurante_metricas` (métrica + canal + periodo + valor) | creada, vacía |
+| metric_targets (§12) | `objetivos` | creada, vacía |
+
+Decisión: en lugar de una tabla por familia, `restaurante_metricas` guarda hechos en formato estrecho (`metrica_clave`, `canal_clave`, `periodo_inicio/fin`, `valor`, `muestras`, `fuente`). Añadir una métrica es insertar una fila en `metricas_catalogo`. Si una familia llega a tener un volumen que lo exija, se separa en su propia tabla manteniendo el catálogo.
+
+Siguen sin crearse (fases futuras): `review_versions`, `ingestion_events`, `insights`, `alerts`, auditoría.

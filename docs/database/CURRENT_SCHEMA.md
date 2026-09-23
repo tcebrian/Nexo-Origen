@@ -10,6 +10,41 @@ No añadir aquí tablas futuras como si ya existieran en producción.
 
 ---
 
+# 0. Mapa vivo de la base de datos
+
+Cada tabla, vista, función y columna clave de Supabase lleva un comentario con formato único:
+
+```
+[AREA|estado] Qué es. ORIGEN: quién/qué la rellena. USO: quién la lee.
+```
+
+Tres vistas de solo lectura (service role / panel de Supabase) se generan leyendo esos comentarios, así que **no pueden quedar desactualizadas**:
+
+| Vista | Responde a |
+|---|---|
+| `nexo_mapa_sistema` | ¿Qué existe y de dónde sale? (área, estado, origen, uso) |
+| `nexo_mapa_conexiones` | ¿Cómo se unen las tablas y qué pasa al borrar? |
+| `nexo_mapa_automatismos` | ¿Qué ejecuta la base de datos sola (triggers)? |
+
+Un objeto sin comentario aparece como `sin_documentar`. **Regla: toda migración que cree un objeto debe comentarlo con este formato.**
+
+| Área | Contenido | Estado |
+|---|---|---|
+| `CORE` | `empresas`, `marcas`, `restaurantes` | producción |
+| `ACCESS` | `perfiles`, `usuario_marcas`, `usuario_restaurantes` | producción |
+| `REPUTATION` | `resenas`, `analisis_ia`, `resena_motivos`, `resenas_historial`, `resenas_traducciones` + funciones `nexo_reputation_*` y triggers de `resenas` | producción |
+| `OPERACIONES` | `canales`, `metricas_catalogo`, `restaurante_metricas`, `objetivos` (ver §15) | preparado (vacío) |
+| `BOT` | `nexo_bot_*` (accesos, sesiones, conversaciones, alertas, resúmenes) | producción |
+| `INTEGRATIONS` | `restaurante_integraciones`, `restaurante_fuente_aliases`, `nexo_make_daily_report_payload` | producción |
+| `INTERNAL` | `review_identity_shadow_events`, `nexo_metric_validation_events`, vistas `nexo_mapa_*` | shadow / soporte |
+| `LEGACY` | `kpi_diario/semanal/mensual/semana_actual`, `alertas_enviadas`, vistas `kpi_*`, `dashboard_*`, `motivos_*`, `resumen_restaurantes`, `get_kpis_periodo` | compatibilidad / retirar |
+
+Estados: `produccion`, `preparado` (creado, sin datos aún), `shadow` (solo pruebas), `compatibilidad` (puede tener lectores), `retirar` (candidato a borrar tras confirmar).
+
+SQL versionado de esta organización: `supabase/restore_resenas_traducciones.sql`, `supabase/operational_data_foundation.sql`, `supabase/database_catalog_map.sql`.
+
+---
+
 # 1. Jerarquía actual
 
 La jerarquía empresarial efectiva es:
@@ -53,9 +88,10 @@ Definidos en `lib/supabase/tables.ts`.
 
 El código actual también referencia directamente:
 
-- `whatsapp_alertas_enviadas` — utilizada por el webhook de alertas para evitar reenviar la misma reseña.
+- `resenas_traducciones` — caché de traducciones DeepL (`lib/translate/resena-translations.ts`). Restaurada en producción; RLS activo sin políticas (solo service role).
+- `whatsapp_alertas_enviadas` — la usa `app/api/webhooks/new-resena-whatsapp/route.ts`, pero **la tabla ya no existe en producción**. Las alertas vigentes van por el Asistente Nexo (`nexo_bot_alertas_pendientes` / `nexo_bot_alertas_envios`). La ruta está inactiva y debe retirarse o migrarse antes de reactivarla.
 
-Esta tabla no está actualmente centralizada en `lib/supabase/tables.ts`, por lo que debe considerarse una dependencia real aunque no aparezca en ese catálogo.
+Estas tablas no están centralizadas en `lib/supabase/tables.ts`, pero son dependencias reales del código.
 
 ---
 
@@ -182,9 +218,9 @@ Las medias de varios días/restaurantes deben agregarse de forma ponderada por v
 
 # 9. kpi_restaurantes
 
-Es una **vista de lectura**, no una tabla.
+Es una **vista de lectura**, no una tabla. Estado: `LEGACY|compatibilidad`. La web ya no la lee: el catálogo sale de `nexo_reputation_restaurant_catalog` y las métricas de `nexo_reputation_period_metrics`.
 
-Campos esperados por la aplicación:
+Campos que exponía a la aplicación:
 
 - `restaurante_id`
 - `restaurante`
@@ -266,8 +302,10 @@ Esto significa que el esquema actual no representa todavía todo el pipeline de 
 - Las reseñas editadas no tienen un histórico completo de versiones persistido por la aplicación.
 - La relación empresa ↔ marca se deriva indirectamente.
 - Los KPIs actuales están muy orientados a reputación.
-- Todavía no existe un modelo normalizado para ventas, tiempos, personal o costes.
-- La seguridad en base de datos puede reforzarse.
+- La base para ventas, tiempos, personal y costes existe (área `OPERACIONES`, §15) pero está vacía: aún no hay ninguna fuente conectada.
+- La seguridad en base de datos puede reforzarse: 9 vistas legacy son `SECURITY DEFINER` y varias tablas de reputación tienen lectura `anon` permisiva (ver advisors de Supabase).
+- `nexo_reputation_period_motives` (web) y `nexo_reputation_motives_period` (bot) calculan la misma distribución con reglas de fecha/deduplicación distintas y pueden diferir en unas pocas reseñas.
+- `nexo_bot_memoria_limpiar` no está programada en la base (no hay `pg_cron`); depende de un flujo externo.
 
 Estas limitaciones no deben corregirse todas a la vez. Se migrarán por fases.
 
@@ -294,3 +332,35 @@ Durante la migración, `nexo_metric_validation_events` registra discrepancias de
 La vista `kpi_restaurantes` se mantiene como catálogo/snapshot histórico compatible, pero no es la autoridad para la media de un periodo seleccionado.
 
 `dashboard_kpis` puede conservar datos legacy/auxiliares, pero no debe sobrescribir una métrica canónica.
+
+---
+
+# 15. Datos operativos por restaurante (área OPERACIONES)
+
+Creado el 2026-09-23 (`supabase/operational_data_foundation.sql`). **Estructura lista, sin datos**: ninguna fuente (StoreAce, TPV, delivery) está conectada todavía.
+
+Cuatro conceptos, cuatro tablas (hecho, vocabulario, configuración):
+
+| Tabla | Naturaleza | Para qué |
+|---|---|---|
+| `canales` | vocabulario | `total`, `sala`, `auto`, `delivery`, `takeaway` |
+| `metricas_catalogo` | vocabulario | qué se mide, unidad, cómo se agrega, si mejor es mayor o menor. Inicial: `tiempo_servicio`, `ventas_netas`, `tickets` |
+| `restaurante_metricas` | **hechos** | un valor de una métrica, de un restaurante, en un canal y un periodo |
+| `objetivos` | configuración | objetivo con vigencia por empresa, marca o restaurante |
+
+Cómo entra un dato nuevo (p. ej. "tiempo Auto de 3:07 en el Burger King 12, de 13:00 a 14:00"):
+
+1. La fuente se registra en `restaurante_integraciones` (`provider`, `external_ref`). Un proveedor nuevo requiere ampliar el `CHECK` de `provider`.
+2. La ingesta (servidor, service role) hace *upsert* en `restaurante_metricas`: `metrica_clave='tiempo_servicio'`, `canal_clave='auto'`, `valor=187` (segundos), `muestras=n`, `fuente='storeace'`. La clave única `(restaurante_id, metrica, canal, periodo_inicio, periodo_fin, fuente)` hace la ingesta idempotente.
+3. Domain calcula KPIs/comparativas y el Brain los interpreta. La UI solo formatea (`mm:ss`).
+
+Una métrica nueva = una fila en `metricas_catalogo` (sin DDL). Solo si el volumen lo justifica (p. ej. datos por minuto) habrá que particionar o crear una tabla dedicada.
+
+Reglas:
+
+- **La reputación no se guarda aquí.** Su única fuente es `resenas` → `nexo_canonical_reviews`.
+- Tiempos en segundos; dinero como importe + `moneda` (ISO-4217); nunca solo porcentajes: guardar numerador y denominador.
+- `restaurante_metricas.restaurante_id` es `ON DELETE RESTRICT`: no se pierde histórico operativo al borrar un local.
+- El aislamiento por tenant se resuelve por `restaurante_id → restaurantes.empresa_id`. RLS activo sin políticas: solo accede el servidor.
+- `restaurantes.zona_horaria` (IANA, por defecto `Europe/Madrid`) define el día de negocio de cada local. El código actual todavía asume Madrid.
+- El objetivo de rating sigue en `marcas.objetivo_media`; no se migra a `objetivos` hasta que la capa de configuración esté lista.
