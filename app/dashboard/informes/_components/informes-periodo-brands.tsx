@@ -26,49 +26,35 @@ const PERIODO_UNIT_LABEL: Record<ReportPeriodSlug, string> = {
  * Hámbar") en vez de uno por marca — así lo pidió el usuario, siguiendo el
  * mismo formato que ya usan a mano cada semana. Santa Gloria es al revés:
  * una sola marca pero dos PNG (España / Andorra, redes con dinámicas
- * distintas). El PDF no se agrupa ni se divide: sigue siendo uno por marca
- * (restaurante a restaurante), sin tocar cómo funciona hoy.
+ * distintas). Los PDF por restaurante están desactivados por ahora (la ruta
+ * /api/informes/marca sigue existiendo, solo se quitaron los botones).
  */
 const REPORT_GROUPS: {
   label: string;
   sublabel?: string;
-  pdfBrands: string[];
   pngGroups: { id: NetworkReportGroupId; label: string }[];
 }[] = [
-  { label: "Burger King", pdfBrands: ["Burger King"], pngGroups: [{ id: "bk", label: "PNG" }] },
-  { label: "Popeyes", pdfBrands: ["Popeyes"], pngGroups: [{ id: "pp", label: "PNG" }] },
+  { label: "Burger King", pngGroups: [{ id: "bk", label: "PNG" }] },
+  { label: "Popeyes", pngGroups: [{ id: "pp", label: "PNG" }] },
   {
     label: "Santa Gloria",
-    pdfBrands: ["Santa Gloria"],
     pngGroups: [
       { id: "sg-es", label: "PNG España" },
       { id: "sg-ad", label: "PNG Andorra" },
     ],
   },
-  { label: "Tim Hortons", pdfBrands: ["Tim Hortons"], pngGroups: [{ id: "th", label: "PNG" }] },
+  { label: "Tim Hortons", pngGroups: [{ id: "th", label: "PNG" }] },
   {
     label: "Grupo Hámbar",
     sublabel: "Ribs · Sibuya · Volapié",
-    pdfBrands: ["Ribs", "Sibuya", "Taberna Volapié"],
     pngGroups: [{ id: "hambar", label: "PNG" }],
   },
   {
     label: "Vault",
     sublabel: "Empresa independiente · se descarga aparte",
-    pdfBrands: ["Vault"],
     pngGroups: [{ id: "vault", label: "PNG" }],
   },
 ];
-
-function DocumentIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
-      <path d="M14 3H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8l-4-5Z" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M14 3v5h5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9 13h6M9 17h4" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 function ImageIcon({ className = "" }: { className?: string }) {
   return (
@@ -151,8 +137,7 @@ export function InformesPeriodoBrands({ periodo, offset, rangeLabel }: InformesP
               <p className={textKicker}>Elige una marca</p>
               <h2 className={`mt-1.5 ${textTitle}`}>Marcas</h2>
               <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                El PDF es el informe individual por restaurante. El PNG compara toda la red de la marca en una sola
-                imagen.
+                Cada PNG compara toda la red de la marca en una sola imagen.
               </p>
             </div>
             <DownloadAllImagesButton periodo={periodo} offset={offset} rangeLabel={rangeLabel} />
@@ -171,18 +156,6 @@ export function InformesPeriodoBrands({ periodo, offset, rangeLabel }: InformesP
                   ) : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {group.pdfBrands.map((brandName) => (
-                    <a
-                      key={brandName}
-                      href={`/api/informes/marca?brand=${encodeURIComponent(brandName)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-xl border border-violet-400/25 bg-violet-500/15 px-3.5 py-2 text-[13px] font-medium text-violet-100 transition hover:border-violet-300/40 hover:bg-violet-500/25 hover:text-white"
-                    >
-                      <DocumentIcon className="h-4 w-4" />
-                      PDF{group.pdfBrands.length > 1 ? ` ${brandName}` : ""}
-                    </a>
-                  ))}
                   {group.pngGroups.map((png) => (
                     <button
                       key={png.id}

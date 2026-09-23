@@ -329,6 +329,12 @@ Las interfaces Web, informes y resúmenes diarios consumen el resultado de esa f
 
 Durante la migración, `nexo_metric_validation_events` registra discrepancias detectadas entre el resultado SQL canónico y el cálculo TypeScript anterior ejecutado en modo sombra.
 
+## Informes PNG de red
+
+Las imágenes de informe (`lib/reports/network-summary`) se calculan **enteras en Supabase** con `public.nexo_network_summary_payload(p_start, p_end, p_restaurant_ids, p_negative_max_stars)`: totales, media ponderada, objetivo de cada marca (`marcas.objetivo_media`), estado de cada local, motivo principal y reparto de motivos negativos. La aplicación solo elige qué restaurantes componen cada informe (`brand-groups.ts`) y da formato al resultado (`build.ts`); no recalcula nada y no tiene plan B: si la función falla, el informe falla.
+
+Reglas: positivas 4-5★, neutras 3★, negativas 1-2★; el reparto de motivos usa hasta `p_negative_max_stars` estrellas (3 por defecto; 2 en Grupo Hámbar); estado = sobre objetivo / vigilancia (≥ 4,0) / fuera. SQL: `supabase/network_summary_payload.sql`.
+
 La vista `kpi_restaurantes` se mantiene como catálogo/snapshot histórico compatible, pero no es la autoridad para la media de un periodo seleccionado.
 
 `dashboard_kpis` puede conservar datos legacy/auxiliares, pero no debe sobrescribir una métrica canónica.

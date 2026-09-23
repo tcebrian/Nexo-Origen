@@ -1,22 +1,53 @@
 import "server-only";
 
-import { toDateKey } from "@/lib/dates/period";
+import { filterKpiRowsByScope } from "@/lib/auth/data-scope";
 import type { UserScope } from "@/lib/auth/types";
-import { getPeriodData } from "@/lib/supabase/period-stats";
-import { fetchResenaMotivosForResenas } from "@/lib/supabase/resena-motivos.server";
-import { buildNetworkSummaryReport } from "./build";
+import { toDateKey } from "@/lib/dates/period";
+import { getSupabaseDataClientForServer } from "@/lib/supabase/data-client";
+import { marcaToBrandId } from "@/lib/supabase/kpi-mappers";
+import { fetchAllKpiRows } from "@/lib/supabase/kpi-restaurantes";
+import { buildNetworkSummaryFromPayload } from "./build";
 import { NETWORK_REPORT_GROUPS, type NetworkReportGroupId } from "./brand-groups";
-import type { NetworkSummaryData } from "./types";
+import type { NetworkSummaryData, NetworkSummaryPayload } from "./types";
 
+/**
+ * Informe de red de un grupo de marcas para un periodo.
+ *
+ * Todo el cálculo (medias, porcentajes, objetivo por marca, estados, motivos)
+ * lo hace Supabase en public.nexo_network_summary_payload. Aquí solo se decide
+ * QUÉ restaurantes componen el grupo (marcas + filtro de ciudad de
+ * brand-groups.ts) y se pide el resultado. Sin plan B: si Supabase falla, se
+ * lanza el error en vez de servir cifras calculadas por otro camino.
+ */
 export async function fetchNetworkSummaryReport(
   groupId: NetworkReportGroupId,
   period: { start: Date; end: Date },
   scope?: UserScope
 ): Promise<NetworkSummaryData> {
-  const startKey = toDateKey(period.start);
-  const endKey = toDateKey(period.end);
-  const data = await getPeriodData(startKey, endKey, scope);
-  const motivoIndex = await fetchResenaMotivosForResenas(data.resenas);
   const group = NETWORK_REPORT_GROUPS[groupId];
-  return buildNetworkSummaryReport(group, data.activeKpiRows, data.resenas, motivoIndex, period);
+  const brandIds = new Set(group.brandIds);
+
+  const catalog = await fetchAllKpiRows();
+  const scoped = scope ? filterKpiRowsByScope(catalog, scope) : catalog;
+  const restaurantIds = scoped
+    .filter((row) => brandIds.has(marcaToBrandId(row.marca)))
+    .filter((row) => !group.restaurantFilter || group.restaurantFilter(row))
+    .map((row) => row.restaurante_id);
+
+  const client = await getSupabaseDataClientForServer();
+  const { data, error } = await client.rpc("nexo_network_summary_payload", {
+    p_start: toDateKey(period.start),
+    p_end: toDateKey(period.end),
+    p_restaurant_ids: restaurantIds,
+    p_negative_max_stars: group.negativeMaxStars ?? 3,
+  });
+
+  if (error) {
+    throw new Error(`No se pudo calcular el informe de red en Supabase: ${error.message}`);
+  }
+  if (!data || typeof data !== "object") {
+    throw new Error("Supabase no devolvió el informe de red.");
+  }
+
+  return buildNetworkSummaryFromPayload(group, data as NetworkSummaryPayload, period);
 }

@@ -53,3 +53,45 @@ export type NetworkSummaryData = {
   /** Nº real de reseñas negativas con categoría en resena_motivos (suma de negativeReasons). */
   negativeReasonsTotal: number;
 };
+
+/**
+ * Respuesta cruda de public.nexo_network_summary_payload (Supabase). Ya viene
+ * calculada; ver supabase/network_summary_payload.sql para las reglas.
+ */
+export type NetworkSummaryPayload = {
+  period: { start: string; end: string };
+  /** Objetivo de media de la marca (marcas.objetivo_media; el mayor si el grupo mezcla objetivos). */
+  target_average: number;
+  watch_threshold: number;
+  negative_max_stars: number;
+  totals: {
+    locations: number;
+    reviews: number;
+    positive: number;
+    neutral: number;
+    negative: number;
+    positive_pct: number;
+    negative_pct: number;
+    weighted_average: number;
+    below_target_count: number;
+  };
+  /** Nombres completos, de peor a mejor media. */
+  below_target_locations: string[];
+  cities_label: string;
+  locations: {
+    restaurante_id: number;
+    restaurante: string;
+    ciudad: string;
+    marca: string;
+    target: number;
+    rating: number | null;
+    reviews: number;
+    positive: number;
+    neutral: number;
+    negative: number;
+    status: NetworkSummaryLocationStatus;
+    top_negative_categoria: string | null;
+  }[];
+  negative_reasons: { categoria: string; count: number; percent: number }[];
+  negative_reasons_total: number;
+};

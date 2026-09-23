@@ -37,7 +37,7 @@ export function InformesPeriodButtons() {
         <p className={textKicker}>Informes automáticos</p>
         <h2 className={`mt-1.5 ${textTitle}`}>Elige el periodo</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Cada informe incluye el PDF individual por restaurante y una imagen PNG comparando toda la red de la marca.
+          Cada informe es una imagen PNG que compara toda la red de la marca.
         </p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
