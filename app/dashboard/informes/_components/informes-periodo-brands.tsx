@@ -52,7 +52,12 @@ const REPORT_GROUPS: {
     pdfBrands: ["Ribs", "Sibuya", "Taberna Volapié"],
     pngGroups: [{ id: "hambar", label: "PNG" }],
   },
-  { label: "Vault", pdfBrands: ["Vault"], pngGroups: [{ id: "vault", label: "PNG" }] },
+  {
+    label: "Vault",
+    sublabel: "Empresa independiente · se descarga aparte",
+    pdfBrands: ["Vault"],
+    pngGroups: [{ id: "vault", label: "PNG" }],
+  },
 ];
 
 function DocumentIcon({ className = "" }: { className?: string }) {

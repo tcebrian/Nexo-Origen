@@ -17,8 +17,17 @@ export function isNetworkReportGroupId(value: string): value is NetworkReportGro
   return (NETWORK_REPORT_GROUP_IDS as string[]).includes(value);
 }
 
+/**
+ * Empresa (cliente) a la que pertenece cada informe. Coincide con `empresas`
+ * en Supabase: todas las marcas son de Grupo Hámbar salvo Vault, que es una
+ * empresa aparte y nunca debe mezclarse con las demás en una descarga conjunta.
+ */
+export type NetworkReportEmpresa = "grupo-hambar" | "vault";
+
 export type NetworkReportGroup = {
   id: NetworkReportGroupId;
+  /** Empresa a la que pertenece (ver NetworkReportEmpresa). */
+  empresa: NetworkReportEmpresa;
   label: string;
   sublabel?: string;
   /** Marcas (BrandId) que se agregan juntas en este informe. */
@@ -66,10 +75,11 @@ function isAndorraCiudad(ciudad: string): boolean {
  * cuenta.
  */
 export const NETWORK_REPORT_GROUPS: Record<NetworkReportGroupId, NetworkReportGroup> = {
-  bk: { id: "bk", label: "Burger King", brandIds: ["bk"] },
-  pp: { id: "pp", label: "Popeyes", brandIds: ["pp"] },
+  bk: { id: "bk", empresa: "grupo-hambar", label: "Burger King", brandIds: ["bk"] },
+  pp: { id: "pp", empresa: "grupo-hambar", label: "Popeyes", brandIds: ["pp"] },
   "sg-es": {
     id: "sg-es",
+    empresa: "grupo-hambar",
     label: "Santa Gloria España",
     sublabel: "Red de Restaurantes España",
     brandIds: ["sg"],
@@ -77,18 +87,20 @@ export const NETWORK_REPORT_GROUPS: Record<NetworkReportGroupId, NetworkReportGr
   },
   "sg-ad": {
     id: "sg-ad",
+    empresa: "grupo-hambar",
     label: "Santa Gloria Andorra",
     sublabel: "Red de Restaurantes Andorra",
     brandIds: ["sg"],
     restaurantFilter: (row) => isAndorraCiudad(row.ciudad),
   },
-  th: { id: "th", label: "Tim Hortons", brandIds: ["th"] },
+  th: { id: "th", empresa: "grupo-hambar", label: "Tim Hortons", brandIds: ["th"] },
   hambar: {
     id: "hambar",
+    empresa: "grupo-hambar",
     label: "Grupo Hámbar",
     sublabel: "Ribs · Sibuya · Volapié",
     brandIds: ["ribs", "sibuya", "tv"],
     negativeMaxStars: 2,
   },
-  vault: { id: "vault", label: "Vault", brandIds: ["vault"] },
+  vault: { id: "vault", empresa: "vault", label: "Vault", brandIds: ["vault"] },
 };

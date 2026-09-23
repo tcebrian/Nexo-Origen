@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ReportPeriodSlug } from "@/lib/reports/period-ranges";
-import { NETWORK_REPORT_GROUP_IDS, NETWORK_REPORT_GROUPS } from "@/lib/reports/network-summary/brand-groups";
+import {
+  NETWORK_REPORT_GROUP_IDS,
+  NETWORK_REPORT_GROUPS,
+  type NetworkReportEmpresa,
+} from "@/lib/reports/network-summary/brand-groups";
 import { createStoredZip, type ZipEntry } from "@/lib/zip/store-zip";
 import { btnPrimary } from "./ui/informes-styles";
 
@@ -18,11 +22,19 @@ type Notice = { tone: "ok" | "warn" | "error"; text: string };
  * Cada imagen se genera en el servidor (Playwright) con la misma ruta que usa
  * la vista previa individual, de una en una por petición: así cada llamada
  * respeta el límite de tiempo de la función serverless, cosa que no
- * garantizaría un único endpoint que generase las siete a la vez. El ZIP se
+ * garantizaría un único endpoint que generase todas a la vez. El ZIP se
  * arma aquí, en el navegador.
  */
 const CONCURRENCY = 3;
 const ATTEMPTS = 2;
+
+/**
+ * El ZIP solo reúne los informes de UNA empresa (Grupo Hámbar): Vault es un
+ * cliente distinto y se descarga aparte, desde su propia tarjeta, para que
+ * nunca viajen juntas las marcas de empresas diferentes.
+ */
+const ZIP_EMPRESA: NetworkReportEmpresa = "grupo-hambar";
+const ZIP_GROUP_IDS = NETWORK_REPORT_GROUP_IDS.filter((id) => NETWORK_REPORT_GROUPS[id].empresa === ZIP_EMPRESA);
 
 function slugify(text: string): string {
   return text
@@ -53,7 +65,7 @@ function DownloadIcon({ className = "" }: { className?: string }) {
 
 export function DownloadAllImagesButton({ periodo, offset, rangeLabel }: DownloadAllImagesButtonProps) {
   const [working, setWorking] = useState(false);
-  const [progress, setProgress] = useState({ done: 0, total: NETWORK_REPORT_GROUP_IDS.length });
+  const [progress, setProgress] = useState({ done: 0, total: ZIP_GROUP_IDS.length });
   const [notice, setNotice] = useState<Notice | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -63,7 +75,7 @@ export function DownloadAllImagesButton({ periodo, offset, rangeLabel }: Downloa
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const ids = NETWORK_REPORT_GROUP_IDS;
+    const ids = ZIP_GROUP_IDS;
     const results: (ZipEntry | null)[] = ids.map(() => null);
     const failed: string[] = [];
     let nextIndex = 0;
@@ -116,7 +128,7 @@ export function DownloadAllImagesButton({ periodo, offset, rangeLabel }: Downloa
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = objectUrl;
-      link.download = `nexo-informes-${periodo}-${slugify(rangeLabel)}.zip`;
+      link.download = `nexo-informes-grupo-hambar-${periodo}-${slugify(rangeLabel)}.zip`;
       document.body.append(link);
       link.click();
       link.remove();
@@ -147,7 +159,7 @@ export function DownloadAllImagesButton({ periodo, offset, rangeLabel }: Downloa
         className={`${btnPrimary} inline-flex items-center gap-2 disabled:cursor-wait disabled:opacity-70`}
       >
         <DownloadIcon className="h-4 w-4" />
-        {working ? `Generando ${Math.min(progress.done + 1, progress.total)} de ${progress.total}…` : "Descargar todos (ZIP)"}
+        {working ? `Generando ${Math.min(progress.done + 1, progress.total)} de ${progress.total}…` : "Descargar Grupo Hámbar (ZIP)"}
       </button>
       <p
         role="status"
@@ -164,7 +176,7 @@ export function DownloadAllImagesButton({ periodo, offset, rangeLabel }: Downloa
       >
         {working
           ? "Generando las imágenes en el servidor. No cierres esta página."
-          : (notice?.text ?? `Los ${NETWORK_REPORT_GROUP_IDS.length} PNG de ${rangeLabel} en un solo archivo.`)}
+          : (notice?.text ?? `Los ${ZIP_GROUP_IDS.length} PNG de Grupo Hámbar de ${rangeLabel} en un solo archivo. Vault se descarga aparte.`)}
       </p>
     </div>
   );
