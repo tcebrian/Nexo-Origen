@@ -28,6 +28,8 @@ export type NetworkReportGroup = {
   id: NetworkReportGroupId;
   /** Empresa a la que pertenece (ver NetworkReportEmpresa). */
   empresa: NetworkReportEmpresa;
+  /** Nombre de la carpeta de la marca dentro del ZIP de descarga (varios informes pueden compartir carpeta). */
+  folder: string;
   label: string;
   sublabel?: string;
   /** Marcas (BrandId) que se agregan juntas en este informe. */
@@ -75,11 +77,12 @@ function isAndorraCiudad(ciudad: string): boolean {
  * cuenta.
  */
 export const NETWORK_REPORT_GROUPS: Record<NetworkReportGroupId, NetworkReportGroup> = {
-  bk: { id: "bk", empresa: "grupo-hambar", label: "Burger King", brandIds: ["bk"] },
-  pp: { id: "pp", empresa: "grupo-hambar", label: "Popeyes", brandIds: ["pp"] },
+  bk: { id: "bk", empresa: "grupo-hambar", folder: "Burger King", label: "Burger King", brandIds: ["bk"] },
+  pp: { id: "pp", empresa: "grupo-hambar", folder: "Popeyes", label: "Popeyes", brandIds: ["pp"] },
   "sg-es": {
     id: "sg-es",
     empresa: "grupo-hambar",
+    folder: "Santa Gloria",
     label: "Santa Gloria España",
     sublabel: "Red de Restaurantes España",
     brandIds: ["sg"],
@@ -88,19 +91,21 @@ export const NETWORK_REPORT_GROUPS: Record<NetworkReportGroupId, NetworkReportGr
   "sg-ad": {
     id: "sg-ad",
     empresa: "grupo-hambar",
+    folder: "Santa Gloria",
     label: "Santa Gloria Andorra",
     sublabel: "Red de Restaurantes Andorra",
     brandIds: ["sg"],
     restaurantFilter: (row) => isAndorraCiudad(row.ciudad),
   },
-  th: { id: "th", empresa: "grupo-hambar", label: "Tim Hortons", brandIds: ["th"] },
+  th: { id: "th", empresa: "grupo-hambar", folder: "Tim Hortons", label: "Tim Hortons", brandIds: ["th"] },
   hambar: {
     id: "hambar",
     empresa: "grupo-hambar",
+    folder: "Grupo Hámbar",
     label: "Grupo Hámbar",
     sublabel: "Ribs · Sibuya · Volapié",
     brandIds: ["ribs", "sibuya", "tv"],
     negativeMaxStars: 2,
   },
-  vault: { id: "vault", empresa: "vault", label: "Vault", brandIds: ["vault"] },
+  vault: { id: "vault", empresa: "vault", folder: "Vault", label: "Vault", brandIds: ["vault"] },
 };

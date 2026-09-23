@@ -13,6 +13,8 @@ type InformesPeriodoBrandsProps = {
   periodo: ReportPeriodSlug;
   offset: number;
   rangeLabel: string;
+  /** Fecha compacta para nombres de archivo ("14-20 sept 2026"). */
+  fileLabel: string;
 };
 
 const PERIODO_UNIT_LABEL: Record<ReportPeriodSlug, string> = {
@@ -74,7 +76,7 @@ function ChevronIcon({ direction, className = "" }: { direction: "left" | "right
   );
 }
 
-export function InformesPeriodoBrands({ periodo, offset, rangeLabel }: InformesPeriodoBrandsProps) {
+export function InformesPeriodoBrands({ periodo, offset, rangeLabel, fileLabel }: InformesPeriodoBrandsProps) {
   const [pngGroup, setPngGroup] = useState<{ id: NetworkReportGroupId; label: string } | null>(null);
   const unit = PERIODO_UNIT_LABEL[periodo];
 
@@ -140,7 +142,7 @@ export function InformesPeriodoBrands({ periodo, offset, rangeLabel }: InformesP
                 Cada PNG compara toda la red de la marca en una sola imagen.
               </p>
             </div>
-            <DownloadAllImagesButton periodo={periodo} offset={offset} rangeLabel={rangeLabel} />
+            <DownloadAllImagesButton periodo={periodo} offset={offset} rangeLabel={rangeLabel} fileLabel={fileLabel} />
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

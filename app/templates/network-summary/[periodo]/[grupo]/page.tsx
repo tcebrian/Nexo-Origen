@@ -36,7 +36,7 @@ export default async function Page({ params, searchParams }: PageProps) {
   const range = resolveReportPeriodRange(periodo, Number.isFinite(offsetNumber) ? offsetNumber : 0);
   let data: NetworkSummaryData;
   try {
-    data = await fetchNetworkSummaryReport(grupo, { start: range.start, end: range.end });
+    data = await fetchNetworkSummaryReport(grupo, range);
   } catch (error) {
     // Grupo Hámbar nunca se pinta con datos de relleno: si Supabase falla, la
     // captura recibe este mensaje y aborta con él (ver capture-image.ts).

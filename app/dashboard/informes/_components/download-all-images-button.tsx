@@ -14,6 +14,15 @@ type DownloadAllImagesButtonProps = {
   periodo: ReportPeriodSlug;
   offset: number;
   rangeLabel: string;
+  /** Fecha compacta para nombres de archivo ("14-20 sept 2026"). */
+  fileLabel: string;
+};
+
+/** "semanal" → informe semanal · ZIP "Informes semanales". */
+const PERIOD_WORDS: Record<ReportPeriodSlug, { singular: string; plural: string }> = {
+  semanal: { singular: "semanal", plural: "semanales" },
+  mensual: { singular: "mensual", plural: "mensuales" },
+  trimestral: { singular: "trimestral", plural: "trimestrales" },
 };
 
 type Notice = { tone: "ok" | "warn" | "error"; text: string };
@@ -36,13 +45,9 @@ const ATTEMPTS = 2;
 const ZIP_EMPRESA: NetworkReportEmpresa = "grupo-hambar";
 const ZIP_GROUP_IDS = NETWORK_REPORT_GROUP_IDS.filter((id) => NETWORK_REPORT_GROUPS[id].empresa === ZIP_EMPRESA);
 
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+/** Quita lo que Windows no admite en nombres de archivo o carpeta. */
+function safeName(text: string): string {
+  return text.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 async function fetchPng(url: string, signal: AbortSignal): Promise<Uint8Array> {
@@ -63,7 +68,7 @@ function DownloadIcon({ className = "" }: { className?: string }) {
   );
 }
 
-export function DownloadAllImagesButton({ periodo, offset, rangeLabel }: DownloadAllImagesButtonProps) {
+export function DownloadAllImagesButton({ periodo, offset, rangeLabel, fileLabel }: DownloadAllImagesButtonProps) {
   const [working, setWorking] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: ZIP_GROUP_IDS.length });
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -98,7 +103,10 @@ export function DownloadAllImagesButton({ periodo, offset, rangeLabel }: Downloa
         for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
           try {
             const data = await fetchPng(url, controller.signal);
-            results[index] = { name: `nexo-informe-${periodo}-${slugify(label)}.png`, data };
+            // Carpeta por marca; dentro, la imagen con marca, tipo de informe y fechas.
+            const folder = safeName(NETWORK_REPORT_GROUPS[id].folder);
+            const file = safeName(`${label} - Informe ${PERIOD_WORDS[periodo].singular} ${fileLabel}`);
+            results[index] = { name: `${folder}/${file}.png`, data };
             break;
           } catch (err) {
             if (controller.signal.aborted) return;
@@ -128,7 +136,7 @@ export function DownloadAllImagesButton({ periodo, offset, rangeLabel }: Downloa
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = objectUrl;
-      link.download = `nexo-informes-grupo-hambar-${periodo}-${slugify(rangeLabel)}.zip`;
+      link.download = `${safeName(`Informes ${PERIOD_WORDS[periodo].plural} ${fileLabel}`)}.zip`;
       document.body.append(link);
       link.click();
       link.remove();

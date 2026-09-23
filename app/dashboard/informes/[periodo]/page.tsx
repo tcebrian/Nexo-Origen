@@ -23,5 +23,5 @@ export default async function Page({ params, searchParams }: PageProps) {
   const offset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
   const range = resolveReportPeriodRange(periodo, offset);
 
-  return <InformesPeriodoBrands periodo={periodo} offset={offset} rangeLabel={range.label} />;
+  return <InformesPeriodoBrands periodo={periodo} offset={offset} rangeLabel={range.label} fileLabel={range.fileLabel} />;
 }

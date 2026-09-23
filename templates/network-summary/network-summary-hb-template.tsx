@@ -70,9 +70,13 @@ function periodNounPhrase(periodoAdjective: string): string {
 /** "14 – 20 SEPT 2026" (mismo mes) · "28 SEPT – 4 OCT 2026" · "30 DIC 2025 – 5 ENE 2026". */
 function headerPeriod(startIso: string, endIso: string): string {
   const parts = (iso: string) => {
-    const list = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).formatToParts(
-      new Date(iso)
-    );
+    // periodStart/periodEnd son días de calendario a mediodía UTC (ver period-ranges.ts).
+    const list = new Intl.DateTimeFormat("es-ES", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    }).formatToParts(new Date(iso));
     const pick = (type: string) => list.find((part) => part.type === type)?.value ?? "";
     return { day: pick("day"), month: pick("month").replace(/\.$/, "").toUpperCase(), year: pick("year") };
   };

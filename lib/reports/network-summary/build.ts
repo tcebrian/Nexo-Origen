@@ -25,7 +25,8 @@ const STATUS_LABEL: Record<NetworkSummaryLocationStatus, string> = {
 };
 
 function formatPeriodLabel(start: Date, end: Date): string {
-  const fmt = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" });
+  // start/end son días de calendario a mediodía UTC (ver period-ranges.ts).
+  const fmt = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
   return `${fmt.format(start)} – ${fmt.format(end)}`;
 }
 

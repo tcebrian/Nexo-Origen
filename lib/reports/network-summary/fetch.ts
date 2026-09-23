@@ -2,7 +2,6 @@ import "server-only";
 
 import { filterKpiRowsByScope } from "@/lib/auth/data-scope";
 import type { UserScope } from "@/lib/auth/types";
-import { toDateKey } from "@/lib/dates/period";
 import { getSupabaseDataClientForServer } from "@/lib/supabase/data-client";
 import { marcaToBrandId } from "@/lib/supabase/kpi-mappers";
 import { fetchAllKpiRows } from "@/lib/supabase/kpi-restaurantes";
@@ -21,7 +20,7 @@ import type { NetworkSummaryData, NetworkSummaryPayload } from "./types";
  */
 export async function fetchNetworkSummaryReport(
   groupId: NetworkReportGroupId,
-  period: { start: Date; end: Date },
+  period: { start: Date; end: Date; startKey: string; endKey: string },
   scope?: UserScope
 ): Promise<NetworkSummaryData> {
   const group = NETWORK_REPORT_GROUPS[groupId];
@@ -36,8 +35,8 @@ export async function fetchNetworkSummaryReport(
 
   const client = await getSupabaseDataClientForServer();
   const { data, error } = await client.rpc("nexo_network_summary_payload", {
-    p_start: toDateKey(period.start),
-    p_end: toDateKey(period.end),
+    p_start: period.startKey,
+    p_end: period.endKey,
     p_restaurant_ids: restaurantIds,
     p_negative_max_stars: group.negativeMaxStars ?? 3,
   });
