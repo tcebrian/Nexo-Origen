@@ -10,7 +10,10 @@ import type { ReportPeriodSlug } from "@/lib/reports/period-ranges";
 const DESIGN_WIDTH = 1920;
 const DESIGN_HEIGHT = 1080;
 const CAPTURE_SCALE_FACTOR = 2;
-const CANVAS_SELECTOR = ".nws-canvas, .nwsbk-canvas, .nwspp-canvas, .nwssg-canvas, .nwsth-canvas";
+const CANVAS_SELECTOR =
+  ".nws-canvas, .nwsbk-canvas, .nwspp-canvas, .nwssg-canvas, .nwsth-canvas, .nwshb-canvas";
+/** La página de plantilla pinta esto (en vez del lienzo) si no pudo cargar los datos reales. */
+const ERROR_SELECTOR = ".nws-error";
 
 /**
  * Misma receta (probada a fuego) que
@@ -20,7 +23,9 @@ const CANVAS_SELECTOR = ".nws-canvas, .nwsbk-canvas, .nwspp-canvas, .nwssg-canva
  * negative-review-alert, ya estabilizado tras mucho debugging en producción.
  */
 async function waitForRender(page: import("playwright-core").Page): Promise<void> {
-  await page.waitForSelector(CANVAS_SELECTOR);
+  await page.waitForSelector(`${CANVAS_SELECTOR}, ${ERROR_SELECTOR}`);
+  const loadError = await page.$eval(ERROR_SELECTOR, (node) => node.textContent ?? "").catch(() => null);
+  if (loadError) throw new Error(loadError);
   await page.evaluate(async () => {
     await document.fonts.ready;
     const images = Array.from(document.images);

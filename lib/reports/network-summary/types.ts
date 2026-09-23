@@ -9,6 +9,16 @@ export type NetworkSummaryLocationRow = {
   statusLabel: string;
   /** Motivo negativo principal del restaurante en el periodo, o "Sin reseñas negativas". */
   mainNegativeMotive: string;
+  /** Nombre completo del restaurante tal cual está en Supabase (`name` es la versión corta, sin la marca). */
+  fullName: string;
+  /** Marca normalizada (BrandId) para buscar su logotipo. */
+  brandId: string;
+  /** Reseñas de 4-5 estrellas del periodo. */
+  positiveReviews: number;
+  /** Reseñas de 1-2 estrellas del periodo. */
+  negativeReviews: number;
+  /** Motivo real más frecuente entre sus reseñas negativas, o null si no hay negativas con motivo. */
+  topNegativeMotive: string | null;
 };
 
 export type NetworkSummaryReasonSegment = {

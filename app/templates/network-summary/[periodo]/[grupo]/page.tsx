@@ -8,8 +8,12 @@ import { NetworkSummaryBkTemplate } from "@/templates/network-summary/network-su
 import { NetworkSummaryPpTemplate } from "@/templates/network-summary/network-summary-pp-template";
 import { NetworkSummarySgTemplate } from "@/templates/network-summary/network-summary-sg-template";
 import { NetworkSummaryThTemplate } from "@/templates/network-summary/network-summary-th-template";
+import { NetworkSummaryHbTemplate } from "@/templates/network-summary/network-summary-hb-template";
+import type { NetworkSummaryData } from "@/lib/reports/network-summary/types";
 
 export const dynamic = "force-dynamic";
+
+const DATA_LOAD_ERROR = "No se han podido cargar los datos del periodo seleccionado.";
 
 const PERIODO_ADJECTIVE: Record<ReportPeriodSlug, string> = {
   semanal: "semanal",
@@ -30,7 +34,18 @@ export default async function Page({ params, searchParams }: PageProps) {
 
   const offsetNumber = offset ? Number.parseInt(offset, 10) : 0;
   const range = resolveReportPeriodRange(periodo, Number.isFinite(offsetNumber) ? offsetNumber : 0);
-  const data = await fetchNetworkSummaryReport(grupo, { start: range.start, end: range.end });
+  let data: NetworkSummaryData;
+  try {
+    data = await fetchNetworkSummaryReport(grupo, { start: range.start, end: range.end });
+  } catch (error) {
+    // Grupo Hámbar nunca se pinta con datos de relleno: si Supabase falla, la
+    // captura recibe este mensaje y aborta con él (ver capture-image.ts).
+    if (grupo === "hambar") {
+      console.error("[network-summary/hambar] No se pudieron cargar los datos:", error);
+      return <div className="nws-error">{DATA_LOAD_ERROR}</div>;
+    }
+    throw error;
+  }
   const visual = NETWORK_SUMMARY_GROUP_VISUALS[grupo];
 
   if (grupo === "bk") {
@@ -69,6 +84,17 @@ export default async function Page({ params, searchParams }: PageProps) {
   if (grupo === "th") {
     return (
       <NetworkSummaryThTemplate
+        data={data}
+        visual={visual}
+        periodoAdjective={PERIODO_ADJECTIVE[periodo]}
+        assetBaseUrl={base}
+      />
+    );
+  }
+
+  if (grupo === "hambar") {
+    return (
+      <NetworkSummaryHbTemplate
         data={data}
         visual={visual}
         periodoAdjective={PERIODO_ADJECTIVE[periodo]}

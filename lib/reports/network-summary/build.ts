@@ -39,10 +39,10 @@ const WATCH_THRESHOLD = 4.0;
 function topMotivosFromIndex(
   resenas: ResenaRow[],
   motivoIndex: ResenaMotivoIndex,
-  options: { restauranteId?: number; limit?: number; groupRestAsOtro?: boolean } = {}
+  options: { restauranteId?: number; limit?: number; groupRestAsOtro?: boolean; maxStars?: number } = {}
 ): { label: string; categoria: string; count: number; percent: number }[] {
   const negatives = dedupeResenas(resenas).filter((row) => {
-    if (row.estrellas > 3) return false;
+    if (row.estrellas > (options.maxStars ?? 3)) return false;
     if (options.restauranteId != null && row.restaurante_id !== options.restauranteId) return false;
     return true;
   });
@@ -153,12 +153,15 @@ export function buildNetworkSummaryReport(
     .filter((row) => row.total_resenas > 0 && row.media_total < REPUTATION_TARGET)
     .sort((a, b) => a.media_total - b.media_total);
 
+  const maxStars = group.negativeMaxStars ?? 3;
+
   const locations: NetworkSummaryLocationRow[] = rows
     .map((row) => {
       const { status, label } = toStatus(row);
       const topNegative = topMotivosFromIndex(resenas, motivoIndex, {
         restauranteId: row.restaurante_id,
         limit: 1,
+        maxStars,
       });
 
       return {
@@ -169,6 +172,11 @@ export function buildNetworkSummaryReport(
         status,
         statusLabel: label,
         mainNegativeMotive: topNegative[0]?.label ?? "Sin reseñas negativas",
+        fullName: row.restaurante,
+        brandId: marcaToBrandId(row.marca),
+        positiveReviews: row.resenas_positivas,
+        negativeReviews: row.resenas_negativas,
+        topNegativeMotive: topNegative[0]?.label ?? null,
       };
     })
     .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
@@ -176,6 +184,7 @@ export function buildNetworkSummaryReport(
   const negativeReasons: NetworkSummaryReasonSegment[] = topMotivosFromIndex(resenas, motivoIndex, {
     limit: 6,
     groupRestAsOtro: true,
+    maxStars,
   });
 
   const citiesLabel = [...new Set(rows.map((row) => row.ciudad.trim()).filter(Boolean))]

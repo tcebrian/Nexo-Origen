@@ -25,6 +25,13 @@ export type NetworkReportGroup = {
   brandIds: BrandId[];
   /** Filtro extra dentro de la marca (p.ej. Santa Gloria España vs Andorra). */
   restaurantFilter?: (row: KpiRestaurantRow) => boolean;
+  /**
+   * Hasta cuántas estrellas cuenta una reseña como "negativa" en el reparto
+   * de motivos del informe. Por defecto 3 (reseñas de atención: 1-3★, como
+   * hasta ahora). El informe de Grupo Hámbar usa 2 (1-2★), igual que su KPI
+   * "Reseñas negativas", para que el reparto y el total cuadren.
+   */
+  negativeMaxStars?: 2 | 3;
 };
 
 /**
@@ -81,6 +88,7 @@ export const NETWORK_REPORT_GROUPS: Record<NetworkReportGroupId, NetworkReportGr
     label: "Grupo Hámbar",
     sublabel: "Ribs · Sibuya · Volapié",
     brandIds: ["ribs", "sibuya", "tv"],
+    negativeMaxStars: 2,
   },
   vault: { id: "vault", label: "Vault", brandIds: ["vault"] },
 };
