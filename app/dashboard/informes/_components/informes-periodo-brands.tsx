@@ -7,6 +7,7 @@ import { REPORT_PERIOD_LABELS } from "@/lib/reports/period-ranges";
 import type { NetworkReportGroupId } from "@/lib/reports/network-summary/brand-groups";
 import { card, shell, textKicker, textTitle } from "./ui/informes-styles";
 import { NetworkSummaryImageModal } from "./network-summary-image-modal";
+import { DownloadAllImagesButton } from "./download-all-images-button";
 
 type InformesPeriodoBrandsProps = {
   periodo: ReportPeriodSlug;
@@ -140,12 +141,17 @@ export function InformesPeriodoBrands({ periodo, offset, rangeLabel }: InformesP
 
       <section className={shell}>
         <div className="p-5 pt-6 lg:p-8 lg:pt-8">
-          <p className={textKicker}>Elige una marca</p>
-          <h2 className={`mt-1.5 ${textTitle}`}>Marcas</h2>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            El PDF es el informe individual por restaurante. El PNG compara toda la red de la marca en una sola
-            imagen.
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className={textKicker}>Elige una marca</p>
+              <h2 className={`mt-1.5 ${textTitle}`}>Marcas</h2>
+              <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                El PDF es el informe individual por restaurante. El PNG compara toda la red de la marca en una sola
+                imagen.
+              </p>
+            </div>
+            <DownloadAllImagesButton periodo={periodo} offset={offset} rangeLabel={rangeLabel} />
+          </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {REPORT_GROUPS.map((group) => (
