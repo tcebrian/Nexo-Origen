@@ -2,6 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "functions": {
+    "app/api/informes/mensual/[id]/route.ts": {
+      "memory": 1769,
+      "maxDuration": 60
+    },
     "app/api/generate-negative-review-image/route.ts": {
       "memory": 1769,
       "maxDuration": 60

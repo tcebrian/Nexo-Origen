@@ -27,6 +27,14 @@ const nextConfig: NextConfig = {
       "./node_modules/playwright-core/**/*",
       "./node_modules/@sparticuz/chromium/bin/**/*",
     ],
+    "/api/informes/mensual/*": [
+      "./node_modules/playwright-core/**/*",
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+      "./public/reports/monthly/cover-brain.png",
+      "./public/nexo-origen-wordmark-text.png",
+      "./public/nexo-origen-report-icon.png",
+      "./public/fonts/*.woff2",
+    ],
   },
   images: {
     formats: ["image/avif", "image/webp"],
