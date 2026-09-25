@@ -8,6 +8,7 @@ import type { NetworkReportGroupId } from "@/lib/reports/network-summary/brand-g
 import { card, shell, textKicker, textTitle } from "./ui/informes-styles";
 import { NetworkSummaryImageModal } from "./network-summary-image-modal";
 import { DownloadAllImagesButton } from "./download-all-images-button";
+import { MonthlyBrandReports } from "./monthly-brand-reports";
 
 type InformesPeriodoBrandsProps = {
   periodo: ReportPeriodSlug;
@@ -28,32 +29,35 @@ const PERIODO_UNIT_LABEL: Record<ReportPeriodSlug, string> = {
  * Hámbar") en vez de uno por marca — así lo pidió el usuario, siguiendo el
  * mismo formato que ya usan a mano cada semana. Santa Gloria es al revés:
  * una sola marca pero dos PNG (España / Andorra, redes con dinámicas
- * distintas). Los PDF por restaurante están desactivados por ahora (la ruta
- * /api/informes/marca sigue existiendo, solo se quitaron los botones).
+ * distintas). Los PDF mensuales se organizan por marca y restaurante.
  */
 const REPORT_GROUPS: {
   label: string;
   sublabel?: string;
+  monthlyBrands: string[];
   pngGroups: { id: NetworkReportGroupId; label: string }[];
 }[] = [
-  { label: "Burger King", pngGroups: [{ id: "bk", label: "PNG" }] },
-  { label: "Popeyes", pngGroups: [{ id: "pp", label: "PNG" }] },
+  { label: "Burger King", monthlyBrands: ["Burger King"], pngGroups: [{ id: "bk", label: "PNG" }] },
+  { label: "Popeyes", monthlyBrands: ["Popeyes"], pngGroups: [{ id: "pp", label: "PNG" }] },
   {
     label: "Santa Gloria",
+    monthlyBrands: ["Santa Gloria"],
     pngGroups: [
       { id: "sg-es", label: "PNG España" },
       { id: "sg-ad", label: "PNG Andorra" },
     ],
   },
-  { label: "Tim Hortons", pngGroups: [{ id: "th", label: "PNG" }] },
+  { label: "Tim Hortons", monthlyBrands: ["Tim Hortons"], pngGroups: [{ id: "th", label: "PNG" }] },
   {
     label: "Grupo Hámbar",
     sublabel: "Ribs · Sibuya · Volapié",
+    monthlyBrands: ["Ribs", "Sibuya", "Taberna Volapié"],
     pngGroups: [{ id: "hambar", label: "PNG" }],
   },
   {
     label: "Vault",
     sublabel: "Empresa independiente · se descarga aparte",
+    monthlyBrands: ["Vault"],
     pngGroups: [{ id: "vault", label: "PNG" }],
   },
 ];
@@ -139,7 +143,9 @@ export function InformesPeriodoBrands({ periodo, offset, rangeLabel, fileLabel }
               <p className={textKicker}>Elige una marca</p>
               <h2 className={`mt-1.5 ${textTitle}`}>Marcas</h2>
               <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                Cada PNG compara toda la red de la marca en una sola imagen.
+                {periodo === "mensual"
+                  ? "Descarga el PDF de cada restaurante o todos los de una marca en un ZIP. Los PNG comparan la red."
+                  : "Cada PNG compara toda la red de la marca en una sola imagen."}
               </p>
             </div>
             <DownloadAllImagesButton periodo={periodo} offset={offset} rangeLabel={rangeLabel} fileLabel={fileLabel} />
@@ -170,6 +176,9 @@ export function InformesPeriodoBrands({ periodo, offset, rangeLabel, fileLabel }
                     </button>
                   ))}
                 </div>
+                {periodo === "mensual" && group.monthlyBrands.map((brandName) => (
+                  <MonthlyBrandReports key={brandName} brand={brandName} offset={offset} />
+                ))}
               </div>
             ))}
           </div>
