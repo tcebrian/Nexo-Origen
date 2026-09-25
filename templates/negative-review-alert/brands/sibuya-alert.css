@@ -651,7 +651,7 @@
 .sba-analysis--xs .sba-analysis__value {
   font-size: 16px;
   line-height: 1.28;
-  -webkit-line-clamp: 5;
+  -webkit-line-clamp: 9;
 }
 
 /* ---------- fila inferior de paneles ---------- */
@@ -917,4 +917,103 @@
 .sba-footer__text--xs {
   font-size: 18px;
   -webkit-line-clamp: 4;
+}
+
+
+/* ===== Columna de IA: encaje fijo =====
+   La columna tiene un alto FIJO: "Diagnóstico Nexo" queda anclado abajo,
+   siempre en el mismo sitio y por encima de la conclusión, y "Análisis Nexo"
+   ocupa el hueco que queda. Con más texto solo baja el tamaño de letra (el
+   tamaño lo elige lib/templates/negative-review-alert/insights-fit.ts, que
+   debe usar estos mismos números). El texto usa todo el ancho libre hasta los
+   productos del lado derecho. */
+
+.sba-insights {
+  height: 688px;
+  min-height: 0;
+}
+
+.sba-analysis {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sba-analysis li {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  gap: 14px;
+  padding: 8px 0;
+}
+
+.sba-analysis .sba-analysis__icon {
+  width: 56px;
+  height: 56px;
+}
+
+.sba-analysis .sba-analysis__icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.sba-analysis .sba-analysis__copy {
+  max-width: 460px;
+}
+
+.sba-analysis .sba-analysis__label {
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.sba-analysis .sba-analysis__value {
+  font-size: 22px;
+  line-height: 1.3;
+  -webkit-line-clamp: 5;
+}
+
+.sba-analysis--md li { padding: 8px 0; }
+.sba-analysis--md .sba-analysis__label { font-size: 16px; }
+.sba-analysis--md .sba-analysis__value { font-size: 20px; line-height: 1.3; }
+
+.sba-analysis--sm li { padding: 7px 0; }
+.sba-analysis--sm .sba-analysis__icon { width: 52px; height: 52px; }
+.sba-analysis--sm .sba-analysis__icon svg { width: 30px; height: 30px; }
+.sba-analysis--sm .sba-analysis__label { font-size: 15px; }
+.sba-analysis--sm .sba-analysis__value { font-size: 18px; line-height: 1.28; }
+
+.sba-analysis--xs li { padding: 6px 0; }
+.sba-analysis--xs .sba-analysis__icon { width: 46px; height: 46px; }
+.sba-analysis--xs .sba-analysis__icon svg { width: 27px; height: 27px; }
+.sba-analysis--xs .sba-analysis__label { font-size: 14px; }
+.sba-analysis--xs .sba-analysis__value { font-size: 16px; line-height: 1.25; }
+
+/* Diagnóstico Nexo: recuadros compactos y del mismo tamaño con cualquier texto. */
+.sba-diagnostics {
+  gap: 14px;
+  margin-top: -9px;
+}
+
+.sba-diagnostics .sba-diagnostics__item {
+  padding: 10px 10px 12px;
+}
+
+.sba-diagnostics .sba-diagnostics__icon {
+  width: 46px;
+  height: 46px;
+  margin-bottom: 4px;
+}
+
+.sba-diagnostics .sba-diagnostics__icon svg {
+  width: 27px;
+  height: 27px;
+}
+
+.sba-diagnostics .sba-diagnostics__label {
+  font-size: 15px;
+}
+
+.sba-diagnostics .sba-diagnostics__value {
+  font-size: 21px;
+  margin-top: 4px;
 }

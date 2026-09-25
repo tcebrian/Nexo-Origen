@@ -854,7 +854,7 @@
 .ppa-analysis--xs .ppa-analysis__value {
   font-size: 15.5px;
   line-height: 1.28;
-  -webkit-line-clamp: 5;
+  -webkit-line-clamp: 9;
 }
 
 .ppa-analysis--xs .ppa-analysis__copy {
@@ -1219,4 +1219,103 @@
 .ppa-footer__text--xs {
   font-size: 18px;
   -webkit-line-clamp: 4;
+}
+
+
+/* ===== Columna de IA: encaje fijo =====
+   La columna tiene un alto FIJO: "Diagnóstico Nexo" queda anclado abajo,
+   siempre en el mismo sitio y por encima de la conclusión, y "Análisis Nexo"
+   ocupa el hueco que queda. Con más texto solo baja el tamaño de letra (el
+   tamaño lo elige lib/templates/negative-review-alert/insights-fit.ts, que
+   debe usar estos mismos números). El texto usa todo el ancho libre hasta los
+   productos del lado derecho. */
+
+.ppa-insights {
+  height: 688px;
+  min-height: 0;
+}
+
+.ppa-analysis {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ppa-analysis li {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  gap: 14px;
+  padding: 8px 0;
+}
+
+.ppa-analysis .ppa-analysis__icon {
+  width: 56px;
+  height: 56px;
+}
+
+.ppa-analysis .ppa-analysis__icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.ppa-analysis .ppa-analysis__copy {
+  max-width: 480px;
+}
+
+.ppa-analysis .ppa-analysis__label {
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.ppa-analysis .ppa-analysis__value {
+  font-size: 22px;
+  line-height: 1.3;
+  -webkit-line-clamp: 5;
+}
+
+.ppa-analysis--md li { padding: 8px 0; }
+.ppa-analysis--md .ppa-analysis__label { font-size: 16px; }
+.ppa-analysis--md .ppa-analysis__value { font-size: 20px; line-height: 1.3; }
+
+.ppa-analysis--sm li { padding: 7px 0; }
+.ppa-analysis--sm .ppa-analysis__icon { width: 52px; height: 52px; }
+.ppa-analysis--sm .ppa-analysis__icon svg { width: 30px; height: 30px; }
+.ppa-analysis--sm .ppa-analysis__label { font-size: 15px; }
+.ppa-analysis--sm .ppa-analysis__value { font-size: 18px; line-height: 1.28; }
+
+.ppa-analysis--xs li { padding: 6px 0; }
+.ppa-analysis--xs .ppa-analysis__icon { width: 46px; height: 46px; }
+.ppa-analysis--xs .ppa-analysis__icon svg { width: 27px; height: 27px; }
+.ppa-analysis--xs .ppa-analysis__label { font-size: 14px; }
+.ppa-analysis--xs .ppa-analysis__value { font-size: 16px; line-height: 1.25; }
+
+/* Diagnóstico Nexo: recuadros compactos y del mismo tamaño con cualquier texto. */
+.ppa-diagnostics {
+  gap: 14px;
+  margin-top: -9px;
+}
+
+.ppa-diagnostics .ppa-diagnostics__item {
+  padding: 10px 10px 12px;
+}
+
+.ppa-diagnostics .ppa-diagnostics__icon {
+  width: 46px;
+  height: 46px;
+  margin-bottom: 4px;
+}
+
+.ppa-diagnostics .ppa-diagnostics__icon svg {
+  width: 27px;
+  height: 27px;
+}
+
+.ppa-diagnostics .ppa-diagnostics__label {
+  font-size: 15px;
+}
+
+.ppa-diagnostics .ppa-diagnostics__value {
+  font-size: 21px;
+  margin-top: 4px;
 }

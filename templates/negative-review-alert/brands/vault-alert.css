@@ -610,7 +610,7 @@
 .vaa-analysis--xs .vaa-analysis__value {
   font-size: 16px;
   line-height: 1.28;
-  -webkit-line-clamp: 5;
+  -webkit-line-clamp: 9;
 }
 
 /* ---------- fila inferior de paneles ---------- */
@@ -876,4 +876,103 @@
 .vaa-footer__text--xs {
   font-size: 18px;
   -webkit-line-clamp: 4;
+}
+
+
+/* ===== Columna de IA: encaje fijo =====
+   La columna tiene un alto FIJO: "Diagnóstico Nexo" queda anclado abajo,
+   siempre en el mismo sitio y por encima de la conclusión, y "Análisis Nexo"
+   ocupa el hueco que queda. Con más texto solo baja el tamaño de letra (el
+   tamaño lo elige lib/templates/negative-review-alert/insights-fit.ts, que
+   debe usar estos mismos números). El texto usa todo el ancho libre hasta los
+   productos del lado derecho. */
+
+.vaa-insights {
+  height: 688px;
+  min-height: 0;
+}
+
+.vaa-analysis {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.vaa-analysis li {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  gap: 14px;
+  padding: 8px 0;
+}
+
+.vaa-analysis .vaa-analysis__icon {
+  width: 56px;
+  height: 56px;
+}
+
+.vaa-analysis .vaa-analysis__icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.vaa-analysis .vaa-analysis__copy {
+  max-width: 485px;
+}
+
+.vaa-analysis .vaa-analysis__label {
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.vaa-analysis .vaa-analysis__value {
+  font-size: 22px;
+  line-height: 1.3;
+  -webkit-line-clamp: 5;
+}
+
+.vaa-analysis--md li { padding: 8px 0; }
+.vaa-analysis--md .vaa-analysis__label { font-size: 16px; }
+.vaa-analysis--md .vaa-analysis__value { font-size: 20px; line-height: 1.3; }
+
+.vaa-analysis--sm li { padding: 7px 0; }
+.vaa-analysis--sm .vaa-analysis__icon { width: 52px; height: 52px; }
+.vaa-analysis--sm .vaa-analysis__icon svg { width: 30px; height: 30px; }
+.vaa-analysis--sm .vaa-analysis__label { font-size: 15px; }
+.vaa-analysis--sm .vaa-analysis__value { font-size: 18px; line-height: 1.28; }
+
+.vaa-analysis--xs li { padding: 6px 0; }
+.vaa-analysis--xs .vaa-analysis__icon { width: 46px; height: 46px; }
+.vaa-analysis--xs .vaa-analysis__icon svg { width: 27px; height: 27px; }
+.vaa-analysis--xs .vaa-analysis__label { font-size: 14px; }
+.vaa-analysis--xs .vaa-analysis__value { font-size: 16px; line-height: 1.25; }
+
+/* Diagnóstico Nexo: recuadros compactos y del mismo tamaño con cualquier texto. */
+.vaa-diagnostics {
+  gap: 14px;
+  margin-top: -9px;
+}
+
+.vaa-diagnostics .vaa-diagnostics__item {
+  padding: 10px 10px 12px;
+}
+
+.vaa-diagnostics .vaa-diagnostics__icon {
+  width: 46px;
+  height: 46px;
+  margin-bottom: 4px;
+}
+
+.vaa-diagnostics .vaa-diagnostics__icon svg {
+  width: 27px;
+  height: 27px;
+}
+
+.vaa-diagnostics .vaa-diagnostics__label {
+  font-size: 15px;
+}
+
+.vaa-diagnostics .vaa-diagnostics__value {
+  font-size: 21px;
+  margin-top: 4px;
 }

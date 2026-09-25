@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import { resolveDesignCanvasSize } from "@/lib/templates/negative-review-alert/dimensions";
+import { limitInsightText, pickInsightsTier } from "@/lib/templates/negative-review-alert/insights-fit";
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
 import { StarRating } from "../icons";
 import {
@@ -64,17 +65,11 @@ function truncateComment(comment: string): string {
 }
 
 /**
- * Mismo nivel para Análisis Nexo y Diagnóstico Nexo (Sentimiento/Riesgo):
- * cuando el análisis es muy largo, Diagnóstico se compacta un poco para
- * dejarle más sitio a Análisis, en vez de quedarse siempre igual de grande
- * mientras Análisis se aprieta solo.
+ * Ancho (px) del texto de cada fila de Análisis Nexo: hasta donde llegan los
+ * productos del lado derecho. Debe coincidir con `max-width` de
+ * `.tva-analysis__copy` en el CSS.
  */
-function insightsTier(totalLength: number): "lg" | "md" | "sm" | "xs" {
-  if (totalLength <= 260) return "lg";
-  if (totalLength <= 420) return "md";
-  if (totalLength <= 600) return "sm";
-  return "xs";
-}
+const ANALYSIS_COPY_WIDTH = 460;
 
 /** Tamaño de la conclusión final adaptado a su longitud — nunca se sale del recuadro. */
 function footerTier(length: number): "lg" | "md" | "sm" | "xs" {
@@ -180,9 +175,11 @@ export const TabernaVolapieAlertTemplate = forwardRef<HTMLDivElement, TabernaVol
       { key: "motivo", icon: <TvIconMagnifier />, label: "Motivo principal", value: cleanValue(data.main_motive) as string },
       { key: "impacto", icon: <TvIconBars />, label: "Impacto detectado", value: cleanValue(data.detected_impact) as string },
       { key: "recomendacion", icon: <TvIconBulb />, label: "Recomendación", value: cleanValue(data.recommendation) as string },
-    ].filter((row) => row.value);
-    const analysisTotalLength = analysisRows.reduce((sum, row) => sum + row.value.length, 0);
-    const analysisTier = insightsTier(analysisTotalLength);
+    ].filter((row) => row.value).map((row) => ({ ...row, value: limitInsightText(row.key, row.value) }));
+    const analysisTier = pickInsightsTier(
+      analysisRows.map((row) => row.value),
+      ANALYSIS_COPY_WIDTH
+    );
 
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
     const locationLabel = stripBrandPrefix(data.restaurant_name) || data.restaurant_name;

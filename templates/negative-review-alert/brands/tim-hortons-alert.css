@@ -650,7 +650,7 @@
 .tha-analysis--xs .tha-analysis__value {
   font-size: 16px;
   line-height: 1.28;
-  -webkit-line-clamp: 5;
+  -webkit-line-clamp: 9;
 }
 
 /* ---------- fila inferior de paneles ---------- */
@@ -916,4 +916,103 @@
 .tha-footer__text--xs {
   font-size: 18px;
   -webkit-line-clamp: 4;
+}
+
+
+/* ===== Columna de IA: encaje fijo =====
+   La columna tiene un alto FIJO: "Diagnóstico Nexo" queda anclado abajo,
+   siempre en el mismo sitio y por encima de la conclusión, y "Análisis Nexo"
+   ocupa el hueco que queda. Con más texto solo baja el tamaño de letra (el
+   tamaño lo elige lib/templates/negative-review-alert/insights-fit.ts, que
+   debe usar estos mismos números). El texto usa todo el ancho libre hasta los
+   productos del lado derecho. */
+
+.tha-insights {
+  height: 688px;
+  min-height: 0;
+}
+
+.tha-analysis {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tha-analysis li {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  gap: 14px;
+  padding: 8px 0;
+}
+
+.tha-analysis .tha-analysis__icon {
+  width: 56px;
+  height: 56px;
+}
+
+.tha-analysis .tha-analysis__icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.tha-analysis .tha-analysis__copy {
+  max-width: 460px;
+}
+
+.tha-analysis .tha-analysis__label {
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.tha-analysis .tha-analysis__value {
+  font-size: 22px;
+  line-height: 1.3;
+  -webkit-line-clamp: 5;
+}
+
+.tha-analysis--md li { padding: 8px 0; }
+.tha-analysis--md .tha-analysis__label { font-size: 16px; }
+.tha-analysis--md .tha-analysis__value { font-size: 20px; line-height: 1.3; }
+
+.tha-analysis--sm li { padding: 7px 0; }
+.tha-analysis--sm .tha-analysis__icon { width: 52px; height: 52px; }
+.tha-analysis--sm .tha-analysis__icon svg { width: 30px; height: 30px; }
+.tha-analysis--sm .tha-analysis__label { font-size: 15px; }
+.tha-analysis--sm .tha-analysis__value { font-size: 18px; line-height: 1.28; }
+
+.tha-analysis--xs li { padding: 6px 0; }
+.tha-analysis--xs .tha-analysis__icon { width: 46px; height: 46px; }
+.tha-analysis--xs .tha-analysis__icon svg { width: 27px; height: 27px; }
+.tha-analysis--xs .tha-analysis__label { font-size: 14px; }
+.tha-analysis--xs .tha-analysis__value { font-size: 16px; line-height: 1.25; }
+
+/* Diagnóstico Nexo: recuadros compactos y del mismo tamaño con cualquier texto. */
+.tha-diagnostics {
+  gap: 14px;
+  margin-top: -9px;
+}
+
+.tha-diagnostics .tha-diagnostics__item {
+  padding: 10px 10px 12px;
+}
+
+.tha-diagnostics .tha-diagnostics__icon {
+  width: 46px;
+  height: 46px;
+  margin-bottom: 4px;
+}
+
+.tha-diagnostics .tha-diagnostics__icon svg {
+  width: 27px;
+  height: 27px;
+}
+
+.tha-diagnostics .tha-diagnostics__label {
+  font-size: 15px;
+}
+
+.tha-diagnostics .tha-diagnostics__value {
+  font-size: 21px;
+  margin-top: 4px;
 }
