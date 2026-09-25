@@ -5,6 +5,7 @@ import { assertRestauranteInScope } from "@/lib/auth/data-scope";
 import { dedupeResenas } from "@/lib/review-metrics";
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
 import { resolveReportPeriodRange } from "@/lib/reports/period-ranges";
+import { categoriaMotivoLabel } from "@/lib/supabase/resena-motivos";
 import { fetchResenaMotivosForReviewIds } from "@/lib/supabase/resena-motivos.server";
 import { fetchSupabaseCanonicalReputationMetrics, type SupabaseMetricRow } from "@/lib/supabase/reputation-metrics.server";
 import { getSupabaseDataClientForServer } from "@/lib/supabase/data-client";
@@ -141,14 +142,6 @@ async function loadReviews(restaurantId: number, startKey: string, endKey: strin
   })).sort((a, b) => (getResenaActivityDateValue(b) ?? "").localeCompare(getResenaActivityDateValue(a) ?? ""));
 }
 
-const MOTIVE_LABELS: Record<string, string> = {
-  TIEMPO_ESPERA: "Tiempo de espera", PEDIDO_INCORRECTO: "Pedido incorrecto",
-  ATENCION_PERSONAL: "Atención al cliente", CALIDAD_PRODUCTO: "Calidad del producto",
-  LIMPIEZA: "Limpieza", FALTA_PRODUCTO: "Falta de producto", PRECIO: "Precio",
-  AMBIENTE_LOCAL: "Ambiente/local", COBRO_REEMBOLSO: "Cobro o reembolso",
-  EMPLEADO_MENCIONADO: "Empleado mencionado", SIN_MOTIVO: "Sin comentario", OTRO: "Otros",
-};
-
 export async function loadMonthlyReport(restaurantId: number, offset: number, scope: UserScope): Promise<MonthlyReportData | null> {
   if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0 || !assertRestauranteInScope(scope, restaurantId)) return null;
   const [row] = await catalog([restaurantId]);
@@ -195,7 +188,7 @@ export async function loadMonthlyReport(restaurantId: number, offset: number, sc
     const stars = Number(r.estrellas);
     const category = motiveById.get(String(r.review_id ?? ""));
     const reason = stars <= 2
-      ? category ? MOTIVE_LABELS[category.toUpperCase()] ?? category : classifyReviewReason({ comentario: r.comentario })
+      ? category ? categoriaMotivoLabel(category) : classifyReviewReason({ comentario: r.comentario })
       : null;
     if (reason) reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
     return {
