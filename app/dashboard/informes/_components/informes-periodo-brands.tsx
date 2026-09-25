@@ -177,7 +177,7 @@ export function InformesPeriodoBrands({ periodo, offset, rangeLabel, fileLabel }
                   ))}
                 </div>
                 {periodo === "mensual" && group.monthlyBrands.map((brandName) => (
-                  <MonthlyBrandReports key={brandName} brand={brandName} offset={offset} />
+                  <MonthlyBrandReports key={`${brandName}-${offset}`} brand={brandName} offset={offset} />
                 ))}
               </div>
             ))}
