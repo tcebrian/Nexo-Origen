@@ -440,3 +440,15 @@ WhatsApp calcula C
 ```
 
 Una vez conseguido esto, reputación será el patrón para los siguientes dominios.
+
+---
+
+# 24. PDF mensual por restaurante
+
+`/dashboard/informes/mensual` muestra las marcas y carga dinámicamente sus restaurantes activos. La descarga individual genera un PDF de portada, resumen, evolución semanal, motivos, lectura y registro completo; la descarga conjunta reúne los mismos PDFs en un ZIP.
+
+- El periodo es el último mes natural completo, con navegación a meses anteriores.
+- Los KPI del mes, mes anterior y tramos semanales salen de `nexo_reputation_period_metrics`; el catálogo y el objetivo salen de `nexo_reputation_restaurant_catalog`.
+- El registro viene de `resenas` y los motivos de `resena_motivos`, clasificados por `review_id`. Solo las reseñas de 1 y 2 estrellas entran en el reparto de motivos negativos.
+- Se comprueban el número de reseñas y el recuento por estrellas contra el resultado canónico antes de generar cada PDF. Si difieren, la ruta falla para evitar un documento incompleto.
+- La ruta verifica la sesión y el alcance del usuario antes de consultar datos o generar un archivo. No almacena instantáneas: las descargas reflejan los datos disponibles en ese momento.

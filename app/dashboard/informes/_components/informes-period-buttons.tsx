@@ -12,7 +12,7 @@ const PERIODS = [
   {
     slug: "mensual",
     label: "Informes mensuales",
-    description: "Rendimiento del último mes, marca por marca.",
+    description: "Reputación mensual: PDF por restaurante y PNG por red.",
   },
   {
     slug: "trimestral",
@@ -37,7 +37,7 @@ export function InformesPeriodButtons() {
         <p className={textKicker}>Informes automáticos</p>
         <h2 className={`mt-1.5 ${textTitle}`}>Elige el periodo</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Cada informe es una imagen PNG que compara toda la red de la marca.
+          Compara las redes en PNG. En el informe mensual también puedes descargar un PDF por restaurante.
         </p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
