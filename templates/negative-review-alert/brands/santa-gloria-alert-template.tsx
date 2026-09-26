@@ -35,14 +35,16 @@ function absUrl(base: string | undefined, path: string): string {
 }
 
 /**
- * Tamaño del comentario adaptado a su longitud real. La posición de todo el
- * layout es SIEMPRE la misma (comentario arriba-izq, impacto debajo,
- * análisis/diagnóstico a la derecha) — lo único que cambia con la longitud
- * del texto es el tamaño de letra, nunca la composición ni la posición de
- * ningún bloque. Así se evita el solape que salía antes al desplazar o
- * reestructurar cajas según el contenido.
+ * Tamaño del comentario adaptado a su longitud real. Los comentarios cortos
+ * o de longitud normal usan siempre el mismo tamaño base (el de la reseña
+ * normal/larga) — la letra solo se reduce a partir de aquí, cuanto más largo
+ * es el comentario.
  */
 function quoteSizeClass(length: number): string {
+  // El salto de línea real no es perfectamente proporcional a la longitud
+  // (depende de cómo caigan las palabras), así que el límite de "lg" deja
+  // margen de sobra por debajo del punto donde se confirmó por medición
+  // real que empieza a invadir "Impacto en la media" (~300 caracteres).
   if (length <= 260) return "sga-quote__text--lg";
   if (length <= 650) return "sga-quote__text--md";
   if (length <= 900) return "sga-quote__text--sm";
@@ -51,12 +53,20 @@ function quoteSizeClass(length: number): string {
 }
 
 /**
- * Un comentario desmesuradamente largo seguiría creciendo sin límite y
- * rompería el diseño. A partir de MAX_COMMENT_CHARS se corta en un límite de
- * palabra y se avisa de que hay más para leer en el enlace — el cuadro del
- * comentario tiene una altura fija (ver CSS) y el texto que no entre a la
- * letra mínima simplemente no se muestra, nunca desplaza ni tapa otras cajas.
+ * Los tamaños de letra ya se reducen hasta xxs (13.5px) para comentarios muy
+ * largos, pero un comentario desmesuradamente largo seguiría creciendo sin
+ * límite y rompería el diseño. A partir de MAX_COMMENT_CHARS se corta en un
+ * límite de palabra y se avisa de que hay más para leer en el enlace.
  */
+/**
+ * A partir de aquí el comentario es tan largo que intentar mantenerlo en el
+ * layout de dos columnas obliga a encoger demasiado el resto (Análisis,
+ * Diagnóstico, Conclusión). En vez de eso se usa un diseño alternativo: solo
+ * el comentario, centrado, y el Impacto en la media debajo — se quita todo
+ * lo demás en vez de aplastarlo.
+ */
+const EXTREME_COMMENT_CHARS = 380;
+
 const MAX_COMMENT_CHARS = 1400;
 const READ_MORE_HINT = " (pulsa el enlace para leer más)";
 
@@ -92,6 +102,16 @@ function footerTier(length: number): "lg" | "md" | "sm" | "xs" {
   if (length <= 180) return "md";
   if (length <= 260) return "sm";
   return "xs";
+}
+
+/**
+ * Dentro del diseño normal (comentarios ≤900 caracteres — por encima de eso
+ * se usa el diseño alternativo centrado), cuando el comentario ya es
+ * bastante largo "Impacto en la media" se desplaza hacia la derecha y se
+ * compacta un poco para no quedar tapada por la hamburguesa.
+ */
+function commentShiftTier(commentLength: number): "" | "sm" {
+  return commentLength <= 650 ? "" : "sm";
 }
 
 /**
@@ -202,6 +222,9 @@ export const SantaGloriaAlertTemplate = forwardRef<HTMLDivElement, SantaGloriaAl
       ANALYSIS_COPY_WIDTH
     );
 
+    const isExtremeComment = fullComment.length > EXTREME_COMMENT_CHARS;
+    const shiftTier = isExtremeComment ? "" : commentShiftTier(fullComment.length);
+
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
     const locationLabel = stripBrandPrefix(data.restaurant_name) || data.restaurant_name;
 
@@ -264,7 +287,7 @@ export const SantaGloriaAlertTemplate = forwardRef<HTMLDivElement, SantaGloriaAl
           className="sga-product sga-product--cookie-plate"
         />
 
-        <div className="sga-sheet">
+        <div className={`sga-sheet ${isExtremeComment ? "sga-sheet--extreme" : ""}`}>
           {/* Header editorial */}
           <header className="sga-header">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -305,8 +328,71 @@ export const SantaGloriaAlertTemplate = forwardRef<HTMLDivElement, SantaGloriaAl
             />
           </div>
 
-          <div className="sga-body">
-            <div className="sga-review-col">
+          {isExtremeComment ? (
+            <div className="sga-body sga-body--extreme">
+              <section className="sga-review sga-review--extreme">
+                <div className="sga-review__head">
+                  <span className="sga-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
+                  <div className="sga-review__meta">
+                    <p className="sga-review__name">{data.review_author}</p>
+                    <p className="sga-review__datetime">
+                      <SgIconCalendar />
+                      <span>{data.review_date}</span>
+                      <span className="sga-review__sep" aria-hidden>
+                        |
+                      </span>
+                      <SgIconClock />
+                      <span>{data.review_time}</span>
+                    </p>
+                  </div>
+                  <div className="sga-review__rating">
+                    <StarRating stars={data.review_stars} size="lg" />
+                    <span className="sga-review__rating-value">{data.review_stars}/5</span>
+                  </div>
+                </div>
+
+                <div className="sga-quote sga-quote--extreme">
+                  <span className="sga-quote__mark sga-quote__mark--open" aria-hidden>
+                    &ldquo;
+                  </span>
+                  <p className={`sga-quote__text ${quoteSizeClass(fullComment.length)}`}>
+                    {fullComment}
+                  </p>
+                  <span className="sga-quote__mark sga-quote__mark--close" aria-hidden>
+                    &rdquo;
+                  </span>
+                </div>
+              </section>
+
+              <section className="sga-mini sga-mini--extreme">
+                <p className="sga-mini__band">IMPACTO EN LA MEDIA</p>
+                <div className="sga-impact">
+                  <div className="sga-impact__col">
+                    <p className="sga-impact__label">Media anterior</p>
+                    <p className="sga-impact__value">{data.previous_rating.toFixed(2)}</p>
+                    <span className="sga-impact__stars">
+                      <StarRating stars={data.previous_rating} size="md" />
+                    </span>
+                  </div>
+                  <div className="sga-impact__col">
+                    <p className="sga-impact__label">Media actual</p>
+                    <p className={`sga-impact__value sga-impact__value--tone-${tone}`}>
+                      {data.current_rating.toFixed(2)}
+                    </p>
+                    <span className="sga-impact__stars">
+                      <StarRating stars={data.current_rating} size="md" />
+                    </span>
+                  </div>
+                  <div className="sga-impact__col">
+                    <p className="sga-impact__label">Variación</p>
+                    <ImpactDelta delta={delta} />
+                  </div>
+                </div>
+              </section>
+            </div>
+          ) : (
+            <div className="sga-body">
+              <div className="sga-review-col">
               {/* Tarjeta grande de la reseña — protagonista */}
               <section className="sga-review">
                 <div className="sga-review__head">
@@ -342,7 +428,7 @@ export const SantaGloriaAlertTemplate = forwardRef<HTMLDivElement, SantaGloriaAl
                 </div>
               </section>
 
-              <section className="sga-mini sga-mini--under-quote">
+              <section className={`sga-mini sga-mini--under-quote ${fullComment.length < 500 ? "sga-mini--short" : ""} ${shiftTier ? `sga-mini--shift-${shiftTier}` : ""}`}>
                 <p className="sga-mini__band">IMPACTO EN LA MEDIA</p>
                 <div className="sga-impact">
                   <div className="sga-impact__col">
@@ -367,49 +453,50 @@ export const SantaGloriaAlertTemplate = forwardRef<HTMLDivElement, SantaGloriaAl
                   </div>
                 </div>
               </section>
-            </div>
-
-            {/* Columna de inteligencia artificial */}
-            <section className="sga-insights">
-              {analysisRows.length > 0 ? (
-                <>
-                  <p className="sga-ribbon">ANÁLISIS NEXO</p>
-                  <ul className={`sga-analysis sga-analysis--${analysisTier}`}>
-                    {analysisRows.map((row) => (
-                      <li key={row.key}>
-                        <span className="sga-analysis__icon">{row.icon}</span>
-                        <div className="sga-analysis__copy">
-                          <p className="sga-analysis__label">{row.label}</p>
-                          <p className="sga-analysis__value">{row.value}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : null}
-
-              <p className={`sga-ribbon ${analysisRows.length > 0 ? "sga-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
-              <div className={`sga-diagnostics sga-diagnostics--${analysisTier}`}>
-                <div className="sga-diagnostics__item">
-                  <span className="sga-diagnostics__icon sga-diagnostics__icon--neutral">
-                    <SgIconMood />
-                  </span>
-                  <p className="sga-diagnostics__label">Sentimiento</p>
-                  <p className="sga-diagnostics__value">{sentiment ?? "Sin datos"}</p>
-                </div>
-                <div className="sga-diagnostics__item">
-                  <span className={`sga-diagnostics__icon sga-diagnostics__icon--${riskTone(risk)}`}>
-                    <SgIconShield />
-                  </span>
-                  <p className="sga-diagnostics__label">Riesgo</p>
-                  <p className="sga-diagnostics__value">{risk ?? "Sin datos"}</p>
-                </div>
               </div>
-            </section>
-          </div>
 
-          {/* Conclusión */}
-          {conclusion
+              {/* Columna de inteligencia artificial */}
+              <section className="sga-insights">
+                {analysisRows.length > 0 ? (
+                  <>
+                    <p className="sga-ribbon">ANÁLISIS NEXO</p>
+                    <ul className={`sga-analysis sga-analysis--${analysisTier}`}>
+                      {analysisRows.map((row) => (
+                        <li key={row.key}>
+                          <span className="sga-analysis__icon">{row.icon}</span>
+                          <div className="sga-analysis__copy">
+                            <p className="sga-analysis__label">{row.label}</p>
+                            <p className="sga-analysis__value">{row.value}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+
+                <p className={`sga-ribbon ${analysisRows.length > 0 ? "sga-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
+                <div className={`sga-diagnostics sga-diagnostics--${analysisTier}`}>
+                  <div className="sga-diagnostics__item">
+                    <span className="sga-diagnostics__icon sga-diagnostics__icon--neutral">
+                      <SgIconMood />
+                    </span>
+                    <p className="sga-diagnostics__label">Sentimiento</p>
+                    <p className="sga-diagnostics__value">{sentiment ?? "Sin datos"}</p>
+                  </div>
+                  <div className="sga-diagnostics__item">
+                    <span className={`sga-diagnostics__icon sga-diagnostics__icon--${riskTone(risk)}`}>
+                      <SgIconShield />
+                    </span>
+                    <p className="sga-diagnostics__label">Riesgo</p>
+                    <p className="sga-diagnostics__value">{risk ?? "Sin datos"}</p>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* Conclusión — se omite en el diseño extremo (solo comentario + Impacto en la media) */}
+          {!isExtremeComment && conclusion
             ? (() => {
                 const footerSizeTier = footerTier(conclusion.length);
                 return (

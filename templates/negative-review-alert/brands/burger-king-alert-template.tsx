@@ -35,14 +35,16 @@ function absUrl(base: string | undefined, path: string): string {
 }
 
 /**
- * Tamaño del comentario adaptado a su longitud real. La posición de todo el
- * layout es SIEMPRE la misma (comentario arriba-izq, impacto debajo,
- * análisis/diagnóstico a la derecha) — lo único que cambia con la longitud
- * del texto es el tamaño de letra, nunca la composición ni la posición de
- * ningún bloque. Así se evita el solape que salía antes al desplazar o
- * reestructurar cajas según el contenido.
+ * Tamaño del comentario adaptado a su longitud real. Los comentarios cortos
+ * o de longitud normal usan siempre el mismo tamaño base (el de la reseña
+ * normal/larga) — la letra solo se reduce a partir de aquí, cuanto más largo
+ * es el comentario.
  */
 function quoteSizeClass(length: number): string {
+  // El salto de línea real no es perfectamente proporcional a la longitud
+  // (depende de cómo caigan las palabras), así que el límite de "lg" deja
+  // margen de sobra por debajo del punto donde se confirmó por medición
+  // real que empieza a invadir "Impacto en la media" (~300 caracteres).
   if (length <= 260) return "bka-quote__text--lg";
   if (length <= 650) return "bka-quote__text--md";
   if (length <= 900) return "bka-quote__text--sm";
@@ -51,12 +53,20 @@ function quoteSizeClass(length: number): string {
 }
 
 /**
- * Un comentario desmesuradamente largo seguiría creciendo sin límite y
- * rompería el diseño. A partir de MAX_COMMENT_CHARS se corta en un límite de
- * palabra y se avisa de que hay más para leer en el enlace — el cuadro del
- * comentario tiene una altura fija (ver CSS) y el texto que no entre a la
- * letra mínima simplemente no se muestra, nunca desplaza ni tapa otras cajas.
+ * Los tamaños de letra ya se reducen hasta xxs (13.5px) para comentarios muy
+ * largos, pero un comentario desmesuradamente largo seguiría creciendo sin
+ * límite y rompería el diseño. A partir de MAX_COMMENT_CHARS se corta en un
+ * límite de palabra y se avisa de que hay más para leer en el enlace.
  */
+/**
+ * A partir de aquí el comentario es tan largo que intentar mantenerlo en el
+ * layout de dos columnas obliga a encoger demasiado el resto (Análisis,
+ * Diagnóstico, Conclusión). En vez de eso se usa un diseño alternativo: solo
+ * el comentario, centrado, y el Impacto en la media debajo — se quita todo
+ * lo demás en vez de aplastarlo.
+ */
+const EXTREME_COMMENT_CHARS = 380;
+
 const MAX_COMMENT_CHARS = 1400;
 const READ_MORE_HINT = " (pulsa el enlace para leer más)";
 
@@ -92,6 +102,16 @@ function footerTier(length: number): "lg" | "md" | "sm" | "xs" {
   if (length <= 180) return "md";
   if (length <= 260) return "sm";
   return "xs";
+}
+
+/**
+ * Dentro del diseño normal (comentarios ≤900 caracteres — por encima de eso
+ * se usa el diseño alternativo centrado), cuando el comentario ya es
+ * bastante largo "Impacto en la media" se desplaza hacia la derecha y se
+ * compacta un poco para no quedar tapada por la hamburguesa.
+ */
+function commentShiftTier(commentLength: number): "" | "sm" {
+  return commentLength <= 650 ? "" : "sm";
 }
 
 /**
@@ -202,6 +222,9 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
       ANALYSIS_COPY_WIDTH
     );
 
+    const isExtremeComment = fullComment.length > EXTREME_COMMENT_CHARS;
+    const shiftTier = isExtremeComment ? "" : commentShiftTier(fullComment.length);
+
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
     const brandLabel = (cleanValue(data.brand_name) ?? "Burger King").toUpperCase();
     const locationLabel = stripBrandPrefix(data.restaurant_name) || data.restaurant_name;
@@ -232,7 +255,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
           className="bka-product bka-product--burger"
         />
 
-        <div className="bka-sheet">
+        <div className={`bka-sheet ${isExtremeComment ? "bka-sheet--extreme" : ""}`}>
           {/* Header editorial */}
           <header className="bka-header">
             <div className="bka-header__alert">
@@ -293,8 +316,71 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
             className="bka-header__extra-photo"
           />
 
-          <div className="bka-body">
-            <div className="bka-review-col">
+          {isExtremeComment ? (
+            <div className="bka-body bka-body--extreme">
+              <section className="bka-review bka-review--extreme">
+                <div className="bka-review__head">
+                  <span className="bka-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
+                  <div className="bka-review__meta">
+                    <p className="bka-review__name">{data.review_author}</p>
+                    <p className="bka-review__datetime">
+                      <BkIconCalendar />
+                      <span>{data.review_date}</span>
+                      <span className="bka-review__sep" aria-hidden>
+                        |
+                      </span>
+                      <BkIconClock />
+                      <span>{data.review_time}</span>
+                    </p>
+                  </div>
+                  <div className="bka-review__rating">
+                    <StarRating stars={data.review_stars} size="lg" />
+                    <span className="bka-review__rating-value">{data.review_stars}/5</span>
+                  </div>
+                </div>
+
+                <div className="bka-quote bka-quote--extreme">
+                  <span className="bka-quote__mark bka-quote__mark--open" aria-hidden>
+                    &ldquo;
+                  </span>
+                  <p className={`bka-quote__text ${quoteSizeClass(fullComment.length)}`}>
+                    {fullComment}
+                  </p>
+                  <span className="bka-quote__mark bka-quote__mark--close" aria-hidden>
+                    &rdquo;
+                  </span>
+                </div>
+              </section>
+
+              <section className="bka-mini bka-mini--extreme">
+                <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
+                <div className="bka-impact">
+                  <div className="bka-impact__col">
+                    <p className="bka-impact__label">Media anterior</p>
+                    <p className="bka-impact__value">{data.previous_rating.toFixed(2)}</p>
+                    <span className="bka-impact__stars">
+                      <StarRating stars={data.previous_rating} size="md" />
+                    </span>
+                  </div>
+                  <div className="bka-impact__col">
+                    <p className="bka-impact__label">Media actual</p>
+                    <p className={`bka-impact__value bka-impact__value--tone-${tone}`}>
+                      {data.current_rating.toFixed(2)}
+                    </p>
+                    <span className="bka-impact__stars">
+                      <StarRating stars={data.current_rating} size="md" />
+                    </span>
+                  </div>
+                  <div className="bka-impact__col">
+                    <p className="bka-impact__label">Variación</p>
+                    <ImpactDelta delta={delta} />
+                  </div>
+                </div>
+              </section>
+            </div>
+          ) : (
+            <div className="bka-body">
+              <div className="bka-review-col">
               {/* Tarjeta grande de la reseña — protagonista */}
               <section className="bka-review">
                 <div className="bka-review__head">
@@ -330,7 +416,7 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                 </div>
               </section>
 
-              <section className="bka-mini bka-mini--under-quote">
+              <section className={`bka-mini bka-mini--under-quote ${fullComment.length < 500 ? "bka-mini--short" : ""} ${shiftTier ? `bka-mini--shift-${shiftTier}` : ""}`}>
                 <p className="bka-mini__band">IMPACTO EN LA MEDIA</p>
                 <div className="bka-impact">
                   <div className="bka-impact__col">
@@ -355,49 +441,50 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                   </div>
                 </div>
               </section>
-            </div>
-
-            {/* Columna de inteligencia artificial */}
-            <section className="bka-insights">
-              {analysisRows.length > 0 ? (
-                <>
-                  <p className="bka-ribbon">ANÁLISIS NEXO</p>
-                  <ul className={`bka-analysis bka-analysis--${analysisTier}`}>
-                    {analysisRows.map((row) => (
-                      <li key={row.key}>
-                        <span className="bka-analysis__icon">{row.icon}</span>
-                        <div className="bka-analysis__copy">
-                          <p className="bka-analysis__label">{row.label}</p>
-                          <p className="bka-analysis__value">{row.value}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : null}
-
-              <p className={`bka-ribbon ${analysisRows.length > 0 ? "bka-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
-              <div className={`bka-diagnostics bka-diagnostics--${analysisTier}`}>
-                <div className="bka-diagnostics__item">
-                  <span className="bka-diagnostics__icon bka-diagnostics__icon--neutral">
-                    <BkIconMood />
-                  </span>
-                  <p className="bka-diagnostics__label">Sentimiento</p>
-                  <p className="bka-diagnostics__value">{sentiment ?? "Sin datos"}</p>
-                </div>
-                <div className="bka-diagnostics__item">
-                  <span className={`bka-diagnostics__icon bka-diagnostics__icon--${riskTone(risk)}`}>
-                    <BkIconShield />
-                  </span>
-                  <p className="bka-diagnostics__label">Riesgo</p>
-                  <p className="bka-diagnostics__value">{risk ?? "Sin datos"}</p>
-                </div>
               </div>
-            </section>
-          </div>
 
-          {/* Conclusión */}
-          {conclusion
+              {/* Columna de inteligencia artificial */}
+              <section className="bka-insights">
+                {analysisRows.length > 0 ? (
+                  <>
+                    <p className="bka-ribbon">ANÁLISIS NEXO</p>
+                    <ul className={`bka-analysis bka-analysis--${analysisTier}`}>
+                      {analysisRows.map((row) => (
+                        <li key={row.key}>
+                          <span className="bka-analysis__icon">{row.icon}</span>
+                          <div className="bka-analysis__copy">
+                            <p className="bka-analysis__label">{row.label}</p>
+                            <p className="bka-analysis__value">{row.value}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+
+                <p className={`bka-ribbon ${analysisRows.length > 0 ? "bka-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
+                <div className={`bka-diagnostics bka-diagnostics--${analysisTier}`}>
+                  <div className="bka-diagnostics__item">
+                    <span className="bka-diagnostics__icon bka-diagnostics__icon--neutral">
+                      <BkIconMood />
+                    </span>
+                    <p className="bka-diagnostics__label">Sentimiento</p>
+                    <p className="bka-diagnostics__value">{sentiment ?? "Sin datos"}</p>
+                  </div>
+                  <div className="bka-diagnostics__item">
+                    <span className={`bka-diagnostics__icon bka-diagnostics__icon--${riskTone(risk)}`}>
+                      <BkIconShield />
+                    </span>
+                    <p className="bka-diagnostics__label">Riesgo</p>
+                    <p className="bka-diagnostics__value">{risk ?? "Sin datos"}</p>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* Conclusión — se omite en el diseño extremo (solo comentario + Impacto en la media) */}
+          {!isExtremeComment && conclusion
             ? (() => {
                 const footerSizeTier = footerTier(conclusion.length);
                 return (

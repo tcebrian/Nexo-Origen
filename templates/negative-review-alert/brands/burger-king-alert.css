@@ -97,6 +97,12 @@
   grid-row: 4;
 }
 
+/* Diseño extremo: sin footer ni fila espaciadora, recupera esas 2 filas y
+   sus gaps (40px) para el comentario/impacto en la media. */
+.bka-sheet.bka-sheet--extreme {
+  grid-template-rows: auto 1fr;
+}
+
 /* ---------- header editorial ---------- */
 
 .bka-header {
@@ -284,24 +290,113 @@
   align-items: start;
 }
 
+/* ---------- diseño alternativo: comentario extremadamente largo ---------- */
+/* Solo comentario + Impacto en la media, centrado, sin Análisis/Diagnóstico/
+   Conclusión — evita comprimir todo lo demás para que quepa un comentario
+   enorme. El padding horizontal deja libre la zona donde sangran la
+   hamburguesa (izquierda) y el vaso/patatas (derecha). */
+.bka-body--extreme {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 10px 320px 0 330px;
+  min-height: 0;
+}
+
+.bka-review.bka-review--extreme {
+  width: 100%;
+  margin-top: 15px;
+  min-height: 720px;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.bka-quote.bka-quote--extreme {
+  min-height: 593px;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.bka-mini--extreme {
+  width: 100%;
+  margin-top: -40px;
+  padding: 24px 40px;
+}
+
+.bka-mini--extreme .bka-mini__band {
+  font-size: 18px;
+  padding: 7px 22px;
+  margin-bottom: 10px;
+}
+
+.bka-mini--extreme .bka-impact__col {
+  padding: 0 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bka-mini--extreme .bka-impact__label {
+  font-size: 17px;
+  margin: 0 0 4px;
+  height: 21px;
+  display: flex;
+  align-items: center;
+}
+
+.bka-mini--extreme .bka-impact__value {
+  margin: 0;
+  font-size: 46px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
+}
+
+.bka-mini--extreme .bka-impact__delta {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  height: 54px;
+  gap: 6px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  text-shadow: 0 1px 2px rgba(33, 26, 19, 0.14);
+}
+
+.bka-mini--extreme .bka-impact__delta svg {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.bka-mini--extreme .bka-impact__col + .bka-impact__col::before {
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+}
+
 .bka-review-col {
   position: relative;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
   /* Altura fija (no depende de la columna de insights ni del alto de la
-     reseña): "Impacto en la media" siempre cae en el mismo punto relativo a
-     esta columna — dentro del flujo normal (no position:absolute), así que
-     nunca puede solaparse con el comentario por muy largo que sea: la
-     tarjeta de la reseña (flex:1) cede el espacio que le sobra, y si el
-     texto no entra ni al tamaño de letra mínimo se recorta (overflow:hidden
-     en .bka-quote) en vez de desplazar u ocultar "Impacto en la media". */
+     reseña): ancla "Impacto en la media" (position:absolute, bottom:0 más
+     abajo) a un punto fijo casi pegado a donde sangra la hamburguesa, sin
+     taparla. La hamburguesa está anclada en posición fija dentro del canvas
+     (bottom:-46px), así que su borde superior siempre cae en el mismo punto
+     — este valor está calculado contra ese punto fijo. */
   height: 653px;
 }
 
 .bka-review {
-  flex: 1;
   border-radius: 20px;
   background: var(--bk-card);
   border: 1px solid var(--bk-line);
@@ -396,31 +491,11 @@
   border: 1px solid var(--bk-line);
   display: flex;
   flex-direction: column;
-  /* Alineado arriba, NUNCA centrado: si el texto no entra ni con la letra
-     más pequeña del tier, lo que se recorta es el final de la frase (hay
-     "…" + aviso de leer más para textos larguísimos), nunca el principio —
-     centrar + overflow:hidden recortaría por igual arriba y abajo y se
-     perdería el inicio de la reseña. */
   justify-content: center;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  /* Ocupa siempre el espacio que le sobra a la tarjeta tras la cabecera
-     (avatar/nombre/fecha) — nunca crece más allá de eso. Si el texto no
-     entra ni con la letra más pequeña del tier, se recorta aquí en vez de
-     empujar "Impacto en la media" hacia abajo. */
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* Con comentarios que necesitan varias líneas (tiers md/sm/xs/xxs) se
-   alinea arriba en vez de centrar — así, si el texto no llega a entender
-   entero, lo que se pierde es el final (hay elipsis + aviso de "leer más"),
-   nunca el principio de la reseña. */
-.bka-quote:has(.bka-quote__text--md),
-.bka-quote:has(.bka-quote__text--sm),
-.bka-quote:has(.bka-quote__text--xs),
-.bka-quote:has(.bka-quote__text--xxs) {
-  justify-content: flex-start;
+  /* Mismo alto que la reseña normal/larga (referencia) — un comentario corto
+     no encoge el cuadro, solo crece si el comentario es más largo que eso. */
+  min-height: 350px;
 }
 
 .bka-quote__mark {
@@ -454,22 +529,19 @@
 }
 
 .bka-quote__text--md {
-  font-size: 21px;
+  font-size: 24px;
 }
 
 .bka-quote__text--sm {
-  font-size: 17px;
-  line-height: 1.4;
+  font-size: 19px;
 }
 
 .bka-quote__text--xs {
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: 20px;
 }
 
 .bka-quote__text--xxs {
-  font-size: 12.5px;
-  line-height: 1.3;
+  font-size: 17px;
 }
 
 /* ---------- columna de IA ---------- */
@@ -506,9 +578,6 @@
   /* Acerca los dos recuadros a su título "Diagnóstico Nexo" sin tocar el
      espaciado del bloque de Análisis Nexo (comparten el mismo .bka-ribbon). */
   margin-top: -9px;
-  /* No dejar que los recuadros lleguen hasta donde sangran el vaso/las
-     patatas — medido contra la posición real de ambos productos. */
-  max-width: 378px;
 }
 
 .bka-diagnostics__item {
@@ -661,11 +730,10 @@
 
 .bka-analysis__copy {
   min-width: 0;
-  /* No dejar que el texto llegue hasta donde sangran el vaso de refresco ni
-     las patatas (bleed fijo a la derecha del canvas) — medido contra la
-     posición real de ambos productos, con margen de seguridad. Se corta
-     antes y sigue en la línea de abajo en vez de quedar tapado detrás. */
-  max-width: 290px;
+  /* No dejar que el texto llegue hasta donde sangra el vaso de refresco
+     (bleed fijo a la derecha del canvas) — se corta antes y sigue en la
+     línea de abajo en vez de quedar tapado detrás del vaso. */
+  max-width: 485px;
 }
 
 .bka-analysis__label {
@@ -715,8 +783,8 @@
 
 .bka-analysis--md .bka-analysis__copy {
   /* Icono más pequeño que en el tier base -> el texto arranca más a la
-     izquierda, así que hay un poco más de margen antes del vaso/patatas. */
-  max-width: 300px;
+     izquierda, así que hay más margen antes del vaso: se aprovecha. */
+  max-width: 505px;
 }
 
 .bka-analysis--sm li {
@@ -744,7 +812,7 @@
 }
 
 .bka-analysis--sm .bka-analysis__copy {
-  max-width: 318px;
+  max-width: 528px;
 }
 
 .bka-analysis--xs li {
@@ -773,7 +841,7 @@
 }
 
 .bka-analysis--xs .bka-analysis__copy {
-  max-width: 322px;
+  max-width: 538px;
 }
 
 /* ---------- fila inferior de paneles ---------- */
@@ -803,8 +871,45 @@
 }
 
 .bka-mini--under-quote {
-  flex: 0 0 auto;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -60px;
+  z-index: 3;
+  margin-left: 0;
   padding: 18px 38px;
+}
+
+/* Con comentarios cortos (<500 caracteres) sube bastante más, ya que el
+   cuadro del comentario queda más corto y deja mucho hueco debajo. */
+.bka-mini--under-quote.bka-mini--short {
+  bottom: 0px;
+}
+
+/* Con comentarios ya bastante largos (dentro del diseño normal, ≤900
+   caracteres — por encima de eso se usa el diseño alternativo centrado) se
+   desplaza a la derecha y se compacta un poco para no quedar tapada por la
+   hamburguesa. Con comentarios normales/cortos no se desplaza: se queda a
+   ancho completo. */
+.bka-mini--shift-sm {
+  margin-left: 140px;
+  padding: 26px;
+}
+
+.bka-mini--shift-sm .bka-mini__band {
+  font-size: 15px;
+  padding: 9px 18px;
+  margin-bottom: 14px;
+}
+
+.bka-mini--shift-sm .bka-impact__value {
+  font-size: 36px;
+  height: 44px;
+}
+
+.bka-mini--shift-sm .bka-impact__delta {
+  font-size: 33px;
+  height: 44px;
 }
 
 .bka-mini--under-quote .bka-mini__band {

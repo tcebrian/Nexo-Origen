@@ -35,12 +35,10 @@ function absUrl(base: string | undefined, path: string): string {
 }
 
 /**
- * Tamaño del comentario adaptado a su longitud real. La posición de todo el
- * layout es SIEMPRE la misma (comentario arriba-izq, impacto debajo,
- * análisis/diagnóstico a la derecha) — lo único que cambia con la longitud
- * del texto es el tamaño de letra, nunca la composición ni la posición de
- * ningún bloque. Así se evita el solape que salía antes al desplazar o
- * reestructurar cajas según el contenido.
+ * Tamaño del comentario adaptado a su longitud real. Los comentarios cortos
+ * o de longitud normal usan siempre el mismo tamaño base (el de la reseña
+ * normal/larga) — la letra solo se reduce a partir de aquí, cuanto más largo
+ * es el comentario.
  */
 function quoteSizeClass(length: number): string {
   if (length <= 260) return "sba-quote__text--lg";
@@ -49,6 +47,15 @@ function quoteSizeClass(length: number): string {
   if (length <= 1300) return "sba-quote__text--xs";
   return "sba-quote__text--xxs";
 }
+
+/**
+ * A partir de aquí el comentario es tan largo que intentar mantenerlo en el
+ * layout de dos columnas obliga a encoger demasiado el resto (Análisis,
+ * Diagnóstico, Conclusión). En vez de eso se usa un diseño alternativo: solo
+ * el comentario, centrado, y el Impacto en la media debajo — se quita todo
+ * lo demás en vez de aplastarlo.
+ */
+const EXTREME_COMMENT_CHARS = 380;
 
 const MAX_COMMENT_CHARS = 1400;
 const READ_MORE_HINT = " (pulsa el enlace para leer más)";
@@ -77,6 +84,16 @@ function footerTier(length: number): "lg" | "md" | "sm" | "xs" {
   if (length <= 180) return "md";
   if (length <= 260) return "sm";
   return "xs";
+}
+
+/**
+ * Dentro del diseño normal (comentarios ≤900 caracteres — por encima de eso
+ * se usa el diseño alternativo centrado), cuando el comentario ya es
+ * bastante largo "Impacto en la media" se desplaza hacia la derecha y se
+ * compacta un poco.
+ */
+function commentShiftTier(commentLength: number): "" | "sm" {
+  return commentLength <= 650 ? "" : "sm";
 }
 
 const EMPTY_TOKENS = new Set([
@@ -181,6 +198,9 @@ export const SibuyaAlertTemplate = forwardRef<HTMLDivElement, SibuyaAlertTemplat
       ANALYSIS_COPY_WIDTH
     );
 
+    const isExtremeComment = fullComment.length > EXTREME_COMMENT_CHARS;
+    const shiftTier = isExtremeComment ? "" : commentShiftTier(fullComment.length);
+
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
     const locationLabel = stripBrandPrefix(data.restaurant_name) || data.restaurant_name;
 
@@ -215,7 +235,7 @@ export const SibuyaAlertTemplate = forwardRef<HTMLDivElement, SibuyaAlertTemplat
           className="sba-product sba-product--sushi2"
         />
 
-        <div className="sba-sheet">
+        <div className={`sba-sheet ${isExtremeComment ? "sba-sheet--extreme" : ""}`}>
           {/* Header editorial */}
           <header className="sba-header">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -256,10 +276,9 @@ export const SibuyaAlertTemplate = forwardRef<HTMLDivElement, SibuyaAlertTemplat
             />
           </div>
 
-          <div className="sba-body">
-            <div className="sba-review-col">
-              {/* Tarjeta grande de la reseña — protagonista */}
-              <section className="sba-review">
+          {isExtremeComment ? (
+            <div className="sba-body sba-body--extreme">
+              <section className="sba-review sba-review--extreme">
                 <div className="sba-review__head">
                   <span className="sba-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
                   <div className="sba-review__meta">
@@ -280,7 +299,7 @@ export const SibuyaAlertTemplate = forwardRef<HTMLDivElement, SibuyaAlertTemplat
                   </div>
                 </div>
 
-                <div className="sba-quote">
+                <div className="sba-quote sba-quote--extreme">
                   <span className="sba-quote__mark sba-quote__mark--open" aria-hidden>
                     &ldquo;
                   </span>
@@ -293,7 +312,7 @@ export const SibuyaAlertTemplate = forwardRef<HTMLDivElement, SibuyaAlertTemplat
                 </div>
               </section>
 
-              <section className="sba-mini sba-mini--under-quote">
+              <section className="sba-mini sba-mini--extreme">
                 <p className="sba-mini__band">IMPACTO EN LA MEDIA</p>
                 <div className="sba-impact">
                   <div className="sba-impact__col">
@@ -319,48 +338,115 @@ export const SibuyaAlertTemplate = forwardRef<HTMLDivElement, SibuyaAlertTemplat
                 </div>
               </section>
             </div>
+          ) : (
+            <div className="sba-body">
+              <div className="sba-review-col">
+                {/* Tarjeta grande de la reseña — protagonista */}
+                <section className="sba-review">
+                  <div className="sba-review__head">
+                    <span className="sba-review__avatar">{data.review_author.trim().charAt(0).toUpperCase() || "?"}</span>
+                    <div className="sba-review__meta">
+                      <p className="sba-review__name">{data.review_author}</p>
+                      <p className="sba-review__datetime">
+                        <SbIconCalendar />
+                        <span>{data.review_date}</span>
+                        <span className="sba-review__sep" aria-hidden>
+                          |
+                        </span>
+                        <SbIconClock />
+                        <span>{data.review_time}</span>
+                      </p>
+                    </div>
+                    <div className="sba-review__rating">
+                      <StarRating stars={data.review_stars} size="lg" />
+                      <span className="sba-review__rating-value">{data.review_stars}/5</span>
+                    </div>
+                  </div>
 
-            {/* Columna de inteligencia artificial */}
-            <section className="sba-insights">
-              {analysisRows.length > 0 ? (
-                <>
-                  <p className="sba-ribbon">ANÁLISIS NEXO</p>
-                  <ul className={`sba-analysis sba-analysis--${analysisTier}`}>
-                    {analysisRows.map((row) => (
-                      <li key={row.key}>
-                        <span className="sba-analysis__icon">{row.icon}</span>
-                        <div className="sba-analysis__copy">
-                          <p className="sba-analysis__label">{row.label}</p>
-                          <p className="sba-analysis__value">{row.value}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : null}
+                  <div className="sba-quote">
+                    <span className="sba-quote__mark sba-quote__mark--open" aria-hidden>
+                      &ldquo;
+                    </span>
+                    <p className={`sba-quote__text ${quoteSizeClass(fullComment.length)}`}>
+                      {fullComment}
+                    </p>
+                    <span className="sba-quote__mark sba-quote__mark--close" aria-hidden>
+                      &rdquo;
+                    </span>
+                  </div>
+                </section>
 
-              <p className={`sba-ribbon ${analysisRows.length > 0 ? "sba-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
-              <div className={`sba-diagnostics sba-diagnostics--${analysisTier}`}>
-                <div className="sba-diagnostics__item">
-                  <span className="sba-diagnostics__icon sba-diagnostics__icon--neutral">
-                    <SbIconMood />
-                  </span>
-                  <p className="sba-diagnostics__label">Sentimiento</p>
-                  <p className="sba-diagnostics__value">{sentiment ?? "Sin datos"}</p>
-                </div>
-                <div className="sba-diagnostics__item">
-                  <span className={`sba-diagnostics__icon sba-diagnostics__icon--${riskTone(risk)}`}>
-                    <SbIconShield />
-                  </span>
-                  <p className="sba-diagnostics__label">Riesgo</p>
-                  <p className="sba-diagnostics__value">{risk ?? "Sin datos"}</p>
-                </div>
+                <section
+                  className={`sba-mini sba-mini--under-quote ${fullComment.length < 500 ? "sba-mini--short" : ""} ${shiftTier ? `sba-mini--shift-${shiftTier}` : ""}`}
+                >
+                  <p className="sba-mini__band">IMPACTO EN LA MEDIA</p>
+                  <div className="sba-impact">
+                    <div className="sba-impact__col">
+                      <p className="sba-impact__label">Media anterior</p>
+                      <p className="sba-impact__value">{data.previous_rating.toFixed(2)}</p>
+                      <span className="sba-impact__stars">
+                        <StarRating stars={data.previous_rating} size="md" />
+                      </span>
+                    </div>
+                    <div className="sba-impact__col">
+                      <p className="sba-impact__label">Media actual</p>
+                      <p className={`sba-impact__value sba-impact__value--tone-${tone}`}>
+                        {data.current_rating.toFixed(2)}
+                      </p>
+                      <span className="sba-impact__stars">
+                        <StarRating stars={data.current_rating} size="md" />
+                      </span>
+                    </div>
+                    <div className="sba-impact__col">
+                      <p className="sba-impact__label">Variación</p>
+                      <ImpactDelta delta={delta} />
+                    </div>
+                  </div>
+                </section>
               </div>
-            </section>
-          </div>
 
-          {/* Conclusión */}
-          {conclusion
+              {/* Columna de inteligencia artificial */}
+              <section className="sba-insights">
+                {analysisRows.length > 0 ? (
+                  <>
+                    <p className="sba-ribbon">ANÁLISIS NEXO</p>
+                    <ul className={`sba-analysis sba-analysis--${analysisTier}`}>
+                      {analysisRows.map((row) => (
+                        <li key={row.key}>
+                          <span className="sba-analysis__icon">{row.icon}</span>
+                          <div className="sba-analysis__copy">
+                            <p className="sba-analysis__label">{row.label}</p>
+                            <p className="sba-analysis__value">{row.value}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+
+                <p className={`sba-ribbon ${analysisRows.length > 0 ? "sba-ribbon--mt" : ""}`}>DIAGNÓSTICO NEXO</p>
+                <div className={`sba-diagnostics sba-diagnostics--${analysisTier}`}>
+                  <div className="sba-diagnostics__item">
+                    <span className="sba-diagnostics__icon sba-diagnostics__icon--neutral">
+                      <SbIconMood />
+                    </span>
+                    <p className="sba-diagnostics__label">Sentimiento</p>
+                    <p className="sba-diagnostics__value">{sentiment ?? "Sin datos"}</p>
+                  </div>
+                  <div className="sba-diagnostics__item">
+                    <span className={`sba-diagnostics__icon sba-diagnostics__icon--${riskTone(risk)}`}>
+                      <SbIconShield />
+                    </span>
+                    <p className="sba-diagnostics__label">Riesgo</p>
+                    <p className="sba-diagnostics__value">{risk ?? "Sin datos"}</p>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* Conclusión — se omite en el diseño extremo (solo comentario + Impacto en la media) */}
+          {!isExtremeComment && conclusion
             ? (() => {
                 const footerSizeTier = footerTier(conclusion.length);
                 return (
