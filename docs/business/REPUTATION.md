@@ -452,3 +452,13 @@ Una vez conseguido esto, reputación será el patrón para los siguientes domini
 - El registro viene de `resenas` y los motivos de `resena_motivos`, clasificados por `review_id`. Solo las reseñas de 1 y 2 estrellas entran en el reparto de motivos negativos.
 - Se comprueban el número de reseñas y el recuento por estrellas contra el resultado canónico antes de generar cada PDF. Si difieren, la ruta falla para evitar un documento incompleto.
 - La ruta verifica la sesión y el alcance del usuario antes de consultar datos o generar un archivo. No almacena instantáneas: las descargas reflejan los datos disponibles en ese momento.
+
+## 24.1 Imagen PNG mensual por restaurante
+
+Además del PDF, cada restaurante tiene una imagen PNG de 1920×1080 (`GET /api/informes/mensual/[id]/imagen?offset=`), con botón propio en `/dashboard/informes/mensual` y ZIP de imágenes por marca, separados de los del PDF.
+
+- Usa exactamente los mismos datos que el PDF (`loadMonthlyReport`): media, estrellas, semanas y motivos salen de las métricas oficiales de Supabase y se aplica la misma comprobación de consistencia.
+- La plantilla es única (`lib/reports/monthly/image/html.ts`, HTML + CSS + SVG, sin IA). Solo cambian los datos y el tema de marca (`themes.ts`: color, logo y pie). La plantilla no calcula nada; los agregados de presentación (porcentajes, semanas en objetivo/bajo objetivo/sin actividad, estado) están en `model.ts`.
+- Estado del mes: media ≥ objetivo = positivo; entre objetivo−0,40 y objetivo = vigilancia; por debajo = crítico. Una semana sin reseñas se muestra como "SIN ACTIVIDAD" (nunca como 0,00) y rompe la línea de la gráfica.
+- Los motivos críticos (1–2★) muestran los tres más frecuentes; el donut añade un tramo gris con el resto.
+- Se renderiza a 3840×2160 con Playwright y se reduce a 1920×1080. El navegador se abre con `lib/reports/monthly/browser.ts` (Chromium empaquetado en Vercel, el de Playwright en local), compartido con el PDF.

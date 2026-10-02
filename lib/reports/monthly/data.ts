@@ -40,7 +40,18 @@ export type MonthlyReportData = {
   endKey: string;
   current: SupabaseMetricRow;
   previous: SupabaseMetricRow;
-  weeks: { label: string; total: number; average: number | null; positive: number; neutral: number; negative: number }[];
+  weeks: {
+    label: string;
+    startKey: string;
+    endKey: string;
+    total: number;
+    average: number | null;
+    positive: number;
+    neutral: number;
+    negative: number;
+    /** Reseñas de 1 a 5 estrellas (índice 0 = 1★), mismas métricas oficiales que el resto. */
+    stars: [number, number, number, number, number];
+  }[];
   reviews: MonthlyReview[];
   reasons: { label: string; count: number; percent: number }[];
 };
@@ -210,8 +221,9 @@ export async function loadMonthlyReport(restaurantId: number, offset: number, sc
     weeks: weeks.map((week, i) => {
       const metric = weekRows[i]?.[0];
       const total = n(metric?.total_resenas);
-      return { label: week.label, total, average: total ? n(metric?.media_exacta) : null,
-        positive: n(metric?.positivas), neutral: n(metric?.neutras), negative: n(metric?.negativas) };
+      return { label: week.label, startKey: week.start, endKey: week.end, total, average: total ? n(metric?.media_exacta) : null,
+        positive: n(metric?.positivas), neutral: n(metric?.neutras), negative: n(metric?.negativas),
+        stars: [n(metric?.stars_1), n(metric?.stars_2), n(metric?.stars_3), n(metric?.stars_4), n(metric?.stars_5)] };
     }),
     reviews,
     reasons: [...reasonCounts].sort((a, b) => b[1] - a[1]).map(([label, count]) => ({

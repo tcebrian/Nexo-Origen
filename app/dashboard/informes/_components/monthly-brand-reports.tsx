@@ -3,6 +3,12 @@
 import { useState } from "react";
 
 type Restaurant = { id: number; name: string; city: string; total: number; average: number | null };
+type Format = "pdf" | "png";
+
+const FORMATS: Record<Format, { path: string; extension: string; error: string }> = {
+  pdf: { path: "", extension: "pdf", error: "No se pudo generar el PDF" },
+  png: { path: "/imagen", extension: "png", error: "No se pudo generar la imagen" },
+};
 
 function filenameFrom(response: Response, fallback: string): string {
   return response.headers.get("content-disposition")?.match(/filename="([^"]+)"/)?.[1] ?? fallback;
@@ -43,25 +49,26 @@ export function MonthlyBrandReports({ brand, offset }: { brand: string; offset: 
     } finally { setBusy(false); }
   }
 
-  async function fetchPdf(restaurant: Restaurant): Promise<{ filename: string; blob: Blob }> {
-    const response = await fetch(`/api/informes/mensual/${restaurant.id}?offset=${offset}`, { cache: "no-store" });
+  async function fetchReport(restaurant: Restaurant, format: Format): Promise<{ filename: string; blob: Blob }> {
+    const { path, extension, error: fallbackError } = FORMATS[format];
+    const response = await fetch(`/api/informes/mensual/${restaurant.id}${path}?offset=${offset}`, { cache: "no-store" });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      throw new Error(`${restaurant.name}: ${payload.error || "No se pudo generar el PDF"}`);
+      throw new Error(`${restaurant.name}: ${payload.error || fallbackError}`);
     }
-    return { blob: await response.blob(), filename: filenameFrom(response, `Nexo_Origen_${restaurant.id}_${period}.pdf`) };
+    return { blob: await response.blob(), filename: filenameFrom(response, `Nexo_Origen_${restaurant.id}_${period}.${extension}`) };
   }
 
-  async function downloadOne(restaurant: Restaurant) {
+  async function downloadOne(restaurant: Restaurant, format: Format) {
     setBusy(true); setError(""); setProgress(`Preparando ${restaurant.name}…`);
     try {
-      const pdf = await fetchPdf(restaurant);
-      saveBlob(pdf.blob, pdf.filename);
+      const file = await fetchReport(restaurant, format);
+      saveBlob(file.blob, file.filename);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Error de descarga"); }
     finally { setBusy(false); setProgress(""); }
   }
 
-  async function downloadAll() {
+  async function downloadAll(format: Format) {
     if (!restaurants?.length) return;
     setBusy(true); setError("");
     try {
@@ -69,14 +76,14 @@ export function MonthlyBrandReports({ brand, offset }: { brand: string; offset: 
       const zip = new JSZip();
       for (let index = 0; index < restaurants.length; index++) {
         setProgress(`Generando ${index + 1} de ${restaurants.length}: ${restaurants[index].name}`);
-        const { blob, filename } = await fetchPdf(restaurants[index]);
+        const { blob, filename } = await fetchReport(restaurants[index], format);
         zip.file(filename, blob);
       }
       setProgress("Preparando ZIP…");
       const archive = await zip.generateAsync({ type: "blob", compression: "STORE" });
-      const slug = brand.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      const slug = brand.normalize("NFD").replace(/[̀-ͯ]/g, "")
         .toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      saveBlob(archive, `Nexo_Origen_${slug}_${period}.zip`);
+      saveBlob(archive, `Nexo_Origen_${slug}_${period}${format === "png" ? "_imagenes" : ""}.zip`);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo preparar el ZIP"); }
     finally { setBusy(false); setProgress(""); }
   }
@@ -91,15 +98,24 @@ export function MonthlyBrandReports({ brand, offset }: { brand: string; offset: 
       {restaurants && <>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-gray-400">{restaurants.length} restaurantes · {period}</p>
-          <button type="button" disabled={busy || !restaurants.length} onClick={downloadAll}
-            className="rounded-lg bg-violet-500 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-400 disabled:opacity-60">
-            Descargar PDF de la marca (ZIP)
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" disabled={busy || !restaurants.length} onClick={() => downloadAll("pdf")}
+              className="rounded-lg bg-violet-500 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-400 disabled:opacity-60">
+              Descargar PDF de la marca (ZIP)
+            </button>
+            <button type="button" disabled={busy || !restaurants.length} onClick={() => downloadAll("png")}
+              className="rounded-lg border border-violet-400/40 px-3 py-2 text-xs font-semibold text-violet-200 hover:border-violet-300/60 hover:bg-violet-500/15 disabled:opacity-60">
+              Descargar imágenes de la marca (ZIP)
+            </button>
+          </div>
         </div>
         <div className="max-h-80 space-y-2 overflow-auto pr-1">
           {restaurants.map((restaurant) => <div key={restaurant.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
             <div className="min-w-0"><p className="truncate text-xs font-medium text-gray-100">{restaurant.name}</p><p className="text-[11px] text-gray-500">{restaurant.total} reseñas · {restaurant.average === null ? "Sin media" : restaurant.average.toFixed(2).replace(".", ",") + " ★"}</p></div>
-            <button type="button" disabled={busy} onClick={() => downloadOne(restaurant)} className="shrink-0 text-xs font-semibold text-violet-300 hover:text-white disabled:opacity-50">PDF ↓</button>
+            <div className="flex shrink-0 items-center gap-2">
+              <button type="button" disabled={busy} onClick={() => downloadOne(restaurant, "pdf")} className="rounded-md border border-white/10 px-2 py-1 text-xs font-semibold text-violet-300 hover:border-violet-300/40 hover:text-white disabled:opacity-50">PDF ↓</button>
+              <button type="button" disabled={busy} onClick={() => downloadOne(restaurant, "png")} className="rounded-md border border-white/10 px-2 py-1 text-xs font-semibold text-violet-300 hover:border-violet-300/40 hover:text-white disabled:opacity-50">Imagen PNG ↓</button>
+            </div>
           </div>)}
         </div>
       </>}

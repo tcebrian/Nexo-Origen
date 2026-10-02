@@ -1,0 +1,141 @@
+import type { MonthlyReportData } from "../data";
+import { resolveMonthlyImageTheme, type MonthlyImageTheme } from "./themes";
+
+/**
+ * Datos ya preparados para pintar el informe mensual en imagen.
+ *
+ * Todas las cifras salen de las mismas métricas oficiales (Supabase) que usa el
+ * PDF mensual; aquí solo se derivan agregados de presentación (porcentajes,
+ * semanas en objetivo, estado). La plantilla visual no calcula nada.
+ */
+
+export type MonthlyImageStatus = "positive" | "watch" | "critical" | "empty";
+
+export type MonthlyImageWeek = {
+  index: number;
+  label: string;
+  /** Reseñas de 5 a 1 estrellas. */
+  ratings: [number, number, number, number, number];
+  total: number;
+  /** null = semana sin actividad (nunca se muestra como 0.00). */
+  average: number | null;
+  /** Estado frente al objetivo, solo si hay reseñas. */
+  onTarget: boolean | null;
+};
+
+export type MonthlyImageModel = {
+  theme: MonthlyImageTheme;
+  restaurantTitle: string;
+  monthName: string;
+  year: number;
+  monthLower: string;
+  generatedDate: string;
+  objective: number;
+  average: number | null;
+  total: number;
+  /** Reseñas de 5 a 1 estrellas. */
+  ratings: [number, number, number, number, number];
+  positive: number;
+  positivePct: number;
+  /** Reseñas 1-3★ (las que quedan fuera de 4-5★). */
+  belowPositive: number;
+  critical: number;
+  reasons: { name: string; count: number; percent: number }[];
+  weeks: MonthlyImageWeek[];
+  weeksOnTarget: number;
+  weeksBelowTarget: number;
+  weeksWithoutActivity: number;
+  status: MonthlyImageStatus;
+  statusTitle: string;
+};
+
+const normalize = (value: string) =>
+  value.trim().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/** Hasta 0,40 por debajo del objetivo se considera "vigilancia"; por debajo de eso, crítico. */
+const WATCH_MARGIN = 0.4;
+
+/** "BK ZIZUR MAYOR" / "Burger King Zizur" -> "BURGER KING ZIZUR MAYOR". */
+function restaurantTitle(brandDisplay: string, name: string): string {
+  const cleaned = name.trim().replace(/\s+/g, " ");
+  // Si el nombre del local ya incluye la marca ("Taberna del Volapié"), no se repite delante.
+  const distinctive = normalize(brandDisplay).split(" ").pop() ?? "";
+  if (distinctive.length >= 5 && normalize(cleaned).includes(distinctive)) return cleaned.toUpperCase();
+  const strip = new RegExp(`^(${brandDisplay}|bk|pp|sg|th|tv|rb|sb)\\s+`, "i");
+  const locality = cleaned.replace(strip, "").trim();
+  return `${brandDisplay} ${locality || cleaned}`.toUpperCase();
+}
+
+function formatGeneratedDate(now: Date): string {
+  const [year, month, day] = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(now).split("-").map(Number);
+  return `${String(day).padStart(2, "0")} de ${MONTHS[month - 1]} de ${year}`;
+}
+
+function weekLabel(startKey: string, endKey: string): string {
+  const month = MONTHS[Number(endKey.slice(5, 7)) - 1].toUpperCase();
+  return `${startKey.slice(8)} – ${endKey.slice(8)} ${month}`;
+}
+
+export function buildMonthlyImageModel(data: MonthlyReportData, now: Date = new Date()): MonthlyImageModel {
+  const theme = resolveMonthlyImageTheme(data.restaurant.brand);
+  const objective = data.restaurant.target;
+  const c = data.current;
+  const stars = [c.stars_5, c.stars_4, c.stars_3, c.stars_2, c.stars_1].map((v) => Number(v) || 0) as MonthlyImageModel["ratings"];
+  const total = stars.reduce((sum, v) => sum + v, 0);
+  const average = total ? Number(c.media_exacta) : null;
+  const positive = stars[0] + stars[1];
+  const critical = stars[3] + stars[4];
+
+  const weeks: MonthlyImageWeek[] = data.weeks.map((week, index) => {
+    const ratings = [week.stars[4], week.stars[3], week.stars[2], week.stars[1], week.stars[0]] as MonthlyImageWeek["ratings"];
+    const weekTotal = ratings.reduce((sum, v) => sum + v, 0);
+    return {
+      index: index + 1,
+      label: weekLabel(week.startKey, week.endKey),
+      ratings,
+      total: weekTotal,
+      average: weekTotal ? week.average : null,
+      onTarget: weekTotal && week.average !== null ? week.average >= objective : null,
+    };
+  });
+  const weeksOnTarget = weeks.filter((w) => w.onTarget === true).length;
+  const weeksBelowTarget = weeks.filter((w) => w.onTarget === false).length;
+  const weeksWithoutActivity = weeks.filter((w) => w.total === 0).length;
+
+  const status: MonthlyImageStatus = average === null
+    ? "empty"
+    : average >= objective ? "positive"
+    : average >= objective - WATCH_MARGIN ? "watch" : "critical";
+  const positivePct = total ? positive / total * 100 : 0;
+  const statusTitle = status === "empty" ? "Sin reseñas este mes."
+    : status === "positive" ? "Mes por encima del objetivo." : "Mes por debajo del objetivo.";
+
+  const monthIndex = Number(data.startKey.slice(5, 7)) - 1;
+  return {
+    theme,
+    restaurantTitle: restaurantTitle(theme.displayName, data.restaurant.name),
+    monthName: MONTHS[monthIndex].toUpperCase(),
+    monthLower: MONTHS[monthIndex],
+    year: Number(data.startKey.slice(0, 4)),
+    generatedDate: formatGeneratedDate(now),
+    objective,
+    average,
+    total,
+    ratings: stars,
+    positive,
+    positivePct,
+    belowPositive: total - positive,
+    critical,
+    reasons: data.reasons.slice(0, 3).map((r) => ({ name: r.label, count: r.count, percent: r.percent })),
+    weeks,
+    weeksOnTarget,
+    weeksBelowTarget,
+    weeksWithoutActivity,
+    status,
+    statusTitle,
+  };
+}
