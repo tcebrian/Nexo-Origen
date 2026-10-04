@@ -77,9 +77,9 @@ const NON_CAUSAL_REASONS = new Set(["sin motivo", "valoracion incoherente", "no 
 const isCausalReason = (label: string) =>
   !NON_CAUSAL_REASONS.has(label.trim().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase());
 
-/** Santa Gloria, Popeyes y Tim Hortons tratan como críticas las reseñas de 1 a 3★ (reseñas de atención); el resto, 1 a 2★. */
+/** Santa Gloria, Popeyes, Tim Hortons y Ribs tratan como críticas las reseñas de 1 a 3★ (reseñas de atención); el resto, 1 a 2★. */
 function criticalMaxStarsFor(brand: string): 2 | 3 {
-  return /santa gloria|popeyes|tim hortons/.test(brand.trim().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()) ? 3 : 2;
+  return /santa gloria|popeyes|tim hortons|ribs/.test(brand.trim().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()) ? 3 : 2;
 }
 const key = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 const norm = (value: string) => value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();

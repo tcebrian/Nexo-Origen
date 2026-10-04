@@ -51,6 +51,8 @@ export type MonthlyImageModel = {
   causalReasons: { name: string; count: number; percent: number }[];
   /** Críticas sin causa identificable, excluidas del reparto de motivos. */
   unclassifiedCritical: number;
+  /** Incidencias con causa asignada (suma de todos los motivos con causa); puede ser menor que `critical`. */
+  classifiedIncidents: number;
   weeks: MonthlyImageWeek[];
   weeksOnTarget: number;
   weeksBelowTarget: number;
@@ -157,6 +159,7 @@ export function buildMonthlyImageModel(data: MonthlyReportData, now: Date = new 
     critical,
     reasons: data.criticalReasons.slice(0, 3).map((r) => ({ name: r.label, count: r.count, percent: reasonsTotal ? (r.count / reasonsTotal) * 100 : 0 })),
     causalReasons: causal.slice(0, 3).map((r) => ({ name: r.label, count: r.count, percent: causalTotal ? (r.count / causalTotal) * 100 : 0 })),
+    classifiedIncidents: causalTotal,
     unclassifiedCritical: data.criticalReasons.filter((r) => !r.causal).reduce((sum, r) => sum + r.count, 0),
     weeks,
     weeksOnTarget,

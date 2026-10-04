@@ -6,6 +6,7 @@ import { launchReportBrowser } from "../browser";
 import { buildMonthlyImageHtml } from "./html";
 import { buildMonthlyImageModel, type MonthlyImageModel } from "./model";
 import { buildPopeyesImageHtml } from "./popeyes-html";
+import { buildRibsImageHtml } from "./ribs-html";
 import { buildSantaGloriaImageHtml } from "./santa-gloria-html";
 import { buildTimHortonsImageHtml } from "./tim-hortons-html";
 import { MONTHLY_IMAGE_HEIGHT, MONTHLY_IMAGE_WIDTH } from "./shared";
@@ -21,6 +22,7 @@ export function buildMonthlyImageDocument(model: MonthlyImageModel): Promise<str
   if (model.theme.id === "sg") return buildSantaGloriaImageHtml(model);
   if (model.theme.id === "pp") return buildPopeyesImageHtml(model);
   if (model.theme.id === "th") return buildTimHortonsImageHtml(model);
+  if (model.theme.id === "rb") return buildRibsImageHtml(model);
   return buildMonthlyImageHtml(model);
 }
 
