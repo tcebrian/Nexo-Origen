@@ -26,6 +26,10 @@ export type MonthlyImageWeek = {
 export type MonthlyImageModel = {
   theme: MonthlyImageTheme;
   restaurantTitle: string;
+  /** Localidad sin el nombre de la marca ("PAS DE LA CASA"). */
+  locality: string;
+  /** Ciudad registrada del restaurante (puede coincidir con la localidad). */
+  city: string;
   monthName: string;
   year: number;
   monthLower: string;
@@ -136,6 +140,8 @@ export function buildMonthlyImageModel(data: MonthlyReportData, now: Date = new 
   const model: MonthlyImageModel = {
     theme,
     restaurantTitle: restaurantTitle(theme.displayName, data.restaurant.name),
+    locality: restaurantTitle(theme.displayName, data.restaurant.name).replace(new RegExp(`^${theme.displayName.toUpperCase()}\\s+`), ""),
+    city: data.restaurant.city.trim().toUpperCase(),
     monthName: MONTHS[monthIndex].toUpperCase(),
     monthLower: MONTHS[monthIndex],
     year: Number(data.startKey.slice(0, 4)),
