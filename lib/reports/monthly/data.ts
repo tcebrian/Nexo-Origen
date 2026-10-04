@@ -57,7 +57,7 @@ export type MonthlyReportData = {
   /** Hasta cuántas estrellas cuenta una reseña como crítica en este restaurante (Santa Gloria 3, resto 2). */
   criticalMaxStars: 2 | 3;
   /** Motivos de todas las reseñas críticas (1..criticalMaxStars★), más frecuente primero. */
-  criticalReasons: { label: string; count: number }[];
+  criticalReasons: { label: string; count: number; causal: boolean }[];
 };
 
 type CatalogRow = {
@@ -72,9 +72,14 @@ type CatalogRow = {
 
 const n = (value: unknown) => Number(value) || 0;
 
-/** Santa Gloria trata como críticas las reseñas de 1 a 3★ (reseñas de atención); el resto, 1 a 2★. */
+/** Motivos que en realidad significan "sin causa identificable" (no entran en el reparto por causas). */
+const NON_CAUSAL_REASONS = new Set(["sin motivo", "valoracion incoherente", "no operativo", "sin comentario", "otros", "otro"]);
+const isCausalReason = (label: string) =>
+  !NON_CAUSAL_REASONS.has(label.trim().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase());
+
+/** Santa Gloria y Popeyes tratan como críticas las reseñas de 1 a 3★ (reseñas de atención); el resto, 1 a 2★. */
 function criticalMaxStarsFor(brand: string): 2 | 3 {
-  return /santa gloria/.test(brand.trim().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()) ? 3 : 2;
+  return /santa gloria|popeyes/.test(brand.trim().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()) ? 3 : 2;
 }
 const key = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 const norm = (value: string) => value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -244,6 +249,6 @@ export async function loadMonthlyReport(restaurantId: number, offset: number, sc
       label, count, percent: totalNegatives ? count / totalNegatives * 100 : 0,
     })),
     criticalMaxStars,
-    criticalReasons: [...criticalCounts].sort((a, b) => b[1] - a[1]).map(([label, count]) => ({ label, count })),
+    criticalReasons: [...criticalCounts].sort((a, b) => b[1] - a[1]).map(([label, count]) => ({ label, count, causal: isCausalReason(label) })),
   };
 }

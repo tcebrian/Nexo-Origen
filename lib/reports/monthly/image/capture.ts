@@ -5,6 +5,7 @@ import type { MonthlyReportData } from "../data";
 import { launchReportBrowser } from "../browser";
 import { buildMonthlyImageHtml } from "./html";
 import { buildMonthlyImageModel, type MonthlyImageModel } from "./model";
+import { buildPopeyesImageHtml } from "./popeyes-html";
 import { buildSantaGloriaImageHtml } from "./santa-gloria-html";
 import { MONTHLY_IMAGE_HEIGHT, MONTHLY_IMAGE_WIDTH } from "./shared";
 
@@ -16,7 +17,9 @@ const CAPTURE_SCALE_FACTOR = 2;
 
 /** Cada marca con plantilla dedicada usa la suya; el resto, la plantilla base con su tema. */
 export function buildMonthlyImageDocument(model: MonthlyImageModel): Promise<string> {
-  return model.theme.id === "sg" ? buildSantaGloriaImageHtml(model) : buildMonthlyImageHtml(model);
+  if (model.theme.id === "sg") return buildSantaGloriaImageHtml(model);
+  if (model.theme.id === "pp") return buildPopeyesImageHtml(model);
+  return buildMonthlyImageHtml(model);
 }
 
 export async function generateMonthlyPng(data: MonthlyReportData): Promise<Buffer> {

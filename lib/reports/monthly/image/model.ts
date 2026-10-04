@@ -43,6 +43,10 @@ export type MonthlyImageModel = {
   criticalMaxStars: 2 | 3;
   critical: number;
   reasons: { name: string; count: number; percent: number }[];
+  /** Motivos con causa real (sin "Sin motivo", "Otros"…): el % se reparte solo entre ellos. */
+  causalReasons: { name: string; count: number; percent: number }[];
+  /** Críticas sin causa identificable, excluidas del reparto de motivos. */
+  unclassifiedCritical: number;
   weeks: MonthlyImageWeek[];
   weeksOnTarget: number;
   weeksBelowTarget: number;
@@ -101,6 +105,8 @@ export function buildMonthlyImageModel(data: MonthlyReportData, now: Date = new 
   const criticalMaxStars = data.criticalMaxStars;
   const critical = stars[3] + stars[4] + (criticalMaxStars === 3 ? stars[2] : 0);
   const reasonsTotal = data.criticalReasons.reduce((sum, r) => sum + r.count, 0) || critical;
+  const causal = data.criticalReasons.filter((r) => r.causal);
+  const causalTotal = causal.reduce((sum, r) => sum + r.count, 0);
 
   const weeks: MonthlyImageWeek[] = data.weeks.map((week, index) => {
     const ratings = [week.stars[4], week.stars[3], week.stars[2], week.stars[1], week.stars[0]] as MonthlyImageWeek["ratings"];
@@ -144,6 +150,8 @@ export function buildMonthlyImageModel(data: MonthlyReportData, now: Date = new 
     criticalMaxStars,
     critical,
     reasons: data.criticalReasons.slice(0, 3).map((r) => ({ name: r.label, count: r.count, percent: reasonsTotal ? (r.count / reasonsTotal) * 100 : 0 })),
+    causalReasons: causal.slice(0, 3).map((r) => ({ name: r.label, count: r.count, percent: causalTotal ? (r.count / causalTotal) * 100 : 0 })),
+    unclassifiedCritical: data.criticalReasons.filter((r) => !r.causal).reduce((sum, r) => sum + r.count, 0),
     weeks,
     weeksOnTarget,
     weeksBelowTarget,
