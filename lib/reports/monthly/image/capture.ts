@@ -10,6 +10,7 @@ import { buildRibsImageHtml } from "./ribs-html";
 import { buildSantaGloriaImageHtml } from "./santa-gloria-html";
 import { buildSibuyaImageHtml } from "./sibuya-html";
 import { buildTimHortonsImageHtml } from "./tim-hortons-html";
+import { buildVolapieImageHtml } from "./volapie-html";
 import { MONTHLY_IMAGE_HEIGHT, MONTHLY_IMAGE_WIDTH } from "./shared";
 
 /**
@@ -25,6 +26,7 @@ export function buildMonthlyImageDocument(model: MonthlyImageModel): Promise<str
   if (model.theme.id === "th") return buildTimHortonsImageHtml(model);
   if (model.theme.id === "rb") return buildRibsImageHtml(model);
   if (model.theme.id === "sb") return buildSibuyaImageHtml(model);
+  if (model.theme.id === "tv") return buildVolapieImageHtml(model);
   return buildMonthlyImageHtml(model);
 }
 

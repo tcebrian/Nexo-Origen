@@ -30,6 +30,8 @@ export type MonthlyImageModel = {
   locality: string;
   /** Ciudad registrada del restaurante (puede coincidir con la localidad). */
   city: string;
+  /** Dirección registrada del restaurante. */
+  address: string;
   monthName: string;
   year: number;
   monthLower: string;
@@ -144,6 +146,7 @@ export function buildMonthlyImageModel(data: MonthlyReportData, now: Date = new 
     restaurantTitle: restaurantTitle(theme.displayName, data.restaurant.name),
     locality: restaurantTitle(theme.displayName, data.restaurant.name).replace(new RegExp(`^${theme.displayName.toUpperCase()}\\s+`), ""),
     city: data.restaurant.city.trim().toUpperCase(),
+    address: data.restaurant.address.trim(),
     monthName: MONTHS[monthIndex].toUpperCase(),
     monthLower: MONTHS[monthIndex],
     year: Number(data.startKey.slice(0, 4)),
