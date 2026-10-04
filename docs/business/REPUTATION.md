@@ -462,3 +462,6 @@ Además del PDF, cada restaurante tiene una imagen PNG de 1920×1080 (`GET /api/
 - Estado del mes: media ≥ objetivo = positivo; entre objetivo−0,40 y objetivo = vigilancia; por debajo = crítico. Una semana sin reseñas se muestra como "SIN ACTIVIDAD" (nunca como 0,00) y rompe la línea de la gráfica.
 - Los motivos críticos (1–2★) muestran los tres más frecuentes; el donut añade un tramo gris con el resto.
 - Se renderiza a 3840×2160 con Playwright y se reduce a 1920×1080. El navegador se abre con `lib/reports/monthly/browser.ts` (Chromium empaquetado en Vercel, el de Playwright en local), compartido con el PDF.
+
+- Santa Gloria tiene plantilla dedicada (`santa-gloria-html.ts`, marrón/naranja, cifras en serif, pie blanco) y se elige por marca en `capture.ts`. El resto de marcas usan la plantilla base con su tema. En Santa Gloria las reseñas críticas son 1–3★ (`criticalMaxStars` en `loadMonthlyReport`); el resto, 1–2★. Los motivos críticos (`criticalReasons`) se calculan con ese rango sin cambiar los motivos 1–2★ que usa el PDF, y sus porcentajes son sobre el total de motivos.
+- Las semanas son las del sistema (lunes a domingo, con tramos parciales al inicio y fin de mes), por lo que un mes puede mostrar 4, 5 o 6 bloques.

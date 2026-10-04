@@ -3,8 +3,10 @@ import "server-only";
 import { optimizeNetworkSummaryPng } from "@/lib/reports/network-summary/optimize-png";
 import type { MonthlyReportData } from "../data";
 import { launchReportBrowser } from "../browser";
-import { buildMonthlyImageHtml, MONTHLY_IMAGE_HEIGHT, MONTHLY_IMAGE_WIDTH } from "./html";
-import { buildMonthlyImageModel } from "./model";
+import { buildMonthlyImageHtml } from "./html";
+import { buildMonthlyImageModel, type MonthlyImageModel } from "./model";
+import { buildSantaGloriaImageHtml } from "./santa-gloria-html";
+import { MONTHLY_IMAGE_HEIGHT, MONTHLY_IMAGE_WIDTH } from "./shared";
 
 /**
  * Se renderiza a 2× (3840×2160) y se reduce con Lanczos a 1920×1080 para que
@@ -12,8 +14,13 @@ import { buildMonthlyImageModel } from "./model";
  */
 const CAPTURE_SCALE_FACTOR = 2;
 
+/** Cada marca con plantilla dedicada usa la suya; el resto, la plantilla base con su tema. */
+export function buildMonthlyImageDocument(model: MonthlyImageModel): Promise<string> {
+  return model.theme.id === "sg" ? buildSantaGloriaImageHtml(model) : buildMonthlyImageHtml(model);
+}
+
 export async function generateMonthlyPng(data: MonthlyReportData): Promise<Buffer> {
-  const html = await buildMonthlyImageHtml(buildMonthlyImageModel(data));
+  const html = await buildMonthlyImageDocument(buildMonthlyImageModel(data));
   const { page, close } = await launchReportBrowser({
     viewport: { width: MONTHLY_IMAGE_WIDTH, height: MONTHLY_IMAGE_HEIGHT },
     deviceScaleFactor: CAPTURE_SCALE_FACTOR,

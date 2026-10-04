@@ -39,6 +39,8 @@ export type MonthlyImageModel = {
   positivePct: number;
   /** Reseñas 1-3★ (las que quedan fuera de 4-5★). */
   belowPositive: number;
+  /** Hasta cuántas estrellas es crítica una reseña (Santa Gloria 3, resto 2). */
+  criticalMaxStars: 2 | 3;
   critical: number;
   reasons: { name: string; count: number; percent: number }[];
   weeks: MonthlyImageWeek[];
@@ -80,6 +82,14 @@ function weekLabel(startKey: string, endKey: string): string {
   return `${startKey.slice(8)} – ${endKey.slice(8)} ${month}`;
 }
 
+function assertValidModel(model: MonthlyImageModel): void {
+  const numbers = [model.total, model.objective, ...model.ratings, ...model.weeks.flatMap((w) => [w.total, ...w.ratings])];
+  if (numbers.some((v) => !Number.isFinite(v) || v < 0)) throw new Error("Datos del informe no válidos (valores negativos o no numéricos)");
+  if (model.average !== null && (model.average < 1 || model.average > 5)) throw new Error("Media mensual fuera de rango");
+  const weeksTotal = model.weeks.reduce((sum, w) => sum + w.total, 0);
+  if (weeksTotal !== model.total) throw new Error("Las semanas no suman el total de reseñas del mes");
+}
+
 export function buildMonthlyImageModel(data: MonthlyReportData, now: Date = new Date()): MonthlyImageModel {
   const theme = resolveMonthlyImageTheme(data.restaurant.brand);
   const objective = data.restaurant.target;
@@ -88,7 +98,9 @@ export function buildMonthlyImageModel(data: MonthlyReportData, now: Date = new 
   const total = stars.reduce((sum, v) => sum + v, 0);
   const average = total ? Number(c.media_exacta) : null;
   const positive = stars[0] + stars[1];
-  const critical = stars[3] + stars[4];
+  const criticalMaxStars = data.criticalMaxStars;
+  const critical = stars[3] + stars[4] + (criticalMaxStars === 3 ? stars[2] : 0);
+  const reasonsTotal = data.criticalReasons.reduce((sum, r) => sum + r.count, 0) || critical;
 
   const weeks: MonthlyImageWeek[] = data.weeks.map((week, index) => {
     const ratings = [week.stars[4], week.stars[3], week.stars[2], week.stars[1], week.stars[0]] as MonthlyImageWeek["ratings"];
@@ -115,7 +127,7 @@ export function buildMonthlyImageModel(data: MonthlyReportData, now: Date = new 
     : status === "positive" ? "Mes por encima del objetivo." : "Mes por debajo del objetivo.";
 
   const monthIndex = Number(data.startKey.slice(5, 7)) - 1;
-  return {
+  const model: MonthlyImageModel = {
     theme,
     restaurantTitle: restaurantTitle(theme.displayName, data.restaurant.name),
     monthName: MONTHS[monthIndex].toUpperCase(),
@@ -129,8 +141,9 @@ export function buildMonthlyImageModel(data: MonthlyReportData, now: Date = new 
     positive,
     positivePct,
     belowPositive: total - positive,
+    criticalMaxStars,
     critical,
-    reasons: data.reasons.slice(0, 3).map((r) => ({ name: r.label, count: r.count, percent: r.percent })),
+    reasons: data.criticalReasons.slice(0, 3).map((r) => ({ name: r.label, count: r.count, percent: reasonsTotal ? (r.count / reasonsTotal) * 100 : 0 })),
     weeks,
     weeksOnTarget,
     weeksBelowTarget,
@@ -138,4 +151,6 @@ export function buildMonthlyImageModel(data: MonthlyReportData, now: Date = new 
     status,
     statusTitle,
   };
+  assertValidModel(model);
+  return model;
 }

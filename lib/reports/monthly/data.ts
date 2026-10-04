@@ -54,6 +54,10 @@ export type MonthlyReportData = {
   }[];
   reviews: MonthlyReview[];
   reasons: { label: string; count: number; percent: number }[];
+  /** Hasta cuántas estrellas cuenta una reseña como crítica en este restaurante (Santa Gloria 3, resto 2). */
+  criticalMaxStars: 2 | 3;
+  /** Motivos de todas las reseñas críticas (1..criticalMaxStars★), más frecuente primero. */
+  criticalReasons: { label: string; count: number }[];
 };
 
 type CatalogRow = {
@@ -67,6 +71,11 @@ type CatalogRow = {
 };
 
 const n = (value: unknown) => Number(value) || 0;
+
+/** Santa Gloria trata como críticas las reseñas de 1 a 3★ (reseñas de atención); el resto, 1 a 2★. */
+function criticalMaxStarsFor(brand: string): 2 | 3 {
+  return /santa gloria/.test(brand.trim().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()) ? 3 : 2;
+}
 const key = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 const norm = (value: string) => value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
@@ -188,20 +197,25 @@ export async function loadMonthlyReport(restaurantId: number, offset: number, sc
     throw new Error("Las reseñas del registro no coinciden con los indicadores oficiales; no se generó un PDF incompleto");
   }
 
-  const negatives = rawReviews.filter((r) => Number(r.estrellas) <= 2);
+  const criticalMaxStars = criticalMaxStarsFor(row.marca);
+  const criticals = rawReviews.filter((r) => Number(r.estrellas) <= criticalMaxStars);
   const { rows: motives, error: motivesError } = await fetchResenaMotivosForReviewIds(
-    negatives.map((r) => String(r.review_id ?? "")).filter(Boolean)
+    criticals.map((r) => String(r.review_id ?? "")).filter(Boolean)
   );
   if (motivesError) throw new Error(`No se pudieron cargar los motivos: ${motivesError}`);
   const motiveById = new Map(motives.map((m) => [m.review_id, m.categoria]));
   const reasonCounts = new Map<string, number>();
+  const criticalCounts = new Map<string, number>();
   const reviews: MonthlyReview[] = rawReviews.map((r) => {
     const stars = Number(r.estrellas);
     const category = motiveById.get(String(r.review_id ?? ""));
-    const reason = stars <= 2
-      ? category ? categoriaMotivoLabel(category) : classifyReviewReason({ comentario: r.comentario })
-      : null;
+    const reasonOf = () => category ? categoriaMotivoLabel(category) : classifyReviewReason({ comentario: r.comentario });
+    const reason = stars <= 2 ? reasonOf() : null;
     if (reason) reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+    if (stars <= criticalMaxStars) {
+      const label = reason ?? reasonOf();
+      criticalCounts.set(label, (criticalCounts.get(label) ?? 0) + 1);
+    }
     return {
       id: String(r.review_id ?? r.id), author: r.autor?.trim() || "Cliente anónimo",
       date: (r.fecha_resena ?? r.created_at ?? "").slice(0, 10),
@@ -229,5 +243,7 @@ export async function loadMonthlyReport(restaurantId: number, offset: number, sc
     reasons: [...reasonCounts].sort((a, b) => b[1] - a[1]).map(([label, count]) => ({
       label, count, percent: totalNegatives ? count / totalNegatives * 100 : 0,
     })),
+    criticalMaxStars,
+    criticalReasons: [...criticalCounts].sort((a, b) => b[1] - a[1]).map(([label, count]) => ({ label, count })),
   };
 }

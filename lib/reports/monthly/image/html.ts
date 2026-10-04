@@ -1,8 +1,9 @@
 import "server-only";
 
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import type { MonthlyImageModel, MonthlyImageStatus } from "./model";
+import { calendarCheck, dataUri, esc, fmt2, nexoLogoHtml, pct1, ratingStars, star, MONTHLY_IMAGE_HEIGHT, MONTHLY_IMAGE_WIDTH } from "./shared";
+
+export { MONTHLY_IMAGE_HEIGHT, MONTHLY_IMAGE_WIDTH };
 
 /**
  * Plantilla única (HTML + CSS + SVG) del informe mensual en imagen, 1920×1080.
@@ -11,52 +12,13 @@ import type { MonthlyImageModel, MonthlyImageStatus } from "./model";
  * idéntico en local y en Vercel, sin peticiones de red.
  */
 
-export const MONTHLY_IMAGE_WIDTH = 1920;
-export const MONTHLY_IMAGE_HEIGHT = 1080;
-
 const GREEN = "#087C43";
 const AMBER = "#D98200";
 const RED = "#F3151C";
 const STAR_COLORS = [GREEN, "#FF8500", "#F5A000", RED, RED];
 const STATUS_COLOR: Record<MonthlyImageStatus, string> = { positive: GREEN, watch: AMBER, critical: RED, empty: "#8A8580" };
 
-const MIME: Record<string, string> = { ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2" };
-const fileCache = new Map<string, string>();
-
-async function dataUri(file: string): Promise<string> {
-  const cached = fileCache.get(file);
-  if (cached) return cached;
-  const buffer = await readFile(path.join(process.cwd(), "public", file));
-  const uri = `data:${MIME[path.extname(file)] ?? "application/octet-stream"};base64,${buffer.toString("base64")}`;
-  fileCache.set(file, uri);
-  return uri;
-}
-
-const esc = (value: string | number) =>
-  String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const fmt2 = (value: number) => value.toFixed(2);
-const pct1 = (count: number, total: number) => `${(total ? (count / total) * 100 : 0).toFixed(1)}%`;
-
 /* ---------- iconos y gráficos (SVG) ---------- */
-
-const STAR_PATH = "M12 1.6l3.1 6.7 7.3.9-5.4 5 1.4 7.2L12 17.8l-6.4 3.6 1.4-7.2-5.4-5 7.3-.9z";
-
-function star(size: number, color: string): string {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><path d="${STAR_PATH}" fill="${color}"/></svg>`;
-}
-
-/** Cinco estrellas; la última se rellena de forma proporcional a la media. */
-function ratingStars(average: number | null, primary: string): string {
-  const stars = [0, 1, 2, 3, 4].map((i) => {
-    const fraction = average === null ? 0 : Math.max(0, Math.min(1, average - i));
-    const id = `sg${i}`;
-    return `<svg width="58" height="58" viewBox="0 0 24 24"><defs><linearGradient id="${id}" x1="0" x2="1" y1="0" y2="0"><stop offset="${fraction * 100}%" stop-color="${primary}"/><stop offset="${fraction * 100}%" stop-color="#E8E4E1"/></linearGradient></defs><path d="${STAR_PATH}" fill="url(#${id})"/></svg>`;
-  });
-  return stars.join("");
-}
-
-const calendarCheck = (stroke: string, size: number) =>
-  `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" stroke="${stroke}" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="12" width="50" height="46" rx="8"/><path d="M7 25h50M19 6v12M45 6v12"/><path d="M21 41l8 8 15-16"/></svg>`;
 
 const targetArrow = (stroke: string, size: number) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" stroke="${stroke}" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="30" cy="34" r="22"/><circle cx="30" cy="34" r="12"/><circle cx="30" cy="34" r="2.5" fill="${stroke}"/><path d="M31 33L56 8M56 8h-9M56 8v9"/></svg>`;
@@ -150,14 +112,13 @@ function titleFontSize(title: string): number {
 /* ---------- documento ---------- */
 
 export async function buildMonthlyImageHtml(m: MonthlyImageModel): Promise<string> {
-  const [condensed, inter400, inter500, inter700, brandLogo, nexoIcon, nexoWord] = await Promise.all([
+  const [condensed, inter400, inter500, inter700, brandLogo] = await Promise.all([
     dataUri("fonts/roboto-condensed-variable.woff2"), dataUri("fonts/inter-400-normal.woff2"),
     dataUri("fonts/inter-500-normal.woff2"), dataUri("fonts/inter-700-normal.woff2"),
-    dataUri(m.theme.logo), dataUri("nexo-origen-report-icon.png"), dataUri("nexo-origen-report-wordmark.png"),
+    dataUri(m.theme.logo),
   ]);
   const t = m.theme;
-  const nexoLogo = (iconHeight: number, wordWidth: number) =>
-    `<div class="nexo" style="gap:${Math.round(iconHeight * 0.14)}px"><img src="${nexoIcon}" alt="" style="height:${iconHeight}px"/><img src="${nexoWord}" alt="Nexo Origen" style="width:${wordWidth}px"/></div>`;
+  const [headerNexo, footerNexo] = await Promise.all([nexoLogoHtml(130, 268), nexoLogoHtml(58, 256)]);
   const statusColor = STATUS_COLOR[m.status];
   const totalWeeks = m.weeks.length;
   const summaryLines = m.status === "empty"
@@ -276,14 +237,14 @@ export async function buildMonthlyImageHtml(m: MonthlyImageModel): Promise<strin
   </style></head><body><div class="canvas" data-report="monthly-image">
     <img class="abs brand-logo" src="${brandLogo}" alt="${esc(t.displayName)}"${t.logoTile ? ` style="background:${t.logoTile};border-radius:20px;padding:18px"` : ""}/>
     <div class="abs h-title"><h1>INFORME MENSUAL</h1><h2>REPUTACIÓN ONLINE</h2><h3 style="font-size:${titleFontSize(m.restaurantTitle)}px">${esc(m.restaurantTitle)}</h3></div>
-    <div class="abs h-nexo">${nexoLogo(130, 268)}</div>
+    <div class="abs h-nexo">${headerNexo}</div>
     <div class="abs h-sep"></div>
     <div class="abs h-date-icon">${calendarCheck("#E51B23", 76)}</div>
     <div class="abs h-date"><small>FECHA DEL INFORME</small><b>${esc(m.monthName)} ${m.year}</b></div>
 
     <section class="card c1"><h4>MEDIA MENSUAL</h4>
       <span class="kpi">${m.average === null ? "—" : fmt2(m.average)}</span>
-      <div class="stars">${ratingStars(m.average, "#FF7300")}</div>
+      <div class="stars">${ratingStars(m.average, "#FF7300", "#E8E4E1", 58)}</div>
       <p class="sub">Sobre 5.0</p>
       <div class="bar"><i style="width:${m.average === null ? 0 : Math.min(100, (m.average / 5) * 100)}%"></i></div>
     </section>
@@ -321,7 +282,7 @@ export async function buildMonthlyImageHtml(m: MonthlyImageModel): Promise<strin
     </div>
 
     <footer class="footer">
-      <div class="f-logo">${nexoLogo(58, 256)}</div>
+      <div class="f-logo">${footerNexo}</div>
       <div class="f-sep" style="left:420px"></div>
       <div class="f-claim">${targetArrow("#fff", 62)}<p>Convertimos <em style="color:#FFB400">reseñas</em> en <em style="color:#FF6500">crecimiento.</em></p></div>
       <div class="f-sep" style="left:1306px"></div>
