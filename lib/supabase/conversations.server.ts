@@ -19,6 +19,7 @@ import {
   type ConversationChannel,
   type ConversationRow,
 } from "@/lib/supabase/conversations-mappers";
+import type { InboundConversationRepository } from "@/lib/conversations/ingest-inbound";
 import type { ChannelProvider, InboundMessage } from "@/lib/conversations/types";
 
 /**
@@ -267,3 +268,15 @@ export async function touchConversationLastMessage(input: {
   if (error) throw dbFailure("touchConversationLastMessage", error);
   return (data?.length ?? 0) > 0;
 }
+
+/**
+ * Repositorio listo para inyectar en `ingestInboundMessage`.
+ * `satisfies` hace que el compilador compruebe que las firmas encajan.
+ */
+export const conversationsRepository = {
+  resolveChannel,
+  findOrCreateContact,
+  findOrCreateConversation,
+  insertInboundMessage,
+  touchConversationLastMessage,
+} satisfies InboundConversationRepository;
