@@ -4,7 +4,7 @@
 --
 --     [AREA|estado] Qué es. ORIGEN: quién/qué la rellena. USO: quién la lee.
 --
---   AREA    CORE · ACCESS · REPUTATION · OPERACIONES · BOT · INTEGRATIONS
+--   AREA    CORE · ACCESS · REPUTATION · OPERACIONES · BOT · CONVERSATIONS · INTEGRATIONS
 --           · INTERNAL · LEGACY
 --   estado  produccion · preparado (creado pero aún sin datos) · shadow
 --           (solo pruebas) · compatibilidad (aún puede haber lectores)
