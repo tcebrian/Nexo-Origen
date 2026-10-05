@@ -34,6 +34,7 @@ Un objeto sin comentario aparece como `sin_documentar`. **Regla: toda migración
 | `ACCESS` | `perfiles`, `usuario_marcas`, `usuario_restaurantes` | producción |
 | `REPUTATION` | `resenas`, `analisis_ia`, `resena_motivos`, `resenas_historial`, `resenas_traducciones` + funciones `nexo_reputation_*` y triggers de `resenas` | producción |
 | `OPERACIONES` | `canales`, `metricas_catalogo`, `restaurante_metricas`, `objetivos` (ver §15) | preparado (vacío) |
+| `CONVERSATIONS` | `conv_canales`, `conv_contactos`, `conv_conversaciones`, `conv_mensajes` (ver §16) | preparado (vacío; no operativo) |
 | `BOT` | `nexo_bot_*` (accesos, sesiones, conversaciones, alertas, resúmenes) | producción |
 | `INTEGRATIONS` | `restaurante_integraciones`, `restaurante_fuente_aliases`, `nexo_make_daily_report_payload` | producción |
 | `INTERNAL` | `review_identity_shadow_events`, `nexo_metric_validation_events`, vistas `nexo_mapa_*` | shadow / soporte |
@@ -41,7 +42,7 @@ Un objeto sin comentario aparece como `sin_documentar`. **Regla: toda migración
 
 Estados: `produccion`, `preparado` (creado, sin datos aún), `shadow` (solo pruebas), `compatibilidad` (puede tener lectores), `retirar` (candidato a borrar tras confirmar).
 
-SQL versionado de esta organización: `supabase/restore_resenas_traducciones.sql`, `supabase/operational_data_foundation.sql`, `supabase/database_catalog_map.sql`.
+SQL versionado de esta organización: `supabase/restore_resenas_traducciones.sql`, `supabase/operational_data_foundation.sql`, `supabase/conversations_foundation.sql`, `supabase/database_catalog_map.sql`.
 
 ---
 
@@ -370,3 +371,30 @@ Reglas:
 - El aislamiento por tenant se resuelve por `restaurante_id → restaurantes.empresa_id`. RLS activo sin políticas: solo accede el servidor.
 - `restaurantes.zona_horaria` (IANA, por defecto `Europe/Madrid`) define el día de negocio de cada local. El código actual todavía asume Madrid.
 - El objetivo de rating sigue en `marcas.objetivo_media`; no se migra a `objetivos` hasta que la capa de configuración esté lista.
+
+---
+
+# 16. Nexo Conversations (área CONVERSATIONS)
+
+Creado el 2026-10-05 (`supabase/conversations_foundation.sql`, migración `conversations_foundation`). **Estructura lista, sin datos y sin consumidores**: Conversations todavía no es operativo (no hay webhook, ni conexión con Meta, ni interfaz).
+
+Cuatro tablas para persistir conversaciones de WhatsApp (Cloud API oficial de Meta, sin intermediarios). Todas con RLS activo **sin políticas** y sin privilegios para `anon`/`authenticated`: solo accede el servidor (service role).
+
+| Tabla | Naturaleza | Para qué |
+|---|---|---|
+| `conv_canales` | configuración | Un número/cuenta de WhatsApp conectado a **una** empresa. `provider` (hoy solo `whatsapp_cloud`), `external_account_id` (el `phone_number_id` de Meta), `waba_id`, `display_phone`, `status` (`connected`/`disabled`/`error`; nace `disabled`). |
+| `conv_contactos` | hechos | Una persona que escribe, única por empresa: `unique (empresa_id, telefono_e164)`. `nombre` (nombre interno editable) distinto de `nombre_perfil` (el de WhatsApp). `usuario_id` opcional → `auth.users`. Datos personales. |
+| `conv_conversaciones` | hechos | El chat: `unique (canal_id, contacto_id)`. `estado` (`open`/`closed`), `ultimo_mensaje_at`, `ultimo_mensaje_preview` (máx. 200 caracteres). |
+| `conv_mensajes` | hechos | Cada mensaje, entrante (`inbound`) o saliente (`outbound`): `sender_type`, `content_type`, `text`, `media` (jsonb, solo metadatos), `status`, `provider_timestamp`, `received_at`, `raw_payload`. |
+
+Tipos: `empresa_id` es `bigint` (como `empresas.id`); los ids de las tablas nuevas son `uuid`; `usuario_id` es `uuid`. Los valores de `direction`, `sender_type`, `content_type` y `status` coinciden con `lib/conversations/types.ts`.
+
+Reglas:
+
+- **Aislamiento por empresa en la propia base:** `empresa_id` en todas las tablas y claves foráneas **compuestas** (`conversaciones → canales/contactos` por `(id, empresa_id)`; `mensajes → conversaciones` por `(id, empresa_id, canal_id)`). No se puede unir un canal de una empresa con un contacto de otra, ni colgar un mensaje de una conversación de otro canal o empresa. Aun así, la empresa de un dato debe salir siempre del canal resuelto en servidor, nunca del proveedor ni del navegador.
+- **Idempotencia:** `unique (canal_id, external_id)` en `conv_mensajes` (el `wamid` de Meta). `external_id` es obligatorio en entrantes.
+- **Sin borrados en cascada:** todas las relaciones son `ON DELETE RESTRICT`, salvo `conv_contactos.usuario_id` (`SET NULL`). Un `DELETE` directo de empresa, canal, contacto o conversación con historial queda bloqueado. La eliminación/anonimización por privacidad será una operación explícita futura.
+- **Coherencia en `conv_mensajes`:** entrante ⇒ `sender_type = contact` y estado `received`/`deleted`; saliente ⇒ `human`/`ai`/`system` y estados de entrega; `text` con texto y los medios con `media`.
+- **No creado todavía:** `handling_mode` (bot/humano/pausa), `assigned_user_id`, transcripción de audio, error de envío, tabla de restaurantes por canal, suscripciones a informes.
+- `updated_at` lo mantiene la aplicación (sin triggers). `ultimo_mensaje_at` debe usar el mayor `provider_timestamp`.
+- `raw_payload` y `text` contienen datos personales: la retención está pendiente de definir.
