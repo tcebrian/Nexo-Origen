@@ -103,3 +103,10 @@ export type MessageStatusUpdate = {
   /** Solo presente en `failed`, si el proveedor informa de la causa. */
   error?: MessageDeliveryError;
 };
+
+/** Proveedores de canal admitidos. Hoy solo la API oficial de Meta. */
+export const CHANNEL_PROVIDERS = ["whatsapp_cloud"] as const;
+export type ChannelProvider = (typeof CHANNEL_PROVIDERS)[number];
+
+export const CHANNEL_STATUSES = ["connected", "disabled", "error"] as const;
+export type ChannelStatus = (typeof CHANNEL_STATUSES)[number];

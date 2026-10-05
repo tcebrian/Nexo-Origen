@@ -7,6 +7,6 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["lib/conversations/**/*.test.ts"],
+    include: ["lib/conversations/**/*.test.ts", "lib/supabase/conversations-*.test.ts"],
   },
 });
