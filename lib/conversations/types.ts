@@ -23,13 +23,17 @@ export type MessageContentType = (typeof MESSAGE_CONTENT_TYPES)[number];
 export const MESSAGE_SENDER_TYPES = ["contact", "human", "ai", "system"] as const;
 export type MessageSenderType = (typeof MESSAGE_SENDER_TYPES)[number];
 
-/** Ciclo de vida de un mensaje. Un mensaje entrante nace en `received`. */
+/**
+ * Ciclo de vida de un mensaje. Un mensaje entrante nace en `received`.
+ * `deleted`: el proveedor informa de que el mensaje fue eliminado.
+ */
 export const MESSAGE_STATUSES = [
   "received",
   "sent",
   "delivered",
   "read",
   "failed",
+  "deleted",
 ] as const;
 export type MessageStatus = (typeof MESSAGE_STATUSES)[number];
 
@@ -43,6 +47,11 @@ export type MessageMedia = {
   mimeType: string;
   filename?: string;
   caption?: string;
+  /**
+   * `true` solo si el proveedor lo indica de forma explícita. Si no hay
+   * indicador queda sin definir: nunca se deduce del formato del archivo.
+   */
+  isVoiceMessage?: boolean;
 };
 
 /**
@@ -65,4 +74,32 @@ export type InboundMessage = {
   providerTimestamp: Date;
   /** Fragmento original del proveedor, opcional, para depuración/reproceso. */
   raw?: unknown;
+};
+
+/** Estados que un proveedor puede notificar sobre un mensaje saliente. */
+export type DeliveryStatus = Extract<
+  MessageStatus,
+  "sent" | "delivered" | "read" | "failed" | "deleted"
+>;
+
+/** Error normalizado de un envío fallido. */
+export type MessageDeliveryError = {
+  code?: string;
+  message?: string;
+};
+
+/**
+ * Cambio de estado de un mensaje saliente ya normalizado. Se aplica sobre el
+ * mensaje existente identificado por `externalMessageId`.
+ */
+export type MessageStatusUpdate = {
+  externalMessageId: string;
+  /** ID externo del canal/número desde el que se envió. */
+  externalChannelId: string;
+  /** Teléfono del destinatario en formato E.164. */
+  recipientPhone: string;
+  status: DeliveryStatus;
+  providerTimestamp: Date;
+  /** Solo presente en `failed`, si el proveedor informa de la causa. */
+  error?: MessageDeliveryError;
 };
