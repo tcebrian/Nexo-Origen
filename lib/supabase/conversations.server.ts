@@ -47,8 +47,23 @@ function requireAdminClient() {
   return client;
 }
 
-function dbFailure(operation: string, error: { code?: string; message?: string }): Error {
-  return new Error(`conversations.${operation} failed (${error.code ?? "no-code"}): ${error.message ?? ""}`);
+/**
+ * Error técnico de base de datos. Lleva la operación y el código SQLSTATE como
+ * campos y NO copia el mensaje de PostgreSQL, que puede incluir valores de
+ * filas (teléfonos, ids externos…): quien lo registre no debe filtrarlos.
+ */
+export class ConversationsDbError extends Error {
+  constructor(
+    readonly operation: string,
+    readonly code: string | undefined
+  ) {
+    super(`conversations.${operation} failed (${code ?? "no-code"})`);
+    this.name = "ConversationsDbError";
+  }
+}
+
+function dbFailure(operation: string, error: { code?: string }): ConversationsDbError {
+  return new ConversationsDbError(operation, error.code);
 }
 
 // 1) Canal ----------------------------------------------------------------------
