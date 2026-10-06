@@ -12,8 +12,9 @@ import { verifyMetaSignature } from "./verify-signature";
  * Autenticación (no hay sesión de usuario; Meta no la tiene):
  *  - GET: token de verificación.
  *  - POST: firma HMAC `X-Hub-Signature-256` sobre el cuerpo en bruto.
- * La empresa nunca se toma del cuerpo: se resuelve en el caso de uso a partir
- * del `phone_number_id` y la tabla `conv_canales`.
+ * Ninguna empresa ni permiso se toma del cuerpo: el canal (global) se resuelve
+ * por `phone_number_id` en `conv_canales`, y los permisos de cada persona viven en
+ * `conv_contacto_empresas` / `conv_contacto_restaurantes` (DENY BY DEFAULT).
  */
 
 export type WebhookHttpResult = {

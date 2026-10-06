@@ -31,7 +31,7 @@ function fakeRepository(overrides: Partial<InboundConversationRepository> = {}) 
   const repository: InboundConversationRepository = {
     resolveChannel: async (provider, externalAccountId) => {
       calls.push({ op: "resolveChannel", input: { provider, externalAccountId } });
-      return { status: "found", channel: { id: "canal-1", empresaId: 7 } };
+      return { status: "found", channel: { id: "canal-1" } };
     },
     findOrCreateContact: record("findOrCreateContact", { contact: { id: "contacto-1" }, created: false }),
     findOrCreateConversation: record("findOrCreateConversation", {
@@ -47,8 +47,21 @@ function fakeRepository(overrides: Partial<InboundConversationRepository> = {}) 
 
 const call = (calls: Call[], op: string) => calls.find((c) => c.op === op)?.input as Record<string, unknown>;
 
-describe("ingestInboundMessage — canal", () => {
-  it("1. canal encontrado → flujo completo en orden", async () => {
+/** Todas las claves (anidadas) de un valor, para vigilar que no aparezcan empresas ni permisos. */
+function allKeys(value: unknown, keys = new Set<string>()): Set<string> {
+  if (Array.isArray(value)) value.forEach((v) => allKeys(v, keys));
+  else if (value && typeof value === "object" && !(value instanceof Date)) {
+    for (const [k, v] of Object.entries(value)) {
+      keys.add(k);
+      allKeys(v, keys);
+    }
+  }
+  return keys;
+}
+const TENANT_OR_PERMISSION = /empresa|restaurante|permiso|permission|todos_restaurantes|tenant/i;
+
+describe("ingestInboundMessage — canal global", () => {
+  it("1. canal global (sin empresa) → flujo completo en orden", async () => {
     const { repository, ops } = fakeRepository();
     const result = await ingestInboundMessage(repository, "whatsapp_cloud", message);
 
@@ -61,7 +74,6 @@ describe("ingestInboundMessage — canal", () => {
     ]);
     expect(result).toEqual({
       status: "stored",
-      empresaId: 7,
       channelId: "canal-1",
       contactId: "contacto-1",
       conversationId: "conv-1",
@@ -71,7 +83,7 @@ describe("ingestInboundMessage — canal", () => {
     });
   });
 
-  it("resuelve el canal con el proveedor y el id externo del mensaje", async () => {
+  it("resuelve el canal solo con el proveedor y el id externo del mensaje", async () => {
     const { repository, calls } = fakeRepository();
     await ingestInboundMessage(repository, "whatsapp_cloud", message);
     expect(call(calls, "resolveChannel")).toEqual({
@@ -80,7 +92,7 @@ describe("ingestInboundMessage — canal", () => {
     });
   });
 
-  it("2. canal no encontrado → se detiene sin más operaciones", async () => {
+  it("11. canal no encontrado → se detiene sin más operaciones", async () => {
     const { repository, ops } = fakeRepository({
       resolveChannel: async () => ({ status: "not_found" }),
     });
@@ -89,9 +101,9 @@ describe("ingestInboundMessage — canal", () => {
     expect(ops()).toEqual([]);
   });
 
-  it("3. canal inactivo → se detiene sin crear contacto, conversación ni mensaje", async () => {
+  it("11. canal inactivo → se detiene sin crear contacto, conversación ni mensaje", async () => {
     const { repository, ops } = fakeRepository({
-      resolveChannel: async () => ({ status: "inactive", channel: { id: "canal-9", empresaId: 7 } }),
+      resolveChannel: async () => ({ status: "inactive", channel: { id: "canal-9" } }),
     });
     const result = await ingestInboundMessage(repository, "whatsapp_cloud", message);
     expect(result).toEqual({ status: "channel_inactive", channelId: "canal-9" });
@@ -99,81 +111,116 @@ describe("ingestInboundMessage — canal", () => {
   });
 });
 
-describe("ingestInboundMessage — contacto y conversación", () => {
-  it("4 y 5. contacto existente o nuevo se refleja en el resultado", async () => {
-    for (const created of [false, true]) {
-      const { repository } = fakeRepository({
-        findOrCreateContact: async () => ({ contact: { id: "contacto-1" }, created }),
-      });
-      const result = await ingestInboundMessage(repository, "whatsapp_cloud", message);
-      expect(result).toMatchObject({ status: "stored", contactCreated: created });
-    }
-  });
-
-  it("6 y 7. conversación existente o nueva se refleja en el resultado", async () => {
-    for (const created of [false, true]) {
-      const { repository } = fakeRepository({
-        findOrCreateConversation: async () => ({ conversation: { id: "conv-1" }, created }),
-      });
-      const result = await ingestInboundMessage(repository, "whatsapp_cloud", message);
-      expect(result).toMatchObject({ status: "stored", conversationCreated: created });
-    }
-  });
-
-  it("pasa teléfono y nombre de perfil al contacto, y encadena los ids", async () => {
+describe("ingestInboundMessage — contacto global y conversación", () => {
+  it("2. el contacto se busca globalmente por teléfono (sin empresa) y recibe el nombre de perfil", async () => {
     const { repository, calls } = fakeRepository();
     await ingestInboundMessage(repository, "whatsapp_cloud", message);
-
     expect(call(calls, "findOrCreateContact")).toEqual({
-      empresaId: 7,
       telefonoE164: "+34600000001",
       profileName: "JR 🍔",
     });
+  });
+
+  it("3. contacto nuevo SIN empresas ni restaurantes: se guarda y no se le da ningún permiso", async () => {
+    const { repository, calls } = fakeRepository({
+      findOrCreateContact: async () => ({ contact: { id: "desconocido-1" }, created: true }),
+      findOrCreateConversation: async () => ({ conversation: { id: "conv-nueva" }, created: true }),
+    });
+    const result = await ingestInboundMessage(repository, "whatsapp_cloud", message);
+    expect(result).toMatchObject({
+      status: "stored",
+      contactId: "desconocido-1",
+      contactCreated: true,
+      conversationCreated: true,
+    });
+    expect(allKeys(calls.map((c) => c.input)).has("nombre")).toBe(false);
+    for (const key of allKeys(calls.map((c) => ({ ...(c.input as object), message: undefined })))) {
+      expect(key).not.toMatch(TENANT_OR_PERMISSION);
+    }
+  });
+
+  it("contacto existente se refleja en el resultado", async () => {
+    const { repository } = fakeRepository({
+      findOrCreateContact: async () => ({ contact: { id: "contacto-1" }, created: false }),
+    });
+    expect(await ingestInboundMessage(repository, "whatsapp_cloud", message)).toMatchObject({
+      contactCreated: false,
+    });
+  });
+
+  it("4. la conversación se busca por canal + contacto (sin empresa) y se encadenan los ids", async () => {
+    const { repository, calls } = fakeRepository();
+    await ingestInboundMessage(repository, "whatsapp_cloud", message);
+
     expect(call(calls, "findOrCreateConversation")).toEqual({
-      empresaId: 7,
       canalId: "canal-1",
       contactoId: "contacto-1",
     });
     expect(call(calls, "insertInboundMessage")).toMatchObject({
-      empresaId: 7,
+      canalId: "canal-1",
+      conversacionId: "conv-1",
+    });
+    expect(call(calls, "touchConversationLastMessage")).toMatchObject({
       canalId: "canal-1",
       conversacionId: "conv-1",
     });
   });
 
-  it("nunca se pasa un `nombre` manual al contacto", async () => {
-    const { repository, calls } = fakeRepository();
-    await ingestInboundMessage(repository, "whatsapp_cloud", message);
-    expect("nombre" in call(calls, "findOrCreateContact")).toBe(false);
+  it("conversación existente o nueva se refleja en el resultado", async () => {
+    for (const created of [false, true]) {
+      const { repository } = fakeRepository({
+        findOrCreateConversation: async () => ({ conversation: { id: "conv-1" }, created }),
+      });
+      expect(await ingestInboundMessage(repository, "whatsapp_cloud", message)).toMatchObject({
+        conversationCreated: created,
+      });
+    }
   });
 
-  it("13. la empresa sale del canal en todas las operaciones", async () => {
-    const { repository, calls } = fakeRepository({
-      resolveChannel: async () => ({ status: "found", channel: { id: "canal-X", empresaId: 42 } }),
-    });
-    const result = await ingestInboundMessage(repository, "whatsapp_cloud", message);
+  it("9. ninguna operación de la ingesta toca empresas, restaurantes ni permisos", async () => {
+    const { repository, calls, ops } = fakeRepository();
+    await ingestInboundMessage(repository, "whatsapp_cloud", message);
 
-    for (const op of [
+    // Solo existen estas 5 operaciones en el repositorio: ninguna es de permisos.
+    expect(Object.keys(repository).sort()).toEqual([
       "findOrCreateContact",
       "findOrCreateConversation",
       "insertInboundMessage",
+      "resolveChannel",
       "touchConversationLastMessage",
-    ]) {
-      expect(call(calls, op).empresaId).toBe(42);
+    ]);
+    expect(ops().every((op) => !TENANT_OR_PERMISSION.test(op))).toBe(true);
+    // Y ningún dato de entrada lleva claves de empresa/restaurante/permisos (salvo el mensaje del proveedor).
+    for (const c of calls) {
+      const input = { ...(c.input as object), message: undefined };
+      for (const key of allKeys(input)) expect(key).not.toMatch(TENANT_OR_PERMISSION);
     }
-    expect(result).toMatchObject({ empresaId: 42, channelId: "canal-X" });
+  });
+
+  it("10. el resultado ya no contiene empresaId ni nada de empresa/permisos", async () => {
+    const { repository } = fakeRepository();
+    const result = await ingestInboundMessage(repository, "whatsapp_cloud", message);
+    expect("empresaId" in result).toBe(false);
+    for (const key of Object.keys(result)) expect(key).not.toMatch(TENANT_OR_PERMISSION);
   });
 });
 
 describe("ingestInboundMessage — mensaje y último mensaje", () => {
-  it("8. mensaje inserted → stored", async () => {
+  it("5. el mensaje se guarda sin empresa_id", async () => {
+    const { repository, calls } = fakeRepository();
+    await ingestInboundMessage(repository, "whatsapp_cloud", message);
+    const input = call(calls, "insertInboundMessage");
+    expect(Object.keys(input).sort()).toEqual(["canalId", "conversacionId", "message"]);
+  });
+
+  it("mensaje inserted → stored", async () => {
     const { repository } = fakeRepository();
     expect(await ingestInboundMessage(repository, "whatsapp_cloud", message)).toMatchObject({
       status: "stored",
     });
   });
 
-  it("9. mensaje duplicate → resultado normal, no excepción", async () => {
+  it("6. mensaje duplicate → resultado normal, no excepción", async () => {
     const { repository } = fakeRepository({
       insertInboundMessage: async () => ({ status: "duplicate" }),
     });
@@ -181,7 +228,7 @@ describe("ingestInboundMessage — mensaje y último mensaje", () => {
     expect(result).toMatchObject({ status: "duplicate", conversationId: "conv-1" });
   });
 
-  it("10. un duplicado también intenta actualizar el último mensaje (reparación)", async () => {
+  it("6. un duplicado también intenta actualizar el último mensaje (reparación)", async () => {
     const { repository, calls, ops } = fakeRepository({
       insertInboundMessage: async () => ({ status: "duplicate" }),
     });
@@ -190,16 +237,31 @@ describe("ingestInboundMessage — mensaje y último mensaje", () => {
     expect(ops().at(-1)).toBe("touchConversationLastMessage");
     expect(call(calls, "touchConversationLastMessage")).toEqual({
       conversacionId: "conv-1",
-      empresaId: 7,
+      canalId: "canal-1",
       lastMessageAt: message.providerTimestamp,
       preview: "¿Cómo vamos hoy?",
     });
   });
 
-  it("usa el provider_timestamp del mensaje y informa si la conversación avanzó", async () => {
-    const { repository } = fakeRepository({ touchConversationLastMessage: async () => false });
-    const result = await ingestInboundMessage(repository, "whatsapp_cloud", message);
-    expect(result).toMatchObject({ status: "stored", lastMessageUpdated: false });
+  it("7. el último mensaje no retrocede: un mensaje tardío no hace avanzar la conversación", async () => {
+    // Imita el UPDATE condicional del repositorio real (solo avanza si es estrictamente más reciente).
+    let lastAt: Date | null = null;
+    const touch: InboundConversationRepository["touchConversationLastMessage"] = async ({ lastMessageAt }) => {
+      if (lastAt && lastAt >= lastMessageAt) return false;
+      lastAt = lastMessageAt;
+      return true;
+    };
+    const { repository } = fakeRepository({ touchConversationLastMessage: touch });
+    const at = (hhmm: string) => new Date(`2025-10-09T${hhmm}:00.000Z`);
+
+    const first = await ingestInboundMessage(repository, "whatsapp_cloud", { ...message, externalMessageId: "w.1", providerTimestamp: at("10:05") });
+    const late = await ingestInboundMessage(repository, "whatsapp_cloud", { ...message, externalMessageId: "w.2", providerTimestamp: at("10:02") });
+    const newer = await ingestInboundMessage(repository, "whatsapp_cloud", { ...message, externalMessageId: "w.3", providerTimestamp: at("10:07") });
+
+    expect(first).toMatchObject({ status: "stored", lastMessageUpdated: true });
+    expect(late).toMatchObject({ status: "stored", lastMessageUpdated: false });
+    expect(newer).toMatchObject({ status: "stored", lastMessageUpdated: true });
+    expect(lastAt).toEqual(at("10:07"));
   });
 
   it("el preview se calcula con el contenido del mensaje", async () => {
@@ -213,7 +275,7 @@ describe("ingestInboundMessage — mensaje y último mensaje", () => {
     expect(call(calls, "touchConversationLastMessage").preview).toBe("🎤 Nota de voz");
   });
 
-  it("11. raw no llega a la persistencia", async () => {
+  it("8. raw no llega a la persistencia", async () => {
     const { repository, calls } = fakeRepository();
     await ingestInboundMessage(repository, "whatsapp_cloud", message);
 
@@ -228,7 +290,7 @@ describe("ingestInboundMessage — mensaje y último mensaje", () => {
 describe("ingestInboundMessage — errores", () => {
   const boom = new Error("conversations.insertInboundMessage failed (08006)");
 
-  it("12. un error real del repositorio se propaga", async () => {
+  it("un error real del repositorio se propaga", async () => {
     const failing = {
       resolveChannel: { resolveChannel: async () => Promise.reject(boom) },
       findOrCreateContact: { findOrCreateContact: async () => Promise.reject(boom) },

@@ -26,18 +26,18 @@ import type { ChannelProvider, InboundMessage } from "@/lib/conversations/types"
  * Persistencia de Nexo Conversations (solo servidor, service role).
  *
  * Operaciones sueltas; la orquestación del flujo entrante es otra capa.
- * La empresa sale SIEMPRE del canal resuelto en base de datos: ninguna función
- * de aquí acepta un `empresaId` que venga del proveedor o del navegador.
+ * Modelo de canal central: el canal y el contacto son globales (sin empresa).
+ * Aquí no se resuelve ni se crea ningún permiso: la pertenencia de una persona a
+ * empresas y restaurantes vive en `conv_contacto_empresas` /
+ * `conv_contacto_restaurantes` (DENY BY DEFAULT: sin filas, acceso cero).
  * Los errores inesperados de base de datos se lanzan (el llamador responderá
  * con un fallo reintentable); lo esperable se devuelve como resultado.
  */
 
-const CHANNEL_COLUMNS =
-  "id,empresa_id,provider,external_account_id,waba_id,display_phone,status";
-const CONTACT_COLUMNS =
-  "id,empresa_id,telefono_e164,nombre,nombre_perfil,external_contact_id";
+const CHANNEL_COLUMNS = "id,provider,external_account_id,waba_id,display_phone,status";
+const CONTACT_COLUMNS = "id,telefono_e164,nombre,nombre_perfil,external_contact_id";
 const CONVERSATION_COLUMNS =
-  "id,empresa_id,canal_id,contacto_id,estado,ultimo_mensaje_at,ultimo_mensaje_preview";
+  "id,canal_id,contacto_id,estado,ultimo_mensaje_at,ultimo_mensaje_preview";
 
 function requireAdminClient() {
   const client = getSupabaseAdmin();
@@ -97,11 +97,10 @@ export async function resolveChannel(
 
 // 2) Contacto -------------------------------------------------------------------
 
-async function selectContact(empresaId: number, telefonoE164: string): Promise<ContactRow | null> {
+async function selectContact(telefonoE164: string): Promise<ContactRow | null> {
   const { data, error } = await requireAdminClient()
     .from(SUPABASE_TABLES.conv_contactos)
     .select(CONTACT_COLUMNS)
-    .eq("empresa_id", empresaId)
     .eq("telefono_e164", telefonoE164)
     .maybeSingle();
 
@@ -110,16 +109,16 @@ async function selectContact(empresaId: number, telefonoE164: string): Promise<C
 }
 
 export type FindOrCreateContactInput = {
-  empresaId: number;
   telefonoE164: string;
   profileName?: string | null;
   externalContactId?: string | null;
 };
 
 /**
- * Encuentra el contacto por empresa + teléfono o lo crea. Con un contacto
- * existente solo actualiza `nombre_perfil` y `external_contact_id` si llega un
- * valor nuevo; `nombre` (editable por Nexo) no se toca nunca.
+ * Encuentra el contacto por teléfono (global) o lo crea, SIN empresas ni
+ * restaurantes. Con un contacto existente solo actualiza `nombre_perfil` y
+ * `external_contact_id` si llega un valor nuevo; `nombre` (editable por Nexo) y
+ * los permisos no se tocan nunca.
  * Dos peticiones simultáneas no duplican: la restricción única decide y la
  * perdedora relee el contacto.
  */
@@ -127,16 +126,15 @@ export async function findOrCreateContact(
   input: FindOrCreateContactInput
 ): Promise<{ contact: Contact; created: boolean }> {
   const client = requireAdminClient();
-  const { empresaId, telefonoE164 } = input;
+  const { telefonoE164 } = input;
 
-  let row = await selectContact(empresaId, telefonoE164);
+  let row = await selectContact(telefonoE164);
   if (!row) {
     const profileName = input.profileName?.trim();
     const externalContactId = input.externalContactId?.trim();
     const { data, error } = await client
       .from(SUPABASE_TABLES.conv_contactos)
       .insert({
-        empresa_id: empresaId,
         telefono_e164: telefonoE164,
         ...(profileName ? { nombre_perfil: profileName } : {}),
         ...(externalContactId ? { external_contact_id: externalContactId } : {}),
@@ -150,7 +148,7 @@ export async function findOrCreateContact(
     }
 
     // Otra petición lo creó a la vez: se reutiliza.
-    row = await selectContact(empresaId, telefonoE164);
+    row = await selectContact(telefonoE164);
     if (!row) throw new Error("conversations.findOrCreateContact: contact vanished after conflict");
   }
 
@@ -165,7 +163,6 @@ export async function findOrCreateContact(
     .from(SUPABASE_TABLES.conv_contactos)
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", existing.id)
-    .eq("empresa_id", empresaId)
     .select(CONTACT_COLUMNS)
     .single();
 
@@ -176,14 +173,12 @@ export async function findOrCreateContact(
 // 3) Conversación ---------------------------------------------------------------
 
 async function selectConversation(
-  empresaId: number,
   canalId: string,
   contactoId: string
 ): Promise<ConversationRow | null> {
   const { data, error } = await requireAdminClient()
     .from(SUPABASE_TABLES.conv_conversaciones)
     .select(CONVERSATION_COLUMNS)
-    .eq("empresa_id", empresaId)
     .eq("canal_id", canalId)
     .eq("contacto_id", contactoId)
     .maybeSingle();
@@ -193,7 +188,6 @@ async function selectConversation(
 }
 
 export type FindOrCreateConversationInput = {
-  empresaId: number;
   canalId: string;
   contactoId: string;
 };
@@ -201,19 +195,18 @@ export type FindOrCreateConversationInput = {
 /**
  * Encuentra la conversación por canal + contacto o la crea en estado `open`.
  * Una conversación existente se reutiliza tal cual (no se reabre aquí).
- * Las claves foráneas compuestas impiden mezclar empresas.
  */
 export async function findOrCreateConversation(
   input: FindOrCreateConversationInput
 ): Promise<{ conversation: Conversation; created: boolean }> {
-  const { empresaId, canalId, contactoId } = input;
+  const { canalId, contactoId } = input;
 
-  const existing = await selectConversation(empresaId, canalId, contactoId);
+  const existing = await selectConversation(canalId, contactoId);
   if (existing) return { conversation: mapConversationRow(existing), created: false };
 
   const { data, error } = await requireAdminClient()
     .from(SUPABASE_TABLES.conv_conversaciones)
-    .insert({ empresa_id: empresaId, canal_id: canalId, contacto_id: contactoId })
+    .insert({ canal_id: canalId, contacto_id: contactoId })
     .select(CONVERSATION_COLUMNS)
     .single();
 
@@ -222,7 +215,7 @@ export async function findOrCreateConversation(
     throw dbFailure("findOrCreateConversation.insert", error);
   }
 
-  const raced = await selectConversation(empresaId, canalId, contactoId);
+  const raced = await selectConversation(canalId, contactoId);
   if (!raced) throw new Error("conversations.findOrCreateConversation: conversation vanished after conflict");
   return { conversation: mapConversationRow(raced), created: false };
 }
@@ -235,11 +228,11 @@ export type InsertInboundMessageResult = { status: "inserted" } | { status: "dup
  * Guarda un mensaje entrante. La idempotencia descansa en la restricción única
  * (canal_id, external_id) de PostgreSQL, no en consultar antes: dos webhooks
  * simultáneos no pueden crear dos filas. Un duplicado es un resultado normal.
+ * La clave compuesta (conversacion_id, canal_id) impide un mensaje de otro canal.
  * `raw_payload` no se persiste (queda NULL) hasta definir su retención.
  */
 export async function insertInboundMessage(input: {
   message: InboundMessage;
-  empresaId: number;
   canalId: string;
   conversacionId: string;
 }): Promise<InsertInboundMessageResult> {
@@ -256,15 +249,15 @@ export async function insertInboundMessage(input: {
 
 /**
  * Avanza `ultimo_mensaje_*` solo si el mensaje es estrictamente más reciente
- * (por `provider_timestamp`). Es un único UPDATE condicional, así que una
- * llegada tardía o una carrera entre dos mensajes no puede hacer retroceder la
- * conversación. Es idempotente: se puede llamar también tras un duplicado para
- * reparar un fallo anterior entre el insert del mensaje y esta actualización.
- * Devuelve `true` si avanzó.
+ * (por `provider_timestamp`) y la conversación es del canal indicado. Es un
+ * único UPDATE condicional, así que una llegada tardía o una carrera entre dos
+ * mensajes no puede hacer retroceder la conversación. Es idempotente: se puede
+ * llamar también tras un duplicado para reparar un fallo anterior entre el
+ * insert del mensaje y esta actualización. Devuelve `true` si avanzó.
  */
 export async function touchConversationLastMessage(input: {
   conversacionId: string;
-  empresaId: number;
+  canalId: string;
   lastMessageAt: Date;
   preview: string;
 }): Promise<boolean> {
@@ -276,7 +269,7 @@ export async function touchConversationLastMessage(input: {
       updated_at: new Date().toISOString(),
     })
     .eq("id", input.conversacionId)
-    .eq("empresa_id", input.empresaId)
+    .eq("canal_id", input.canalId)
     .or(lastMessageGuardFilter(input.lastMessageAt))
     .select("id");
 

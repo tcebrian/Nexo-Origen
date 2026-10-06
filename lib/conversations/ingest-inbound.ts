@@ -11,7 +11,12 @@ import type { ChannelProvider, InboundMessage } from "@/lib/conversations/types"
  * `conversationsRepository` de `lib/supabase/conversations.server.ts`.
  *
  * Decisiones:
- *  - La empresa sale SIEMPRE del canal resuelto, nunca del mensaje.
+ *  - Modelo de canal central: el canal (el WhatsApp de Nexo) y el contacto (la
+ *    persona, por teléfono) son GLOBALES. La ingesta NO resuelve ni crea permisos
+ *    de empresa/restaurante: un contacto nuevo puede existir con 0 empresas y 0
+ *    restaurantes. DENY BY DEFAULT: los permisos (conv_contacto_empresas /
+ *    conv_contacto_restaurantes) los consultará el futuro bot al acceder a datos,
+ *    nunca deduciéndolos del texto del mensaje.
  *  - Canal inexistente o inactivo son resultados normales (no se crea nada).
  *  - Contacto, conversación y mensaje duplicados los decide la base de datos
  *    (restricciones únicas); aquí no hay consultas previas "por si acaso".
@@ -28,28 +33,25 @@ export type InboundConversationRepository = {
     provider: ChannelProvider,
     externalAccountId: string
   ): Promise<
-    | { status: "found" | "inactive"; channel: { id: string; empresaId: number } }
+    | { status: "found" | "inactive"; channel: { id: string } }
     | { status: "not_found" }
   >;
   findOrCreateContact(input: {
-    empresaId: number;
     telefonoE164: string;
     profileName?: string;
   }): Promise<{ contact: { id: string }; created: boolean }>;
   findOrCreateConversation(input: {
-    empresaId: number;
     canalId: string;
     contactoId: string;
   }): Promise<{ conversation: { id: string }; created: boolean }>;
   insertInboundMessage(input: {
     message: InboundMessage;
-    empresaId: number;
     canalId: string;
     conversacionId: string;
   }): Promise<{ status: "inserted" | "duplicate" }>;
   touchConversationLastMessage(input: {
     conversacionId: string;
-    empresaId: number;
+    canalId: string;
     lastMessageAt: Date;
     preview: string;
   }): Promise<boolean>;
@@ -59,7 +61,6 @@ export type IngestInboundResult =
   | {
       /** `stored`: mensaje nuevo guardado. `duplicate`: ya existía (resultado normal). */
       status: "stored" | "duplicate";
-      empresaId: number;
       channelId: string;
       contactId: string;
       conversationId: string;
@@ -82,17 +83,15 @@ export async function ingestInboundMessage(
     return { status: "channel_inactive", channelId: resolved.channel.id };
   }
 
-  // La empresa es la del canal; nunca algo que venga en el mensaje.
-  const { id: channelId, empresaId } = resolved.channel;
+  const channelId = resolved.channel.id;
 
+  // Persona global por teléfono. Sin empresas ni restaurantes: no se crea ningún permiso.
   const { contact, created: contactCreated } = await repository.findOrCreateContact({
-    empresaId,
     telefonoE164: message.senderPhone,
     profileName: message.senderProfileName,
   });
 
   const { conversation, created: conversationCreated } = await repository.findOrCreateConversation({
-    empresaId,
     canalId: channelId,
     contactoId: contact.id,
   });
@@ -103,7 +102,6 @@ export async function ingestInboundMessage(
 
   const inserted = await repository.insertInboundMessage({
     message: persistable,
-    empresaId,
     canalId: channelId,
     conversacionId: conversation.id,
   });
@@ -113,14 +111,13 @@ export async function ingestInboundMessage(
   // temporal de la actualización impide que retroceda.
   const lastMessageUpdated = await repository.touchConversationLastMessage({
     conversacionId: conversation.id,
-    empresaId,
+    canalId: channelId,
     lastMessageAt: message.providerTimestamp,
     preview: buildMessagePreview(message),
   });
 
   return {
     status: inserted.status === "inserted" ? "stored" : "duplicate",
-    empresaId,
     channelId,
     contactId: contact.id,
     conversationId: conversation.id,

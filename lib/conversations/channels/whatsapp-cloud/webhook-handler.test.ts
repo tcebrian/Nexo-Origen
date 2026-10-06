@@ -88,7 +88,6 @@ function webhookBody(value: Record<string, unknown>): string {
 
 const stored = (): IngestInboundResult => ({
   status: "stored",
-  empresaId: 7,
   channelId: "canal-1",
   contactId: "contacto-1",
   conversationId: "conv-1",

@@ -14,7 +14,7 @@ import type {
 
 /** Nombres de las restricciones únicas de las que depende la idempotencia. */
 export const CONV_CONSTRAINTS = {
-  contactoTelefono: "conv_contactos_empresa_id_telefono_e164_key",
+  contactoTelefono: "conv_contactos_telefono_e164_key",
   conversacionCanalContacto: "conv_conversaciones_canal_id_contacto_id_key",
   mensajeCanalExternalId: "conv_mensajes_canal_id_external_id_key",
 } as const;
@@ -34,7 +34,6 @@ export function isUniqueViolation(error: DbErrorLike, constraint: string): boole
 
 export type ChannelRow = {
   id: string;
-  empresa_id: number | string;
   provider: string;
   external_account_id: string;
   waba_id: string | null;
@@ -42,10 +41,9 @@ export type ChannelRow = {
   status: string;
 };
 
+/** El canal central de Nexo. No pertenece a ninguna empresa. */
 export type ConversationChannel = {
   id: string;
-  /** Tenant. Es la única fuente válida de empresa para todo lo que cuelga del canal. */
-  empresaId: number;
   provider: ChannelProvider;
   externalAccountId: string;
   wabaId: string | null;
@@ -56,7 +54,6 @@ export type ConversationChannel = {
 export function mapChannelRow(row: ChannelRow): ConversationChannel {
   return {
     id: row.id,
-    empresaId: Number(row.empresa_id),
     provider: row.provider as ChannelProvider,
     externalAccountId: row.external_account_id,
     wabaId: row.waba_id,
@@ -69,16 +66,15 @@ export function mapChannelRow(row: ChannelRow): ConversationChannel {
 
 export type ContactRow = {
   id: string;
-  empresa_id: number | string;
   telefono_e164: string;
   nombre: string | null;
   nombre_perfil: string | null;
   external_contact_id: string | null;
 };
 
+/** Persona global, identificada por su teléfono. Sin empresa: los permisos viven en conv_contacto_*. */
 export type Contact = {
   id: string;
-  empresaId: number;
   telefonoE164: string;
   /** Nombre interno editable. Solo lo cambia un usuario de Nexo, nunca el proveedor. */
   nombre: string | null;
@@ -90,7 +86,6 @@ export type Contact = {
 export function mapContactRow(row: ContactRow): Contact {
   return {
     id: row.id,
-    empresaId: Number(row.empresa_id),
     telefonoE164: row.telefono_e164,
     nombre: row.nombre,
     nombrePerfil: row.nombre_perfil,
@@ -136,7 +131,6 @@ export function buildContactPatch(
 
 export type ConversationRow = {
   id: string;
-  empresa_id: number | string;
   canal_id: string;
   contacto_id: string;
   estado: string;
@@ -146,7 +140,6 @@ export type ConversationRow = {
 
 export type Conversation = {
   id: string;
-  empresaId: number;
   canalId: string;
   contactoId: string;
   estado: "open" | "closed";
@@ -157,7 +150,6 @@ export type Conversation = {
 export function mapConversationRow(row: ConversationRow): Conversation {
   return {
     id: row.id,
-    empresaId: Number(row.empresa_id),
     canalId: row.canal_id,
     contactoId: row.contacto_id,
     estado: row.estado === "closed" ? "closed" : "open",
@@ -178,7 +170,6 @@ export function lastMessageGuardFilter(candidate: Date): string {
 // Mensaje entrante --------------------------------------------------------------
 
 export type InboundMessageRow = {
-  empresa_id: number;
   conversacion_id: string;
   canal_id: string;
   external_id: string;
@@ -192,18 +183,17 @@ export type InboundMessageRow = {
 };
 
 /**
- * Fila de `conv_mensajes` para un mensaje entrante. No incluye `raw_payload`
- * a propósito (queda NULL) hasta definir la política de retención.
+ * Fila de `conv_mensajes` para un mensaje entrante. Sin empresa (modelo de canal
+ * central) y sin `raw_payload` a propósito (queda NULL) hasta definir la
+ * política de retención.
  */
 export function buildInboundMessageRow(input: {
   message: InboundMessage;
-  empresaId: number;
   canalId: string;
   conversacionId: string;
 }): InboundMessageRow {
   const { message } = input;
   return {
-    empresa_id: input.empresaId,
     conversacion_id: input.conversacionId,
     canal_id: input.canalId,
     external_id: message.externalMessageId,
