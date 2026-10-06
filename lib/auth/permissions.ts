@@ -9,7 +9,14 @@ const ROLE_LABELS: Record<UserRole, string> = {
 };
 
 /** Secciones restringidas solo a super_admin */
-const SUPER_ADMIN_ONLY: DashboardSection[] = ["talento", "informes", "agentes", "integraciones", "ajustes"];
+const SUPER_ADMIN_ONLY: DashboardSection[] = [
+  "talento",
+  "informes",
+  "agentes",
+  "integraciones",
+  "conversaciones",
+  "ajustes",
+];
 
 /** Secciones visibles para empresa_admin y marca_admin */
 const ORG_ADMIN_SECTIONS: DashboardSection[] = [

@@ -5,6 +5,7 @@ const SECTION_PATHS: { section: DashboardSection; prefix: string }[] = [
   { section: "informes", prefix: "/dashboard/informes" },
   { section: "talento", prefix: "/dashboard/talento" },
   { section: "ajustes", prefix: "/dashboard/ajustes" },
+  { section: "conversaciones", prefix: "/dashboard/conversaciones" },
   { section: "insights-ia", prefix: "/dashboard/insights-ia" },
   { section: "nexo-prevent", prefix: "/dashboard/nexo-prevent" },
   { section: "ranking", prefix: "/dashboard/ranking" },
@@ -55,6 +56,7 @@ export function isSuperAdminApiPath(pathname: string): boolean {
   return (
     pathname.startsWith("/api/informes") ||
     pathname.startsWith("/api/reports/") ||
+    pathname.startsWith("/api/conversations") ||
     pathname.startsWith("/api/platform/")
   );
 }

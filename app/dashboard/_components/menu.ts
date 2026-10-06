@@ -10,6 +10,7 @@ export type MenuIcon =
   | "talento"
   | "reports"
   | "agents"
+  | "conversations"
   | "integrations"
   | "settings";
 
@@ -29,6 +30,7 @@ export const menuItems: MenuItem[] = [
   { name: "Ranking", icon: "ranking", href: "/dashboard/ranking", section: "ranking" },
   { name: "Talento", icon: "talento", href: "/dashboard/talento", section: "talento" },
   { name: "Informes", icon: "reports", href: "/dashboard/informes", section: "informes" },
+  { name: "Conversaciones", icon: "conversations", href: "/dashboard/conversaciones", section: "conversaciones" },
   { name: "Agentes", icon: "agents", href: "/dashboard/agentes", section: "agentes" },
   { name: "Integraciones", icon: "integrations", href: "/dashboard/integraciones", section: "integraciones" },
 ];

@@ -71,6 +71,12 @@ export function SidebarIcon({
           <path {...stroke} d="M3.5 19c.7-3.2 2.6-5 5.5-5s4.8 1.8 5.5 5M16 8.5h4M18 6.5v4" />
         </svg>
       );
+    case "conversations":
+      return (
+        <svg className={className} viewBox="0 0 24 24" aria-hidden>
+          <path {...stroke} d="M4 5.5A1.5 1.5 0 0 1 5.5 4h9A1.5 1.5 0 0 1 16 5.5V10a1.5 1.5 0 0 1-1.5 1.5H9L6 14v-2.5H5.5A1.5 1.5 0 0 1 4 10V5.5ZM9 15h5.5l3.5 2.5V15h.5a1.5 1.5 0 0 0 1.5-1.5V9" />
+        </svg>
+      );
     case "integrations":
       return (
         <svg className={className} viewBox="0 0 24 24" aria-hidden>
