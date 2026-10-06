@@ -1,5 +1,12 @@
 -- Nexo Origen · Base de Nexo Conversations (área CONVERSATIONS).
 --
+-- NOTA (2026-10-06): este modelo fue CORREGIDO posteriormente por
+-- conversations_central_channel.sql (canal central multiempresa: se elimina empresa_id de
+-- canales, contactos, conversaciones y mensajes, y se añaden conv_contacto_empresas y
+-- conv_contacto_restaurantes). Este archivo se conserva como migración histórica ya aplicada;
+-- un entorno nuevo debe ejecutar ambos EN ORDEN. El estado vigente está en
+-- docs/database/CURRENT_SCHEMA.md §16.
+--
 -- Objetivo: persistir conversaciones de WhatsApp (Cloud API oficial de Meta):
 --
 --   conv_canales         → un número/cuenta de WhatsApp conectado a UNA empresa

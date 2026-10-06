@@ -34,7 +34,7 @@ Un objeto sin comentario aparece como `sin_documentar`. **Regla: toda migración
 | `ACCESS` | `perfiles`, `usuario_marcas`, `usuario_restaurantes` | producción |
 | `REPUTATION` | `resenas`, `analisis_ia`, `resena_motivos`, `resenas_historial`, `resenas_traducciones` + funciones `nexo_reputation_*` y triggers de `resenas` | producción |
 | `OPERACIONES` | `canales`, `metricas_catalogo`, `restaurante_metricas`, `objetivos` (ver §15) | preparado (vacío) |
-| `CONVERSATIONS` | `conv_canales`, `conv_contactos`, `conv_conversaciones`, `conv_mensajes` (ver §16) | preparado (vacío; no operativo) |
+| `CONVERSATIONS` | `conv_canales`, `conv_contactos`, `conv_contacto_empresas`, `conv_contacto_restaurantes`, `conv_conversaciones`, `conv_mensajes` (ver §16) | preparado (vacío; no operativo) |
 | `BOT` | `nexo_bot_*` (accesos, sesiones, conversaciones, alertas, resúmenes) | producción |
 | `INTEGRATIONS` | `restaurante_integraciones`, `restaurante_fuente_aliases`, `nexo_make_daily_report_payload` | producción |
 | `INTERNAL` | `review_identity_shadow_events`, `nexo_metric_validation_events`, vistas `nexo_mapa_*` | shadow / soporte |
@@ -42,7 +42,7 @@ Un objeto sin comentario aparece como `sin_documentar`. **Regla: toda migración
 
 Estados: `produccion`, `preparado` (creado, sin datos aún), `shadow` (solo pruebas), `compatibilidad` (puede tener lectores), `retirar` (candidato a borrar tras confirmar).
 
-SQL versionado de esta organización: `supabase/restore_resenas_traducciones.sql`, `supabase/operational_data_foundation.sql`, `supabase/conversations_foundation.sql`, `supabase/database_catalog_map.sql`.
+SQL versionado de esta organización: `supabase/restore_resenas_traducciones.sql`, `supabase/operational_data_foundation.sql`, `supabase/conversations_foundation.sql`, `supabase/conversations_central_channel.sql`, `supabase/database_catalog_map.sql`.
 
 ---
 
@@ -376,25 +376,47 @@ Reglas:
 
 # 16. Nexo Conversations (área CONVERSATIONS)
 
-Creado el 2026-10-05 (`supabase/conversations_foundation.sql`, migración `conversations_foundation`). **Estructura lista, sin datos y sin consumidores**: Conversations todavía no es operativo (no hay webhook, ni conexión con Meta, ni interfaz).
+Dos migraciones, aplicadas en este orden: `conversations_foundation` (2026-10-05) y `conversations_central_channel` (2026-10-06, la que corrige el modelo). **Estructura lista, sin datos y sin consumidores**: Conversations todavía es "preparado" y **no está operativo con Meta** (el webhook existe en el código, pero no está registrado en Meta ni hay ningún canal dado de alta).
 
-Cuatro tablas para persistir conversaciones de WhatsApp (Cloud API oficial de Meta, sin intermediarios). Todas con RLS activo **sin políticas** y sin privilegios para `anon`/`authenticated`: solo accede el servidor (service role).
+## Modelo: canal central de Nexo
+
+Nexo tiene **un único WhatsApp central** (WhatsApp Cloud API oficial de Meta, sin intermediarios) por el que hablan personas de **varias empresas**. Por eso la identidad y los permisos pertenecen a la **persona**, no al número ni a la conversación. Seis tablas, todas con RLS activo **sin políticas** y sin privilegios para `anon`/`authenticated`: solo accede el servidor (service role).
 
 | Tabla | Naturaleza | Para qué |
 |---|---|---|
-| `conv_canales` | configuración | Un número/cuenta de WhatsApp conectado a **una** empresa. `provider` (hoy solo `whatsapp_cloud`), `external_account_id` (el `phone_number_id` de Meta), `waba_id`, `display_phone`, `status` (`connected`/`disabled`/`error`; nace `disabled`). |
-| `conv_contactos` | hechos | Una persona que escribe, única por empresa: `unique (empresa_id, telefono_e164)`. `nombre` (nombre interno editable) distinto de `nombre_perfil` (el de WhatsApp). `usuario_id` opcional → `auth.users`. Datos personales. |
-| `conv_conversaciones` | hechos | El chat: `unique (canal_id, contacto_id)`. `estado` (`open`/`closed`), `ultimo_mensaje_at`, `ultimo_mensaje_preview` (máx. 200 caracteres). |
-| `conv_mensajes` | hechos | Cada mensaje, entrante (`inbound`) o saliente (`outbound`): `sender_type`, `content_type`, `text`, `media` (jsonb, solo metadatos), `status`, `provider_timestamp`, `received_at`, `raw_payload`. |
+| `conv_canales` | configuración | El canal central de Nexo. **Sin `empresa_id`.** `provider` (hoy solo `whatsapp_cloud`), `external_account_id` (el `phone_number_id` de Meta), `waba_id`, `display_phone`, `status` (`connected`/`disabled`/`error`; nace `disabled`). `unique (provider, external_account_id)`. |
+| `conv_contactos` | hechos | Una persona, **global**: `telefono_e164` único en todo Conversations (`conv_contactos_telefono_e164_key`). **Sin `empresa_id`.** `nombre` (interno, editable) distinto de `nombre_perfil` (el de WhatsApp). `usuario_id` opcional → `auth.users`. Datos personales. |
+| `conv_contacto_empresas` | permisos | Persona ↔ empresa (una o varias). Clave `(contacto_id, empresa_id)`. `todos_restaurantes boolean not null default false`: `true` = todos los restaurantes actuales y futuros de esa empresa; `false` = solo los de `conv_contacto_restaurantes`. |
+| `conv_contacto_restaurantes` | permisos | Persona ↔ restaurante concreto. Clave `(contacto_id, restaurante_id)`; guarda `empresa_id` para que las claves compuestas verifiquen la coherencia. |
+| `conv_conversaciones` | hechos | El chat: `unique (canal_id, contacto_id)`. **Sin `empresa_id`.** `estado` (`open`/`closed`), `ultimo_mensaje_at`, `ultimo_mensaje_preview` (máx. 200 caracteres). |
+| `conv_mensajes` | hechos | Cada mensaje, entrante (`inbound`) o saliente (`outbound`): `sender_type`, `content_type`, `text`, `media` (jsonb, solo metadatos), `status`, `provider_timestamp`, `received_at`, `raw_payload`. **Sin `empresa_id`.** |
 
-Tipos: `empresa_id` es `bigint` (como `empresas.id`); los ids de las tablas nuevas son `uuid`; `usuario_id` es `uuid`. Los valores de `direction`, `sender_type`, `content_type` y `status` coinciden con `lib/conversations/types.ts`.
+Tipos: `empresa_id` y `restaurante_id` son `bigint` (como `empresas.id` / `restaurantes.id`); los ids de las tablas nuevas son `uuid`; `usuario_id` es `uuid`. Los valores de `direction`, `sender_type`, `content_type` y `status` coinciden con `lib/conversations/types.ts`.
 
-Reglas:
+## Seguridad y permisos
 
-- **Aislamiento por empresa en la propia base:** `empresa_id` en todas las tablas y claves foráneas **compuestas** (`conversaciones → canales/contactos` por `(id, empresa_id)`; `mensajes → conversaciones` por `(id, empresa_id, canal_id)`). No se puede unir un canal de una empresa con un contacto de otra, ni colgar un mensaje de una conversación de otro canal o empresa. Aun así, la empresa de un dato debe salir siempre del canal resuelto en servidor, nunca del proveedor ni del navegador.
-- **Idempotencia:** `unique (canal_id, external_id)` en `conv_mensajes` (el `wamid` de Meta). `external_id` es obligatorio en entrantes.
-- **Sin borrados en cascada:** todas las relaciones son `ON DELETE RESTRICT`, salvo `conv_contactos.usuario_id` (`SET NULL`). Un `DELETE` directo de empresa, canal, contacto o conversación con historial queda bloqueado. La eliminación/anonimización por privacidad será una operación explícita futura.
-- **Coherencia en `conv_mensajes`:** entrante ⇒ `sender_type = contact` y estado `received`/`deleted`; saliente ⇒ `human`/`ai`/`system` y estados de entrega; `text` con texto y los medios con `media`.
-- **No creado todavía:** `handling_mode` (bot/humano/pausa), `assigned_user_id`, transcripción de audio, error de envío, tabla de restaurantes por canal, suscripciones a informes.
-- `updated_at` lo mantiene la aplicación (sin triggers). `ultimo_mensaje_at` debe usar el mayor `provider_timestamp`.
-- `raw_payload` y `text` contienen datos personales: la retención está pendiente de definir.
+- **DENY BY DEFAULT:** una persona sin filas en `conv_contacto_empresas` / `conv_contacto_restaurantes` (p. ej. un desconocido que escribe al número central) **existe**, tiene conversación y mensajes, pero su acceso a datos es **cero**. La ingesta de mensajes no crea ningún permiso.
+- **El tenant de un mensaje no es un campo copiado:** se resuelve por `contacto → empresas → restaurantes`. La empresa nunca se deduce del texto de un mensaje.
+- **Coherencia contacto → empresa → restaurante en la propia base:** `conv_contacto_restaurantes` tiene dos claves foráneas compuestas: `(contacto_id, empresa_id) → conv_contacto_empresas` (la persona pertenece a esa empresa) y `(restaurante_id, empresa_id) → restaurantes(id, empresa_id)` (el restaurante es de esa empresa). Un restaurante sin empresa no se puede asignar; mover un restaurante asignado a otra empresa queda bloqueado.
+- **`restaurantes` tiene ahora `unique (id, empresa_id)`** (`restaurantes_id_empresa_id_key`). Es el único cambio sobre una tabla existente: aditivo, `id` ya era único, no toca columnas ni filas. Existe para que la clave compuesta anterior sea posible.
+- **Visibilidad inicial de las conversaciones en la web: solo `super_admin`**, aplicada en servidor (las tablas no tienen políticas). Los administradores de empresa no ven todavía la bandeja central.
+- **Sin borrados en cascada:** todas las relaciones son `ON DELETE RESTRICT`, salvo `conv_contactos.usuario_id` (`SET NULL`). Un `DELETE` directo de una empresa, canal, contacto, conversación o restaurante con relaciones queda bloqueado. Quitar un permiso es un `DELETE` explícito de su fila (para quitar una empresa hay que quitar antes sus restaurantes). La eliminación/anonimización por privacidad será una operación explícita futura.
+
+## Idempotencia y reglas de datos
+
+- `unique (canal_id, external_id)` en `conv_mensajes` (el `wamid` de Meta). `external_id` es obligatorio en entrantes.
+- Coherencia en `conv_mensajes`: entrante ⇒ `sender_type = contact` y estado `received`/`deleted`; saliente ⇒ `human`/`ai`/`system` y estados de entrega; `text` con texto y los medios con `media`. La clave compuesta `(conversacion_id, canal_id)` impide un mensaje de otro canal.
+- `updated_at` lo mantiene la aplicación (sin triggers). `ultimo_mensaje_at` solo avanza con el mayor `provider_timestamp`.
+
+## Relación con otras tablas de permisos (pendiente de converger)
+
+- `nexo_bot_accesos` (bot actual en Make, por teléfono, con `restaurante_ids` y `todos_restaurantes`) **no se toca**: el bot actual depende de ella. La convergencia con `conv_contacto_*` se planificará cuando Conversations esté funcionando y probado.
+- `usuario_marcas` / `usuario_restaurantes` son los permisos de los usuarios web, independientes.
+
+## No creado todavía
+
+`handling_mode` (bot/humano/pausa), `assigned_user_id`, transcripción de audio, error de envío, suscripciones a informes, pantalla de administración de personas. La retención de `raw_payload` y `text` (datos personales) está pendiente de definir; hoy la ingesta no persiste `raw_payload`.
+
+## Historial
+
+`conversations_foundation` creó un primer modelo con `empresa_id` en cada tabla (canal → empresa). `conversations_central_channel` lo sustituyó (las tablas estaban vacías; la migración aborta si alguna tiene filas) por el modelo actual.
