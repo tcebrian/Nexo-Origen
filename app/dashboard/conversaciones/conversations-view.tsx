@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { canSubmitDraft } from "@/lib/conversations/compose";
+import { describeDeliveryStatus, type DeliveryIndicator } from "@/lib/conversations/delivery-status";
 import {
   MAX_OUTBOUND_TEXT_CHARS,
   WHATSAPP_TEXT_MAX_CHARS,
@@ -70,12 +71,6 @@ function initialOf(name: string): string {
   const first = Array.from(name.replace(/^\+/, "").trim())[0];
   return first ? first.toUpperCase() : "?";
 }
-
-/** Solo se avisa de los estados que requieren atención del usuario. */
-const OUTBOUND_STATE_LABEL: Record<string, string> = {
-  pending: "Sin confirmar",
-  failed: "No enviado",
-};
 
 const STATUS_LABEL = { open: "Abierta", closed: "Cerrada" } as const;
 
@@ -157,9 +152,54 @@ function ConversationRow({
   );
 }
 
-function MessageBubble({ message }: { message: ConversationMessage }) {
+const TONE_CLASS: Record<DeliveryIndicator["tone"], string> = {
+  muted: "text-gray-500",
+  read: "text-violet-300",
+  warning: "text-amber-200",
+  error: "text-rose-300",
+};
+
+/** Checks de entrega estilo WhatsApp con la paleta de Nexo (leído en violeta). */
+function DeliveryMark({ indicator }: { indicator: DeliveryIndicator }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 ${TONE_CLASS[indicator.tone]}`}
+      title={indicator.label}
+      data-delivery={indicator.kind}
+    >
+      <svg className="h-[11px] w-[16px]" viewBox="0 0 18 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        {indicator.ticks === 0 && indicator.kind === "pending" ? (
+          <>
+            <circle cx="9" cy="5.5" r="4" />
+            <path d="M9 3.4v2.3l1.5 1" />
+          </>
+        ) : indicator.kind === "failed" ? (
+          <path d="M9 2.2v3.6M9 8.4h.01" />
+        ) : indicator.ticks === 0 ? (
+          <path d="M5 5.5h8" />
+        ) : (
+          <>
+            <path d="M1.5 6.2l3 3L10.5 2.5" />
+            {indicator.ticks === 2 ? <path d="M6.7 8.7l.8.8 6.2-7" /> : null}
+          </>
+        )}
+      </svg>
+      {indicator.showLabel ? (
+        <span className="text-[10px]">{indicator.label}</span>
+      ) : (
+        <span className="sr-only">{indicator.label}</span>
+      )}
+    </span>
+  );
+}
+
+function MessageBubble({ message, now }: { message: ConversationMessage; now: number }) {
   const outbound = message.direction === "outbound";
   const isText = message.contentType === "text";
+  // Solo los salientes llevan estado de entrega.
+  const indicator = outbound
+    ? describeDeliveryStatus(message.status, now - (parseDate(message.timestamp)?.getTime() ?? now))
+    : null;
 
   return (
     <div className={`flex ${outbound ? "justify-end" : "justify-start"}`}>
@@ -183,15 +223,9 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
             ) : null}
           </>
         )}
-        <p className="mt-1 text-right text-[10px] text-gray-500">
-          {outbound && OUTBOUND_STATE_LABEL[message.status] ? (
-            <span
-              className={message.status === "failed" ? "mr-1.5 text-rose-300" : "mr-1.5 text-amber-200"}
-            >
-              {OUTBOUND_STATE_LABEL[message.status]} ·
-            </span>
-          ) : null}
-          {formatMessageTime(message.timestamp)}
+        <p className="mt-1 flex items-center justify-end gap-1.5 text-[10px] text-gray-500">
+          <span>{formatMessageTime(message.timestamp)}</span>
+          {indicator ? <DeliveryMark indicator={indicator} /> : null}
         </p>
       </div>
     </div>
@@ -200,6 +234,12 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
 
 function MessageThread({ messages }: { messages: ConversationMessage[] }) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Reloj para distinguir "Enviando" de "Sin confirmar" (un pending antiguo).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
   const lastId = messages[messages.length - 1]?.id;
 
   useEffect(() => {
@@ -219,7 +259,7 @@ function MessageThread({ messages }: { messages: ConversationMessage[] }) {
                 {formatDayLabel(message.timestamp)}
               </p>
             ) : null}
-            <MessageBubble message={message} />
+            <MessageBubble message={message} now={now} />
           </div>
         );
       })}

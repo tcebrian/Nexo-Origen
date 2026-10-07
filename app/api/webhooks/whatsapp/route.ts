@@ -3,7 +3,9 @@ import {
   handleWebhookVerification,
   type WebhookHttpResult,
 } from "@/lib/conversations/channels/whatsapp-cloud/webhook-handler";
+import { applyWhatsAppMessageStatus } from "@/lib/conversations/apply-message-status";
 import { ingestInboundMessage } from "@/lib/conversations/ingest-inbound";
+import { messageStatusRepository } from "@/lib/conversations/status.server";
 import { conversationsRepository } from "@/lib/supabase/conversations.server";
 
 export const runtime = "nodejs";
@@ -51,6 +53,7 @@ export async function POST(request: Request) {
       {
         appSecret: process.env.WHATSAPP_CLOUD_APP_SECRET,
         ingest: (message) => ingestInboundMessage(conversationsRepository, "whatsapp_cloud", message),
+        applyStatus: (update) => applyWhatsAppMessageStatus(messageStatusRepository, "whatsapp_cloud", update),
       }
     )
   );

@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import type { ApplyStatusResult } from "@/lib/conversations/apply-message-status";
 import type { IngestInboundResult } from "@/lib/conversations/ingest-inbound";
-import type { InboundMessage } from "@/lib/conversations/types";
+import type { InboundMessage, MessageStatusUpdate } from "@/lib/conversations/types";
 import { parseWhatsAppWebhook } from "./parse-webhook";
 import { verifyMetaSignature } from "./verify-signature";
 
@@ -95,6 +96,8 @@ export async function handleWebhookEvent(
   deps: {
     appSecret: string | undefined;
     ingest: (message: InboundMessage) => Promise<IngestInboundResult>;
+    /** Aplica un estado de entrega (sent/delivered/read/failed/deleted) a un mensaje saliente. */
+    applyStatus: (update: MessageStatusUpdate) => Promise<ApplyStatusResult>;
     logger?: WebhookLogger;
   }
 ): Promise<WebhookHttpResult> {
@@ -122,7 +125,7 @@ export async function handleWebhookEvent(
   // 3) Traducción al modelo interno.
   const { messages, statuses } = parseWhatsAppWebhook(payload);
 
-  // 4) Ingesta secuencial. Un fallo no bloquea a los demás mensajes del lote:
+  // 4) Ingesta secuencial de mensajes. Un fallo no bloquea a los demás mensajes del lote:
   //    se procesan todos y, si alguno falló, se responde 500 para que Meta
   //    reintente el lote entero (la ingesta es idempotente).
   const counts = { stored: 0, duplicate: 0, channel_not_found: 0, channel_inactive: 0, failed: 0 };
@@ -138,11 +141,35 @@ export async function handleWebhookEvent(
     }
   }
 
-  // Los estados (sent/delivered/read/failed) todavía no se procesan.
+  // 5) Estados de entrega de los mensajes salientes. Son independientes de los
+  //    mensajes y no críticos: se aplican de forma idempotente y monótona, y un
+  //    fallo aquí NO provoca un 500 (Meta reenviaría también los mensajes del
+  //    lote). Un fallo de base de datos se reintenta una vez; si persiste solo se
+  //    registra de forma segura (el siguiente estado del mismo mensaje lo corrige).
+  const statusCounts = { updated: 0, unchanged: 0, message_not_found: 0, channel_not_found: 0, failed: 0 };
+  for (const [index, update] of statuses.entries()) {
+    try {
+      let result: ApplyStatusResult;
+      try {
+        result = await deps.applyStatus(update);
+      } catch {
+        result = await deps.applyStatus(update);
+      }
+      statusCounts[result.status] += 1;
+    } catch (error) {
+      statusCounts.failed += 1;
+      logger.error(
+        `[whatsapp-webhook] fallo al aplicar estado (${index + 1}/${statuses.length}): ${describeFailure(error)}`
+      );
+    }
+  }
+
   logger.info(
     `[whatsapp-webhook] mensajes=${messages.length} stored=${counts.stored} duplicate=${counts.duplicate} ` +
       `channel_not_found=${counts.channel_not_found} channel_inactive=${counts.channel_inactive} ` +
-      `failed=${counts.failed} statuses_ignorados=${statuses.length}`
+      `failed=${counts.failed} estados=${statuses.length} estados_updated=${statusCounts.updated} ` +
+      `estados_unchanged=${statusCounts.unchanged} estados_mensaje_desconocido=${statusCounts.message_not_found} ` +
+      `estados_canal_desconocido=${statusCounts.channel_not_found} estados_failed=${statusCounts.failed}`
   );
 
   return counts.failed > 0 ? json(500, { ok: false }) : json(200, { ok: true });

@@ -1,7 +1,8 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { IngestInboundResult } from "@/lib/conversations/ingest-inbound";
-import type { InboundMessage } from "@/lib/conversations/types";
+import type { ApplyStatusResult } from "@/lib/conversations/apply-message-status";
+import type { InboundMessage, MessageStatusUpdate } from "@/lib/conversations/types";
 import {
   handleWebhookEvent,
   handleWebhookVerification,
@@ -102,9 +103,12 @@ function run(
     signature?: string | null;
     appSecret?: string | undefined;
     ingest?: (m: InboundMessage) => Promise<IngestInboundResult>;
+    applyStatus?: (u: MessageStatusUpdate) => Promise<ApplyStatusResult>;
   } = {}
 ) {
   const ingested: string[] = [];
+  const applied: string[] = [];
+  const infos: string[] = [];
   const ingest =
     options.ingest ??
     (async () => {
@@ -122,10 +126,14 @@ function run(
         ingested.push(message.externalMessageId);
         return ingest(message);
       },
-      logger: { info: () => {}, error: (m) => errors.push(m) },
+      applyStatus: async (update) => {
+        applied.push(`${update.externalMessageId}:${update.status}`);
+        return (options.applyStatus ?? (async () => ({ status: "unchanged" as const })))(update);
+      },
+      logger: { info: (m) => infos.push(m), error: (m) => errors.push(m) },
     }
   );
-  return { promise, ingested, errors };
+  return { promise, ingested, applied, errors, infos };
 }
 
 describe("handleWebhookEvent (POST) — firma y formato", () => {
@@ -277,7 +285,7 @@ describe("handleWebhookEvent (POST) — mensajes", () => {
     expect([...savedIds].sort()).toEqual(["wamid.1", "wamid.2", "wamid.3"]);
   });
 
-  it("16. solo statuses, sin mensajes → 200 y no se procesan", async () => {
+  it("16. solo statuses, sin mensajes → 200 y no se ingiere ningún mensaje", async () => {
     const raw = webhookBody({
       statuses: [{ id: "wamid.OUT1", status: "delivered", timestamp: "1760000000", recipient_id: "34600000001" }],
     });
@@ -286,7 +294,7 @@ describe("handleWebhookEvent (POST) — mensajes", () => {
     expect(ingested).toEqual([]);
   });
 
-  it("mensajes y statuses juntos: solo se ingieren los mensajes", async () => {
+  it("mensajes y statuses juntos: los mensajes se ingieren y los estados se aplican aparte", async () => {
     const raw = webhookBody({
       messages: [textMessage("wamid.1")],
       statuses: [{ id: "wamid.OUT1", status: "read", timestamp: "1760000000", recipient_id: "34600000001" }],
@@ -294,6 +302,135 @@ describe("handleWebhookEvent (POST) — mensajes", () => {
     const { promise, ingested } = run(raw);
     expect((await promise).status).toBe(200);
     expect(ingested).toEqual(["wamid.1"]);
+  });
+
+  describe("estados de entrega de los mensajes salientes", () => {
+    const status = (id: string, value: string, extra: Record<string, unknown> = {}) => ({
+      id,
+      status: value,
+      timestamp: "1760000000",
+      recipient_id: "34600000001",
+      ...extra,
+    });
+
+    it("aplica un estado y responde 200", async () => {
+      const { promise, applied, ingested } = run(webhookBody({ statuses: [status("wamid.OUT1", "delivered")] }));
+      expect((await promise).status).toBe(200);
+      expect(applied).toEqual(["wamid.OUT1:delivered"]);
+      expect(ingested).toEqual([]);
+    });
+
+    it("varios estados en un mismo payload se procesan todos, en orden", async () => {
+      const { promise, applied } = run(
+        webhookBody({
+          statuses: [status("wamid.OUT1", "sent"), status("wamid.OUT1", "delivered"), status("wamid.OUT2", "read")],
+        })
+      );
+      expect((await promise).status).toBe(200);
+      expect(applied).toEqual(["wamid.OUT1:sent", "wamid.OUT1:delivered", "wamid.OUT2:read"]);
+    });
+
+    it("mensajes y estados en el mismo webhook: ambos se procesan", async () => {
+      const { promise, applied, ingested } = run(
+        webhookBody({
+          messages: [textMessage("wamid.IN1")],
+          statuses: [status("wamid.OUT1", "read")],
+        })
+      );
+      expect((await promise).status).toBe(200);
+      expect(ingested).toEqual(["wamid.IN1"]);
+      expect(applied).toEqual(["wamid.OUT1:read"]);
+    });
+
+    it("un wamid o canal desconocido no hacen fallar el webhook", async () => {
+      for (const unknown of ["message_not_found", "channel_not_found"] as const) {
+        const { promise, infos } = run(webhookBody({ statuses: [status("wamid.OTRO", "delivered")] }), {
+          applyStatus: async () => ({ status: unknown }),
+        });
+        expect((await promise).status).toBe(200);
+        expect(infos.join(" ")).toContain(unknown === "message_not_found" ? "estados_mensaje_desconocido=1" : "estados_canal_desconocido=1");
+      }
+    });
+
+    it("un estado repetido (unchanged) es normal y responde 200", async () => {
+      const { promise, infos } = run(webhookBody({ statuses: [status("wamid.OUT1", "delivered")] }));
+      expect((await promise).status).toBe(200);
+      expect(infos.join(" ")).toContain("estados_unchanged=1");
+    });
+
+    it("un fallo al aplicar un estado NO devuelve 500 (Meta no reenvía los mensajes) y se reintenta una vez", async () => {
+      let calls = 0;
+      const { promise, errors, ingested } = run(
+        webhookBody({ messages: [textMessage("wamid.IN1")], statuses: [status("wamid.OUT1", "read"), status("wamid.OUT2", "read")] }),
+        {
+          applyStatus: async (update) => {
+            if (update.externalMessageId === "wamid.OUT1") {
+              calls += 1;
+              throw Object.assign(new Error("wamid.OUT1 34600000001"), { name: "ConversationsDbError", code: "08006" });
+            }
+            return { status: "updated" };
+          },
+        }
+      );
+      expect((await promise).status).toBe(200);
+      expect(calls).toBe(2);
+      expect(ingested).toEqual(["wamid.IN1"]);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain("fallo al aplicar estado (1/2)");
+      expect(errors[0]).toContain("code=08006");
+      expect(errors[0]).not.toContain("wamid.OUT1");
+      expect(errors[0]).not.toContain("34600000001");
+    });
+
+    it("un fallo transitorio se recupera con el reintento interno", async () => {
+      let calls = 0;
+      const { promise, errors } = run(webhookBody({ statuses: [status("wamid.OUT1", "read")] }), {
+        applyStatus: async () => {
+          if (++calls === 1) throw new Error("transitorio");
+          return { status: "updated" };
+        },
+      });
+      expect((await promise).status).toBe(200);
+      expect(errors).toEqual([]);
+    });
+
+    it("si falla la ingesta de un mensaje sigue siendo 500, pero los estados también se aplican", async () => {
+      const { promise, applied } = run(
+        webhookBody({ messages: [textMessage("wamid.IN1")], statuses: [status("wamid.OUT1", "read")] }),
+        {
+          ingest: async () => {
+            throw new Error("db");
+          },
+        }
+      );
+      expect((await promise).status).toBe(500);
+      expect(applied).toEqual(["wamid.OUT1:read"]);
+    });
+
+    it("failed con error del proveedor: solo se aplica el estado; ni teléfono, ni texto ni error se registran", async () => {
+      const { promise, infos, errors } = run(
+        webhookBody({
+          statuses: [
+            status("wamid.OUT1", "failed", {
+              errors: [{ code: 131026, title: "Message undeliverable", message: "texto privado 34600000001" }],
+            }),
+          ],
+        })
+      );
+      expect((await promise).status).toBe(200);
+      const logged = [...infos, ...errors].join(" | ");
+      for (const sensitive of ["131026", "undeliverable", "texto privado", "34600000001", "wamid.OUT1"]) {
+        expect(logged).not.toContain(sensitive);
+      }
+    });
+
+    it("estados con firma inválida no se aplican", async () => {
+      const { promise, applied } = run(webhookBody({ statuses: [status("wamid.OUT1", "read")] }), {
+        signature: "sha256=00",
+      });
+      expect((await promise).status).toBe(401);
+      expect(applied).toEqual([]);
+    });
   });
 
   describe("logs de errores", () => {
@@ -309,6 +446,7 @@ describe("handleWebhookEvent (POST) — mensajes", () => {
           ingest: async () => {
             throw error;
           },
+          applyStatus: async () => ({ status: "unchanged" }),
           logger: { info: (m) => logged.push(m), error: (m) => logged.push(m) },
         }
       );
@@ -364,7 +502,7 @@ describe("handleWebhookEvent (POST) — mensajes", () => {
 
     it("el resumen agregado solo lleva contadores", async () => {
       const { all } = await logsFor(new LeakyDbError());
-      expect(all).toMatch(/mensajes=1 stored=0 duplicate=0 channel_not_found=0 channel_inactive=0 failed=1 statuses_ignorados=0/);
+      expect(all).toMatch(/mensajes=1 stored=0 duplicate=0 channel_not_found=0 channel_inactive=0 failed=1 estados=0/);
     });
   });
 });

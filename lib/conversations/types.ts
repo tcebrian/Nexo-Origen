@@ -25,10 +25,12 @@ export type MessageSenderType = (typeof MESSAGE_SENDER_TYPES)[number];
 
 /**
  * Ciclo de vida de un mensaje. Un mensaje entrante nace en `received`.
+ * `pending`: saliente reservado cuyo envío a Meta aún no está confirmado (sin wamid).
  * `deleted`: el proveedor informa de que el mensaje fue eliminado.
  */
 export const MESSAGE_STATUSES = [
   "received",
+  "pending",
   "sent",
   "delivered",
   "read",
