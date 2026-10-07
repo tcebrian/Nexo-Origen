@@ -1,22 +1,44 @@
 import { buildMessagePreview } from "@/lib/conversations/message-preview";
 import type { MessageReadRow } from "@/lib/conversations/read-model";
-import type { RejectionReason, SendTextInput, SendTextResult } from "@/lib/whatsapp/cloud-api.server";
+import { deriveMessageRequestId } from "@/lib/conversations/request-ids";
+import {
+  MAX_OUTBOUND_TEXT_CHARS,
+  splitText,
+  textLength,
+} from "@/lib/conversations/text-chunks";
+import type {
+  RejectionReason,
+  SendDocumentInput,
+  SendMessageResult,
+  SendTextInput,
+  UploadMediaInput,
+  UploadMediaResult,
+} from "@/lib/whatsapp/cloud-api.server";
 
 /**
- * Caso de uso: enviar un mensaje de texto desde Nexo a un contacto de WhatsApp.
- * Sin dependencia de Next, Supabase ni Meta: la persistencia (`repository`) y el
- * proveedor (`sendText`) se inyectan, igual que en `ingest-inbound.ts`.
+ * Caso de uso: enviar desde Nexo a un contacto de WhatsApp una OPERACIÓN, que es
+ *   · un texto (si supera 4096 caracteres se divide en varios mensajes), o
+ *   · un documento PDF generado por Nexo en servidor (p. ej. un informe).
+ * Sin dependencia de Next, Supabase ni Meta: persistencia y proveedor se inyectan.
  *
- * IDEMPOTENCIA (reserva antes de enviar)
- *  1. `claim` inserta el saliente con `client_request_id` único y estado `pending`
- *     ANTES de llamar a Meta. Un reintento con el mismo id encuentra la fila y NO
- *     vuelve a enviar.
- *  2. Meta acepta → `markSent` (wamid + `sent`). Rechazo 4xx → `markFailed`.
- *  3. Resultado incierto (timeout, red, 5xx) → la fila queda `pending` y cualquier
- *     reintento con el mismo id devuelve `in_progress`: nunca se reenvía a ciegas.
- *  4. Meta acepta pero falla guardar → la fila sigue `pending`; el reintento tampoco
- *     reenvía. Se registra el id de la fila y el wamid (no son datos personales)
- *     para conciliarlo.
+ * IDEMPOTENCIA (reserva antes de enviar, un id estable por mensaje)
+ *  El cliente manda UN `requestId` por operación. Cada mensaje de la operación
+ *  tiene su propio id derivado y estable (`deriveMessageRequestId`): el mensaje 0
+ *  usa el requestId tal cual y los demás un UUID derivado de (requestId, índice).
+ *  Para cada mensaje, en orden:
+ *   1. `claim` inserta la fila `pending` con su id único ANTES de llamar a Meta.
+ *      Si ya existe, es un reintento y NO se envía a ciegas:
+ *        · `sent|delivered|read` → ya entregado a Meta: se salta (no se reenvía).
+ *        · `failed`              → rechazo definitivo: se reintenta la MISMA fila.
+ *        · `pending`             → resultado incierto: se DETIENE la operación.
+ *   2. Meta acepta → `markSent` (wamid + `sent`). 4xx → `markFailed`.
+ *      Timeout/red/5xx → la fila queda `pending` (incierto).
+ *   3. Para documentos, la reserva ocurre ANTES de generar el PDF y de subirlo: un
+ *      reintento ya enviado o pendiente no vuelve a generar ni a subir nada. Generar
+ *      o subir NO entrega nada, así que un fallo ahí marca `failed` y se puede
+ *      reintentar sin riesgo.
+ *  Resultado: tras "chunk 1 y 2 enviados, chunk 3 incierto", el reintento salta
+ *  1 y 2 (ya `sent`) y se detiene en 3 (`pending`) sin reenviar nada.
  */
 
 /** Mensaje saliente tal como lo devuelve la reserva/actualización. */
@@ -32,6 +54,25 @@ export type SendContext = {
   contactPhone: string;
 };
 
+/** Metadatos persistidos de un documento saliente. Nunca token ni URL de descarga. */
+export type OutboundMedia = {
+  mime_type: string;
+  filename: string;
+  /** Se completa al enviar: el PDF se genera después de reservar la fila. */
+  size?: number;
+  /** Se completa cuando Meta acepta el archivo. */
+  provider_media_id?: string;
+  /** Origen del documento (p. ej. "nexo_report") y datos para reconocer la misma operación. */
+  source?: string;
+  report_type?: string;
+  restaurant_id?: number;
+  period?: string;
+};
+
+export type OutboundContent =
+  | { contentType: "text"; text: string }
+  | { contentType: "document"; text: string | null; media: OutboundMedia };
+
 export type ClaimResult =
   | { status: "claimed"; message: OutboundRecord }
   | { status: "existing"; message: OutboundRecord };
@@ -42,12 +83,18 @@ export interface OutboundRepository {
     conversationId: string;
     canalId: string;
     requestId: string;
-    text: string;
+    content: OutboundContent;
     now: Date;
   }): Promise<ClaimResult>;
   /** `failed` → `pending` de forma atómica. `false` si otra petición ya lo hizo. */
   reclaimFailed(messageId: string): Promise<boolean>;
-  markSent(input: { messageId: string; wamid: string; sentAt: Date }): Promise<OutboundRecord>;
+  markSent(input: {
+    messageId: string;
+    wamid: string;
+    sentAt: Date;
+    /** Metadatos finales del archivo (con `provider_media_id`). */
+    media?: OutboundMedia;
+  }): Promise<OutboundRecord>;
   markFailed(messageId: string): Promise<void>;
   touchConversation(input: {
     conversationId: string;
@@ -57,148 +104,305 @@ export interface OutboundRepository {
   }): Promise<boolean>;
 }
 
-export type SendTextDeps = {
+/** Documento PDF que Nexo genera en servidor (nunca bytes recibidos del navegador). */
+export type SendDocument = {
+  /** Metadatos que se guardan al reservar (sin size ni provider_media_id). */
+  media: Omit<OutboundMedia, "size" | "provider_media_id">;
+  /** Vista previa de la conversación, p. ej. "📊 Informe mensual · BK Zizur". */
+  preview: string;
+  /**
+   * Genera los bytes SOLO cuando el mensaje se va a enviar: un reintento de una
+   * operación ya enviada o pendiente no llega a llamarla.
+   */
+  produce: () => Promise<Uint8Array>;
+};
+
+export type SendDeps = {
   repository: OutboundRepository;
-  sendText: (input: SendTextInput) => Promise<SendTextResult>;
+  sendText: (input: SendTextInput) => Promise<SendMessageResult>;
+  uploadMedia: (input: UploadMediaInput) => Promise<UploadMediaResult>;
+  sendDocument: (input: SendDocumentInput) => Promise<SendMessageResult>;
   isConfigured: () => boolean;
   now?: () => Date;
-  /** Solo ids técnicos: nunca teléfonos, textos ni tokens. */
+  /** Solo ids técnicos: nunca teléfonos, textos, nombres de archivo ni tokens. */
   logger?: { error: (message: string) => void };
 };
 
-export type SendTextOutcome =
-  | { status: "sent"; message: OutboundRecord; deduplicated: boolean }
-  | { status: "not_found" }
-  | { status: "channel_inactive" }
-  | { status: "misconfigured" }
-  /** Misma petición ya reservada con resultado aún no confirmado. */
-  | { status: "in_progress" }
-  /** El mismo requestId se usó con otra conversación u otro texto. */
-  | { status: "request_conflict" }
-  | { status: "rejected"; reason: RejectionReason }
-  | { status: "unconfirmed" }
+export type SendFailureStatus =
+  | "not_found"
+  | "channel_inactive"
+  | "misconfigured"
+  /** Mensaje ya reservado con resultado aún no confirmado: no se reenvía. */
+  | "in_progress"
+  /** El mismo requestId se usó con otra conversación u otro contenido. */
+  | "request_conflict"
+  | "rejected"
+  | "unconfirmed"
+  /** La subida del archivo a Meta falló (no se envió nada; reintentable). */
+  | "upload_failed"
+  /** No se pudo generar el PDF (no se envió nada; reintentable). */
+  | "generation_failed"
   /** Meta aceptó el mensaje pero no se pudo guardar el resultado. */
-  | { status: "sent_not_saved" };
+  | "sent_not_saved";
+
+export type SendOutcome =
+  | { status: "sent"; messages: OutboundRecord[]; deduplicated: boolean }
+  | {
+      status: SendFailureStatus;
+      reason?: RejectionReason;
+      /** Mensajes de la operación que SÍ quedaron enviados antes del fallo. */
+      sent: OutboundRecord[];
+    };
 
 const MARK_SENT_ATTEMPTS = 3;
 const SENT_STATES = new Set(["sent", "delivered", "read"]);
 
-export async function sendTextMessageToConversation(
-  input: { conversationId: string; requestId: string; text: string },
-  deps: SendTextDeps
-): Promise<SendTextOutcome> {
+type StepResult = {
+  result: SendMessageResult | { status: "upload_failed" } | { status: "generation_failed" };
+  media?: OutboundMedia;
+};
+type Step =
+  | { kind: "done"; message: OutboundRecord; deduplicated: boolean }
+  | { kind: "stop"; status: SendFailureStatus; reason?: RejectionReason };
+
+function sameContent(record: OutboundRecord, content: OutboundContent): boolean {
+  if (record.content_type !== content.contentType) return false;
+  if (content.contentType === "text") return record.text === content.text;
+  const stored = (record.media ?? {}) as Record<string, unknown>;
+  // `size` y `provider_media_id` se completan al enviar: no identifican la operación.
+  const { size: _size, provider_media_id: _id, ...identity } = content.media;
+  void _size;
+  void _id;
+  return (
+    (record.text ?? null) === content.text &&
+    Object.entries(identity).every(([key, value]) => stored[key] === value)
+  );
+}
+
+/** Vista previa de la conversación para un mensaje saliente. */
+export function buildOutboundPreview(content: OutboundContent): string {
+  if (content.contentType === "text") {
+    return buildMessagePreview({ contentType: "text", text: content.text });
+  }
+  return `📄 ${content.media.filename}`;
+}
+
+export async function sendConversationOperation(
+  input: {
+    conversationId: string;
+    requestId: string;
+    /** Texto completo. Se ignora si hay `document`. */
+    text: string;
+    document?: SendDocument;
+  },
+  deps: SendDeps
+): Promise<SendOutcome> {
   const { repository, logger = console } = deps;
   const now = deps.now ?? (() => new Date());
+  const sent: OutboundRecord[] = [];
+  const fail = (status: SendFailureStatus, reason?: RejectionReason): SendOutcome => ({
+    status,
+    ...(reason ? { reason } : {}),
+    sent,
+  });
 
   const context = await repository.loadContext(input.conversationId);
-  if (!context) return { status: "not_found" };
+  if (!context) return fail("not_found");
 
   if (context.canal.provider !== "whatsapp_cloud" || context.canal.status !== "connected") {
-    return { status: "channel_inactive" };
+    return fail("channel_inactive");
   }
   // Antes de reservar nada: sin token no hay envío posible ni filas huérfanas.
-  if (!deps.isConfigured()) return { status: "misconfigured" };
+  if (!deps.isConfigured()) return fail("misconfigured");
 
-  const claim = await repository.claim({
-    conversationId: context.conversationId,
-    canalId: context.canal.id,
-    requestId: input.requestId,
-    text: input.text,
-    now: now(),
-  });
+  // Garantía de orden: cada mensaje lleva un instante estrictamente mayor.
+  let lastAt = 0;
+  const nextInstant = (): Date => {
+    lastAt = Math.max(now().getTime(), lastAt + 1);
+    return new Date(lastAt);
+  };
 
-  let message = claim.message;
+  async function deliver(
+    index: number,
+    content: OutboundContent,
+    perform: () => Promise<StepResult>,
+    preview?: string
+  ): Promise<Step> {
+    const claim = await repository.claim({
+      conversationId: context!.conversationId,
+      canalId: context!.canal.id,
+      requestId: deriveMessageRequestId(input.requestId, index),
+      content,
+      now: nextInstant(),
+    });
+    const message = claim.message;
 
-  if (claim.status === "existing") {
-    // Reintento: el id solo vale para la misma conversación y el mismo texto.
-    if (message.conversacion_id !== context.conversationId || message.text !== input.text) {
-      return { status: "request_conflict" };
+    if (claim.status === "existing") {
+      // Reintento: el id solo vale para la misma conversación y el mismo contenido.
+      if (message.conversacion_id !== context!.conversationId || !sameContent(message, content)) {
+        return { kind: "stop", status: "request_conflict" };
+      }
+      if (SENT_STATES.has(message.status)) return { kind: "done", message, deduplicated: true };
+      // `failed` es definitivo: se reintenta la MISMA fila. `pending`/`deleted`: no se envía.
+      if (message.status !== "failed" || !(await repository.reclaimFailed(message.id))) {
+        return { kind: "stop", status: "in_progress" };
+      }
     }
-    if (SENT_STATES.has(message.status)) {
-      return { status: "sent", message, deduplicated: true };
-    }
-    // `failed` es un rechazo definitivo de Meta: se puede reintentar la MISMA fila.
-    // `pending`/`deleted`: resultado incierto o no reintentable → no se envía.
-    if (message.status !== "failed" || !(await repository.reclaimFailed(message.id))) {
-      return { status: "in_progress" };
-    }
-  }
 
-  const result = await deps.sendText({
-    phoneNumberId: context.canal.externalAccountId,
-    to: context.contactPhone,
-    text: input.text,
-  });
+    const { result, media } = await perform();
 
-  switch (result.status) {
-    case "rejected":
-      await repository.markFailed(message.id);
-      return { status: "rejected", reason: result.reason };
-
-    case "misconfigured":
-      await repository.markFailed(message.id);
-      return { status: "misconfigured" };
-
-    case "unconfirmed":
-      // La fila queda `pending`: no se sabe si Meta lo envió.
-      return { status: "unconfirmed" };
-
-    case "sent": {
-      const sentAt = now();
-      let saved: OutboundRecord | null = null;
-      for (let attempt = 0; attempt < MARK_SENT_ATTEMPTS && !saved; attempt++) {
-        try {
-          saved = await repository.markSent({ messageId: message.id, wamid: result.wamid, sentAt });
-        } catch {
-          saved = null;
+    switch (result.status) {
+      case "upload_failed":
+        await repository.markFailed(message.id);
+        return { kind: "stop", status: "upload_failed" };
+      case "generation_failed":
+        await repository.markFailed(message.id);
+        return { kind: "stop", status: "generation_failed" };
+      case "rejected":
+        await repository.markFailed(message.id);
+        return { kind: "stop", status: "rejected", reason: result.reason };
+      case "misconfigured":
+        await repository.markFailed(message.id);
+        return { kind: "stop", status: "misconfigured" };
+      case "unconfirmed":
+        // La fila queda `pending`: no se sabe si Meta lo envió.
+        return { kind: "stop", status: "unconfirmed" };
+      case "sent": {
+        const sentAt = nextInstant();
+        let saved: OutboundRecord | null = null;
+        for (let attempt = 0; attempt < MARK_SENT_ATTEMPTS && !saved; attempt++) {
+          try {
+            saved = await repository.markSent({ messageId: message.id, wamid: result.wamid, sentAt, media });
+          } catch {
+            saved = null;
+          }
         }
+        if (!saved) {
+          logger.error(`[conversations-send] sent_not_saved messageId=${message.id} wamid=${result.wamid}`);
+          return { kind: "stop", status: "sent_not_saved" };
+        }
+        try {
+          await repository.touchConversation({
+            conversationId: context!.conversationId,
+            canalId: context!.canal.id,
+            at: sentAt,
+            preview: preview ?? buildOutboundPreview(content),
+          });
+        } catch {
+          // El mensaje ya está guardado; solo la vista previa quedaría atrasada.
+          logger.error(`[conversations-send] touch_failed messageId=${saved.id}`);
+        }
+        return { kind: "done", message: saved, deduplicated: false };
       }
-      if (!saved) {
-        logger.error(
-          `[conversations-send] sent_not_saved messageId=${message.id} wamid=${result.wamid}`
-        );
-        return { status: "sent_not_saved" };
-      }
-      message = saved;
-
-      try {
-        await repository.touchConversation({
-          conversationId: context.conversationId,
-          canalId: context.canal.id,
-          at: sentAt,
-          preview: buildMessagePreview({ contentType: "text", text: input.text }),
-        });
-      } catch {
-        // El mensaje ya está guardado; solo la vista previa quedaría atrasada.
-        logger.error(`[conversations-send] touch_failed messageId=${message.id}`);
-      }
-      return { status: "sent", message, deduplicated: false };
     }
   }
+
+  const steps: Step[] = [];
+  const run = async (step: Promise<Step>): Promise<boolean> => {
+    const result = await step;
+    steps.push(result);
+    if (result.kind === "done") {
+      sent.push(result.message);
+      return true;
+    }
+    return false;
+  };
+
+  if (input.document) {
+    const { document } = input;
+    const content: OutboundContent = { contentType: "document", text: null, media: { ...document.media } };
+
+    await run(
+      deliver(
+        0,
+        content,
+        async () => {
+          let bytes: Uint8Array;
+          try {
+            bytes = await document.produce();
+          } catch {
+            return { result: { status: "generation_failed" } };
+          }
+          if (bytes.length === 0) return { result: { status: "generation_failed" } };
+
+          const upload = await deps.uploadMedia({
+            phoneNumberId: context.canal.externalAccountId,
+            bytes,
+            mimeType: document.media.mime_type,
+            filename: document.media.filename,
+          });
+          if (upload.status === "misconfigured") return { result: { status: "misconfigured" } };
+          if (upload.status !== "uploaded") return { result: { status: "upload_failed" } };
+
+          const result = await deps.sendDocument({
+            phoneNumberId: context.canal.externalAccountId,
+            to: context.contactPhone,
+            mediaId: upload.mediaId,
+            filename: document.media.filename,
+            caption: null,
+          });
+          return {
+            result,
+            media: { ...document.media, size: bytes.length, provider_media_id: upload.mediaId },
+          };
+        },
+        document.preview
+      )
+    );
+  } else {
+    // Mensajes consecutivos y en orden: se detiene en el primero que no se confirme.
+    const chunks = splitText(input.text);
+    for (let index = 0; index < chunks.length; index++) {
+      const chunk = chunks[index]!;
+      const ok = await run(
+        deliver(index, { contentType: "text", text: chunk }, async () => ({
+          result: await deps.sendText({
+            phoneNumberId: context.canal.externalAccountId,
+            to: context.contactPhone,
+            text: chunk,
+          }),
+        }))
+      );
+      if (!ok) break;
+    }
+  }
+
+  const stop = steps.find((step): step is Extract<Step, { kind: "stop" }> => step.kind === "stop");
+  if (stop) return fail(stop.status, stop.reason);
+
+  return {
+    status: "sent",
+    messages: sent,
+    deduplicated: steps.every((step) => step.kind === "done" && step.deduplicated),
+  };
 }
 
 // Validación del cuerpo ---------------------------------------------------------
 
-export const MAX_OUTBOUND_TEXT_CHARS = 4096;
-
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export type ParsedSendBody =
+export function isValidRequestId(value: unknown): value is string {
+  return typeof value === "string" && UUID_RE.test(value);
+}
+
+export type ParsedSendFields =
   | { ok: true; text: string; requestId: string }
   | { ok: false; error: string };
 
-/** Valida el cuerpo del POST. Ignora cualquier otro campo (teléfono, canal, sender…). */
-export function parseSendTextBody(body: unknown): ParsedSendBody {
+/**
+ * Valida `requestId` y `text` (obligatorio, máximo 20.000 caracteres; si pasa de
+ * 4096 se enviará en varios mensajes). Ignora cualquier otro campo (teléfono,
+ * canal, sender…).
+ */
+export function parseSendFields(body: unknown): ParsedSendFields {
   const record = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
 
-  if (typeof record.requestId !== "string" || !UUID_RE.test(record.requestId)) {
-    return { ok: false, error: "requestId no válido" };
-  }
+  if (!isValidRequestId(record.requestId)) return { ok: false, error: "requestId no válido" };
   if (typeof record.text !== "string") return { ok: false, error: "El mensaje está vacío" };
 
   const text = record.text.trim();
   if (text === "") return { ok: false, error: "El mensaje está vacío" };
-  if (Array.from(text).length > MAX_OUTBOUND_TEXT_CHARS) {
+  if (textLength(text) > MAX_OUTBOUND_TEXT_CHARS) {
     return { ok: false, error: `El mensaje supera los ${MAX_OUTBOUND_TEXT_CHARS} caracteres` };
   }
   return { ok: true, text, requestId: record.requestId };

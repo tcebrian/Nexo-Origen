@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { canSubmitDraft } from "@/lib/conversations/compose";
 import {
+  MAX_OUTBOUND_TEXT_CHARS,
+  WHATSAPP_TEXT_MAX_CHARS,
+  countMessageParts,
+  textLength,
+} from "@/lib/conversations/text-chunks";
+import {
   filterConversations,
   type ConversationListItem,
   type ConversationMessage,
@@ -243,18 +249,151 @@ function EmptyState({ title }: { title: string }) {
   );
 }
 
+type ReportOptions = {
+  reportTypes: { id: "monthly"; label: string }[];
+  restaurants: { id: number; name: string; brand: string; city: string }[];
+  periods: { offset: number; label: string }[];
+};
+
+const numberFormat = new Intl.NumberFormat("es-ES");
+
+const selectClass =
+  "w-full rounded-xl border border-white/[0.08] bg-[#0d0a14] px-3 py-2 text-[13px] text-white focus:border-violet-400/40 focus:outline-none disabled:opacity-50";
+
+/** Panel "📊 Informe de Nexo": solo identificadores; el PDF lo genera y envía el servidor. */
+function ReportPanel({
+  sending,
+  onCancel,
+  onSend,
+}: {
+  sending: boolean;
+  onCancel: () => void;
+  onSend: (selection: { reportType: "monthly"; restaurantId: number; offset: number }) => void;
+}) {
+  const [options, setOptions] = useState<ReportOptions | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [restaurantId, setRestaurantId] = useState("");
+  const [offset, setOffset] = useState("0");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchJson<ReportOptions>("/api/conversations/report-options")
+      .then((data) => {
+        if (!cancelled) setOptions(data);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const brands = useMemo(() => {
+    const groups = new Map<string, ReportOptions["restaurants"]>();
+    for (const restaurant of options?.restaurants ?? []) {
+      groups.set(restaurant.brand, [...(groups.get(restaurant.brand) ?? []), restaurant]);
+    }
+    return [...groups];
+  }, [options]);
+
+  return (
+    <div className="mb-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+      <p className="mb-2 text-[13px] font-medium text-white">📊 Informe de Nexo</p>
+
+      {loadError ? (
+        <p className="text-xs text-rose-300">No se pudieron cargar las opciones de informe.</p>
+      ) : !options ? (
+        <p className="text-xs text-gray-500">Cargando…</p>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-3">
+          <label className="block text-[11px] text-gray-500">
+            Tipo de informe
+            <select className={`${selectClass} mt-1`} value="monthly" disabled={sending} onChange={() => {}}>
+              {options.reportTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-[11px] text-gray-500">
+            Restaurante
+            <select
+              className={`${selectClass} mt-1`}
+              value={restaurantId}
+              disabled={sending}
+              onChange={(event) => setRestaurantId(event.target.value)}
+            >
+              <option value="">Selecciona…</option>
+              {brands.map(([brand, restaurants]) => (
+                <optgroup key={brand} label={brand}>
+                  {restaurants.map((restaurant) => (
+                    <option key={restaurant.id} value={restaurant.id}>
+                      {restaurant.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          <label className="block text-[11px] text-gray-500">
+            Periodo
+            <select
+              className={`${selectClass} mt-1`}
+              value={offset}
+              disabled={sending}
+              onChange={(event) => setOffset(event.target.value)}
+            >
+              {options.periods.map((period) => (
+                <option key={period.offset} value={period.offset}>
+                  {period.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={sending}
+          className="rounded-xl px-3 py-2 text-[13px] text-gray-400 transition hover:text-white disabled:opacity-40"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          disabled={sending || !options || restaurantId === ""}
+          onClick={() =>
+            onSend({ reportType: "monthly", restaurantId: Number(restaurantId), offset: Number(offset) })
+          }
+          className="rounded-xl border border-violet-400/30 bg-violet-500/25 px-4 py-2 text-[13px] font-medium text-white transition hover:bg-violet-500/35 disabled:cursor-not-allowed disabled:border-white/[0.06] disabled:bg-white/[0.03] disabled:text-gray-600"
+        >
+          {sending ? "Enviando…" : "Enviar por WhatsApp"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Composer({
   conversationId,
   onSent,
 }: {
   conversationId: string;
-  onSent: (message: ConversationMessage) => void;
+  onSent: (messages: ConversationMessage[]) => void;
 }) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Mismo id mientras se reintenta el mismo mensaje; el servidor no reenvía si ya existe.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  // Mismo id mientras se reintenta la MISMA operación; el servidor no reenvía lo ya enviado.
   const requestIdRef = useRef<string | null>(null);
+  const reportRequestRef = useRef<{ key: string; requestId: string } | null>(null);
   const sendingRef = useRef(false);
 
   function updateDraft(value: string) {
@@ -263,38 +402,71 @@ function Composer({
     requestIdRef.current = null;
   }
 
-  async function submit() {
-    if (sendingRef.current || !canSubmitDraft(draft, false)) return;
+  /** Envía una operación; devuelve true si el servidor la completó. */
+  async function post(url: string, init: RequestInit): Promise<boolean> {
+    if (sendingRef.current) return false;
     sendingRef.current = true;
     setSending(true);
     setError(null);
-    requestIdRef.current ??= crypto.randomUUID();
 
     try {
-      const response = await fetch(`/api/conversations/${conversationId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: draft, requestId: requestIdRef.current }),
-      });
+      const response = await fetch(url, init);
       const data = (await response.json().catch(() => null)) as {
-        message?: ConversationMessage;
+        messages?: ConversationMessage[];
         error?: string;
       } | null;
 
-      if (response.ok && data?.message) {
-        requestIdRef.current = null;
-        setDraft("");
-        onSent(data.message);
-      } else {
-        setError(data?.error ?? "No se pudo enviar el mensaje");
-      }
+      // Aunque falle, algunos mensajes de la operación pueden haberse enviado.
+      if (data?.messages?.length) onSent(data.messages);
+      if (response.ok) return true;
+
+      setError(data?.error ?? "No se pudo enviar el mensaje");
+      return false;
     } catch {
       setError("No se pudo conectar. Comprueba la conversación antes de reenviar.");
+      return false;
     } finally {
       sendingRef.current = false;
       setSending(false);
     }
   }
+
+  async function submitText() {
+    if (sendingRef.current || !canSubmitDraft(draft, false)) return;
+    requestIdRef.current ??= crypto.randomUUID();
+
+    const ok = await post(`/api/conversations/${conversationId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: draft, requestId: requestIdRef.current }),
+    });
+    if (ok) {
+      requestIdRef.current = null;
+      setDraft("");
+    }
+  }
+
+  async function submitReport(selection: { reportType: "monthly"; restaurantId: number; offset: number }) {
+    // La misma selección reutiliza el requestId (doble clic o reintento no duplican).
+    const key = `${selection.reportType}:${selection.restaurantId}:${selection.offset}`;
+    if (reportRequestRef.current?.key !== key) {
+      reportRequestRef.current = { key, requestId: crypto.randomUUID() };
+    }
+
+    const ok = await post(`/api/conversations/${conversationId}/reports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...selection, requestId: reportRequestRef.current.requestId }),
+    });
+    if (ok) {
+      reportRequestRef.current = null;
+      setReportOpen(false);
+    }
+  }
+
+  const length = textLength(draft.trim());
+  const parts = countMessageParts(draft);
+  const showCounter = length > WHATSAPP_TEXT_MAX_CHARS * 0.8;
 
   return (
     <div className="border-t border-white/[0.07] p-3">
@@ -303,20 +475,71 @@ function Composer({
           {error}
         </p>
       ) : null}
+
+      {reportOpen ? (
+        <ReportPanel
+          sending={sending}
+          onCancel={() => {
+            setReportOpen(false);
+            setError(null);
+          }}
+          onSend={(selection) => void submitReport(selection)}
+        />
+      ) : null}
+
       <form
         className="flex items-end gap-2"
         onSubmit={(event) => {
           event.preventDefault();
-          void submit();
+          void submitText();
         }}
       >
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            disabled={sending}
+            aria-label="Adjuntar"
+            aria-expanded={menuOpen}
+            className="flex h-[42px] w-[42px] items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-gray-400 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <svg
+              className="h-[18px] w-[18px]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="m20 11-8.2 8.2a5 5 0 0 1-7-7l8.5-8.5a3.4 3.4 0 0 1 4.8 4.8l-8.5 8.5a1.8 1.8 0 0 1-2.5-2.5L15 6.5" />
+            </svg>
+          </button>
+          {menuOpen ? (
+            <div className="absolute bottom-12 left-0 z-10 w-52 overflow-hidden rounded-xl border border-white/[0.1] bg-[#0d0a14] py-1 shadow-xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setError(null);
+                  setReportOpen(true);
+                }}
+                className="block w-full px-3.5 py-2 text-left text-[13px] text-gray-200 hover:bg-white/[0.06]"
+              >
+                📊 Informe de Nexo
+              </button>
+            </div>
+          ) : null}
+        </div>
+
         <textarea
           value={draft}
           onChange={(event) => updateDraft(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
               event.preventDefault();
-              void submit();
+              void submitText();
             }
           }}
           rows={1}
@@ -332,6 +555,15 @@ function Composer({
           {sending ? "Enviando…" : "Enviar"}
         </button>
       </form>
+
+      {showCounter || parts > 1 ? (
+        <p
+          className={`mt-1.5 px-1 text-right text-[11px] ${length > MAX_OUTBOUND_TEXT_CHARS ? "text-rose-300" : "text-gray-500"}`}
+        >
+          {parts > 1 ? `Se enviará en ${parts} mensajes · ` : ""}
+          {numberFormat.format(length)} / {numberFormat.format(MAX_OUTBOUND_TEXT_CHARS)}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -508,12 +740,13 @@ export function ConversationsView() {
               <Composer
                 key={selected.id}
                 conversationId={selected.id}
-                onSent={(message) => {
-                  setMessages((current) =>
-                    current && !current.some((m) => m.id === message.id)
-                      ? [...current, message]
-                      : current
-                  );
+                onSent={(sent) => {
+                  setMessages((current) => {
+                    if (!current) return current;
+                    const known = new Set(current.map((m) => m.id));
+                    const fresh = sent.filter((m) => !known.has(m.id));
+                    return fresh.length > 0 ? [...current, ...fresh] : current;
+                  });
                   void loadList();
                 }}
               />

@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { sendTextMessage, isWhatsAppSenderConfigured } = await import("@/lib/whatsapp/cloud-api.server");
+const {
+  sendTextMessage,
+  isWhatsAppSenderConfigured,
+  uploadMedia,
+  sendDocumentMessage,
+} = await import("@/lib/whatsapp/cloud-api.server");
 
 const input = { phoneNumberId: "1365004563368241", to: "+34600111222", text: "Hola" };
 const TOKEN = "EAAB-super-secret-token";
@@ -100,5 +105,91 @@ describe("isWhatsAppSenderConfigured", () => {
     expect(isWhatsAppSenderConfigured("")).toBe(false);
     expect(isWhatsAppSenderConfigured("  ")).toBe(false);
     expect(isWhatsAppSenderConfigured(TOKEN)).toBe(true);
+  });
+});
+
+describe("uploadMedia", () => {
+  const upload = {
+    phoneNumberId: "1365004563368241",
+    bytes: new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 1]),
+    mimeType: "application/pdf",
+    filename: "Informe.pdf",
+  };
+
+  it("sube en multipart a /{phone_number_id}/media y devuelve el media_id", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(200, { id: "MEDIA-123" }));
+    const result = await uploadMedia(upload, { accessToken: TOKEN, fetchImpl: fetchImpl as never });
+
+    expect(result).toEqual({ status: "uploaded", mediaId: "MEDIA-123" });
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://graph.facebook.com/v26.0/1365004563368241/media");
+    const headers = init.headers as Record<string, string>;
+    expect(headers.Authorization).toBe(`Bearer ${TOKEN}`);
+    expect(headers["Content-Type"]).toBeUndefined(); // lo añade fetch con el boundary
+    const form = init.body as FormData;
+    expect(form.get("messaging_product")).toBe("whatsapp");
+    expect(form.get("type")).toBe("application/pdf");
+    expect((form.get("file") as File).name).toBe("Informe.pdf");
+  });
+
+  it("sin token → misconfigured; errores, red o respuesta sin id → failed (sin filtrar nada)", async () => {
+    expect(await uploadMedia(upload, { accessToken: "" })).toEqual({ status: "misconfigured" });
+
+    const rejected = vi.fn(async () => jsonResponse(400, { error: { message: TOKEN } }));
+    const network = vi.fn(async () => {
+      throw new TypeError("fetch failed");
+    });
+    const noId = vi.fn(async () => jsonResponse(200, {}));
+    for (const fetchImpl of [rejected, network, noId]) {
+      const result = await uploadMedia(upload, { accessToken: TOKEN, fetchImpl: fetchImpl as never });
+      expect(result).toEqual({ status: "failed" });
+    }
+  });
+});
+
+describe("sendDocumentMessage", () => {
+  const base = {
+    phoneNumberId: "1365004563368241",
+    to: "+34600111222",
+    mediaId: "MEDIA-123",
+    filename: "Informe.pdf",
+  };
+
+  it("type=document con media_id y filename; sin pie no envía caption", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(200, { messages: [{ id: "wamid.DOC" }] }));
+    const result = await sendDocumentMessage(base, { accessToken: TOKEN, fetchImpl: fetchImpl as never });
+
+    expect(result).toEqual({ status: "sent", wamid: "wamid.DOC" });
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://graph.facebook.com/v26.0/1365004563368241/messages");
+    expect(JSON.parse(init.body as string)).toEqual({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: "34600111222",
+      type: "document",
+      document: { id: "MEDIA-123", filename: "Informe.pdf" },
+    });
+  });
+
+  it("incluye el pie cuando existe", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(200, { messages: [{ id: "wamid.DOC" }] }));
+    await sendDocumentMessage({ ...base, caption: " Hola " }, { accessToken: TOKEN, fetchImpl: fetchImpl as never });
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string).document.caption).toBe("Hola");
+  });
+
+  it("4xx → rejected, 5xx → unconfirmed; rechaza media_id con caracteres raros", async () => {
+    const r4 = vi.fn(async () => jsonResponse(400, { error: { code: 131047 } }));
+    const r5 = vi.fn(async () => jsonResponse(500, {}));
+    expect(await sendDocumentMessage(base, { accessToken: TOKEN, fetchImpl: r4 as never })).toEqual({
+      status: "rejected",
+      reason: "window_closed",
+    });
+    expect(await sendDocumentMessage(base, { accessToken: TOKEN, fetchImpl: r5 as never })).toEqual({
+      status: "unconfirmed",
+    });
+    await expect(
+      sendDocumentMessage({ ...base, mediaId: "../x" }, { accessToken: TOKEN, fetchImpl: r4 as never })
+    ).rejects.toThrow();
   });
 });

@@ -17,6 +17,10 @@
     "app/api/generate-network-summary-image/route.ts": {
       "memory": 1769,
       "maxDuration": 60
+    },
+    "app/api/conversations/[conversationId]/reports/route.ts": {
+      "memory": 1769,
+      "maxDuration": 120
     }
   }
 }

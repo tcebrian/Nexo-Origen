@@ -15,8 +15,9 @@ describe("canSubmitDraft", () => {
     expect(canSubmitDraft("hola", true)).toBe(false);
   });
 
-  it("deshabilita por encima del límite de WhatsApp", () => {
-    expect(canSubmitDraft("a".repeat(4096), false)).toBe(true);
-    expect(canSubmitDraft("a".repeat(4097), false)).toBe(false);
+  it("no bloquea en 4096: el límite es el interno de 20.000", () => {
+    expect(canSubmitDraft("a".repeat(4097), false)).toBe(true);
+    expect(canSubmitDraft("a".repeat(20_000), false)).toBe(true);
+    expect(canSubmitDraft("a".repeat(20_001), false)).toBe(false);
   });
 });

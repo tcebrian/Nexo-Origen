@@ -168,6 +168,8 @@ type MediaView = {
   filename: string | null;
   caption: string | null;
   isVoiceMessage: boolean;
+  /** Documento generado por Nexo (informe), no un archivo del contacto. */
+  isReport: boolean;
 };
 
 /** Lee solo lo presentable de `media`; ignora cualquier otro campo (IDs externos). */
@@ -178,6 +180,7 @@ function readMedia(media: unknown): MediaView {
     filename: str("filename"),
     caption: str("caption"),
     isVoiceMessage: record.isVoiceMessage === true,
+    isReport: record.source === "nexo_report",
   };
 }
 
@@ -211,7 +214,7 @@ export function mapMessageRow(row: MessageReadRow): ConversationMessage {
       label = "🎥 Vídeo";
       break;
     case "document":
-      label = "📄 Documento";
+      label = media.isReport ? "📊 Informe de Nexo" : "📄 Documento";
       break;
     case "sticker":
       label = "Sticker";
@@ -227,7 +230,9 @@ export function mapMessageRow(row: MessageReadRow): ConversationMessage {
     text: contentType === "text" ? (row.text ?? "") : null,
     label,
     filename: contentType === "document" ? media.filename : null,
-    caption: contentType === "text" || contentType === "audio" ? null : media.caption,
+    // Entrantes: el pie va en media.caption. Salientes: el pie se guarda en `text`.
+    caption:
+      contentType === "text" || contentType === "audio" ? null : (media.caption ?? clean(row.text)),
     status: row.status,
     timestamp: row.provider_timestamp,
   };

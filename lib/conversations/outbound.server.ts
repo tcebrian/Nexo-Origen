@@ -9,6 +9,8 @@ import {
 import { isUniqueViolation } from "@/lib/supabase/conversations-mappers";
 import type {
   ClaimResult,
+  OutboundContent,
+  OutboundMedia,
   OutboundRecord,
   OutboundRepository,
   SendContext,
@@ -91,9 +93,10 @@ async function claim(input: {
   conversationId: string;
   canalId: string;
   requestId: string;
-  text: string;
+  content: OutboundContent;
   now: Date;
 }): Promise<ClaimResult> {
+  const { content } = input;
   const { data, error } = await requireAdminClient()
     .from(SUPABASE_TABLES.conv_mensajes)
     .insert({
@@ -101,8 +104,10 @@ async function claim(input: {
       canal_id: input.canalId,
       direction: "outbound",
       sender_type: "human",
-      content_type: "text",
-      text: input.text,
+      content_type: content.contentType,
+      text: content.text,
+      // Solo metadatos del archivo (sin token ni URL). `raw_payload` queda NULL.
+      media: content.contentType === "text" ? null : content.media,
       status: "pending",
       provider_timestamp: input.now.toISOString(),
       client_request_id: input.requestId,
@@ -136,12 +141,14 @@ async function markSent(input: {
   messageId: string;
   wamid: string;
   sentAt: Date;
+  media?: OutboundMedia;
 }): Promise<OutboundRecord> {
   const { data, error } = await requireAdminClient()
     .from(SUPABASE_TABLES.conv_mensajes)
     .update({
       status: "sent",
       external_id: input.wamid,
+      ...(input.media ? { media: input.media } : {}),
       provider_timestamp: input.sentAt.toISOString(),
       updated_at: new Date().toISOString(),
     })

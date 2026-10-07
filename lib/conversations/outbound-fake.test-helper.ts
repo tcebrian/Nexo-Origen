@@ -49,9 +49,9 @@ export function createFakeOutboundRepo(options: {
         external_id: null,
         direction: "outbound",
         sender_type: "human",
-        content_type: "text",
-        text: input.text,
-        media: null,
+        content_type: input.content.contentType,
+        text: input.content.text,
+        media: input.content.contentType === "text" ? null : input.content.media,
         status: "pending",
         provider_timestamp: input.now.toISOString(),
         received_at: input.now.toISOString(),
@@ -66,7 +66,7 @@ export function createFakeOutboundRepo(options: {
       row.status = "pending";
       return true;
     },
-    async markSent({ messageId, wamid, sentAt }) {
+    async markSent({ messageId, wamid, sentAt, media }) {
       if (markSentFailures > 0) {
         markSentFailures--;
         throw new Error("db down");
@@ -74,6 +74,7 @@ export function createFakeOutboundRepo(options: {
       const row = rows.find((r) => r.id === messageId)!;
       row.status = "sent";
       row.external_id = wamid;
+      if (media) row.media = media;
       row.provider_timestamp = sentAt.toISOString();
       return { ...row };
     },

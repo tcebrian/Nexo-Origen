@@ -27,6 +27,15 @@ const nextConfig: NextConfig = {
       "./node_modules/playwright-core/**/*",
       "./node_modules/@sparticuz/chromium/bin/**/*",
     ],
+    // Envío del informe mensual por WhatsApp: mismo Chromium y mismos recursos que el PDF mensual.
+    "/api/conversations/*/reports": [
+      "./node_modules/playwright-core/**/*",
+      "./node_modules/@sparticuz/chromium/bin/**/*",
+      "./public/reports/monthly/cover-brain.png",
+      "./public/nexo-origen-wordmark-text.png",
+      "./public/nexo-origen-report-icon.png",
+      "./public/fonts/*.woff2",
+    ],
     "/api/informes/mensual/*": [
       "./node_modules/playwright-core/**/*",
       "./node_modules/@sparticuz/chromium/bin/**/*",

@@ -126,6 +126,53 @@ export async function listMonthlyRestaurants(brand: string, offset: number, scop
   };
 }
 
+export type MonthlyTarget = {
+  restaurantId: number;
+  name: string;
+  brand: string;
+  city: string;
+  startKey: string;
+  endKey: string;
+  label: string;
+};
+
+/**
+ * Resuelve restaurante + periodo de un informe mensual SIN cargar reseñas ni
+ * métricas: comprueba que el restaurante existe y está dentro del scope.
+ * `null` si no existe o no está permitido.
+ */
+export async function resolveMonthlyTarget(
+  restaurantId: number,
+  offset: number,
+  scope: UserScope
+): Promise<MonthlyTarget | null> {
+  if (!Number.isSafeInteger(restaurantId) || restaurantId <= 0 || !assertRestauranteInScope(scope, restaurantId)) {
+    return null;
+  }
+  const [row] = await catalog([restaurantId]);
+  if (!row) return null;
+  const period = monthlyPeriod(offset);
+  return {
+    restaurantId,
+    name: row.restaurante,
+    brand: row.marca,
+    city: row.ciudad ?? "",
+    startKey: period.startKey,
+    endKey: period.endKey,
+    label: period.label,
+  };
+}
+
+/** Restaurantes sobre los que se puede generar un informe mensual dentro del scope. */
+export async function listReportableRestaurants(
+  scope: UserScope
+): Promise<{ id: number; name: string; brand: string; city: string }[]> {
+  return (await catalog(null))
+    .filter((r) => assertRestauranteInScope(scope, n(r.restaurante_id)))
+    .map((r) => ({ id: n(r.restaurante_id), name: r.restaurante, brand: r.marca, city: r.ciudad ?? "" }))
+    .sort((a, b) => a.brand.localeCompare(b.brand, "es") || a.name.localeCompare(b.name, "es"));
+}
+
 function activityKey(row: ResenaRow): string {
   if (row.editada && row.fecha_ultima_edicion) {
     const date = new Date(row.fecha_ultima_edicion);
