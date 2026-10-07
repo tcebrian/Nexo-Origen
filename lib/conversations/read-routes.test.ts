@@ -6,6 +6,12 @@ const listConversations = vi.fn();
 const getConversationMessages = vi.fn();
 
 vi.mock("@/lib/auth/api-auth", () => ({ requireApiAuth }));
+// El route también importa el envío (POST); aquí solo se prueba la lectura (GET).
+vi.mock("@/lib/conversations/outbound.server", () => ({ outboundRepository: {} }));
+vi.mock("@/lib/whatsapp/cloud-api.server", () => ({
+  sendTextMessage: vi.fn(),
+  isWhatsAppSenderConfigured: () => true,
+}));
 vi.mock("@/lib/conversations/read.server", () => ({ listConversations, getConversationMessages }));
 
 const { GET: listRoute } = await import("@/app/api/conversations/route");

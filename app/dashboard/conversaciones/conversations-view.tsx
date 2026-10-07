@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { canSubmitDraft } from "@/lib/conversations/compose";
 import {
   filterConversations,
   type ConversationListItem,
@@ -62,6 +63,12 @@ function initialOf(name: string): string {
   const first = Array.from(name.replace(/^\+/, "").trim())[0];
   return first ? first.toUpperCase() : "?";
 }
+
+/** Solo se avisa de los estados que requieren atención del usuario. */
+const OUTBOUND_STATE_LABEL: Record<string, string> = {
+  pending: "Sin confirmar",
+  failed: "No enviado",
+};
 
 const STATUS_LABEL = { open: "Abierta", closed: "Cerrada" } as const;
 
@@ -170,6 +177,13 @@ function MessageBubble({ message }: { message: ConversationMessage }) {
           </>
         )}
         <p className="mt-1 text-right text-[10px] text-gray-500">
+          {outbound && OUTBOUND_STATE_LABEL[message.status] ? (
+            <span
+              className={message.status === "failed" ? "mr-1.5 text-rose-300" : "mr-1.5 text-amber-200"}
+            >
+              {OUTBOUND_STATE_LABEL[message.status]} ·
+            </span>
+          ) : null}
           {formatMessageTime(message.timestamp)}
         </p>
       </div>
@@ -225,6 +239,99 @@ function EmptyState({ title }: { title: string }) {
         </svg>
       </span>
       <p className="text-sm font-medium text-gray-200">{title}</p>
+    </div>
+  );
+}
+
+function Composer({
+  conversationId,
+  onSent,
+}: {
+  conversationId: string;
+  onSent: (message: ConversationMessage) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Mismo id mientras se reintenta el mismo mensaje; el servidor no reenvía si ya existe.
+  const requestIdRef = useRef<string | null>(null);
+  const sendingRef = useRef(false);
+
+  function updateDraft(value: string) {
+    setDraft(value);
+    // Texto distinto = mensaje distinto = petición nueva.
+    requestIdRef.current = null;
+  }
+
+  async function submit() {
+    if (sendingRef.current || !canSubmitDraft(draft, false)) return;
+    sendingRef.current = true;
+    setSending(true);
+    setError(null);
+    requestIdRef.current ??= crypto.randomUUID();
+
+    try {
+      const response = await fetch(`/api/conversations/${conversationId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: draft, requestId: requestIdRef.current }),
+      });
+      const data = (await response.json().catch(() => null)) as {
+        message?: ConversationMessage;
+        error?: string;
+      } | null;
+
+      if (response.ok && data?.message) {
+        requestIdRef.current = null;
+        setDraft("");
+        onSent(data.message);
+      } else {
+        setError(data?.error ?? "No se pudo enviar el mensaje");
+      }
+    } catch {
+      setError("No se pudo conectar. Comprueba la conversación antes de reenviar.");
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="border-t border-white/[0.07] p-3">
+      {error ? (
+        <p role="alert" className="mb-2 px-1 text-xs text-rose-300">
+          {error}
+        </p>
+      ) : null}
+      <form
+        className="flex items-end gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
+      >
+        <textarea
+          value={draft}
+          onChange={(event) => updateDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              void submit();
+            }
+          }}
+          rows={1}
+          placeholder="Escribe un mensaje"
+          aria-label="Mensaje"
+          className="max-h-32 min-h-[42px] flex-1 resize-none rounded-xl border border-white/[0.08] bg-white/[0.04] px-3.5 py-2.5 text-[13px] text-white placeholder:text-gray-600 focus:border-violet-400/40 focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={!canSubmitDraft(draft, sending)}
+          className="h-[42px] shrink-0 rounded-xl border border-violet-400/30 bg-violet-500/25 px-4 text-[13px] font-medium text-white transition hover:bg-violet-500/35 disabled:cursor-not-allowed disabled:border-white/[0.06] disabled:bg-white/[0.03] disabled:text-gray-600"
+        >
+          {sending ? "Enviando…" : "Enviar"}
+        </button>
+      </form>
     </div>
   );
 }
@@ -398,27 +505,18 @@ export function ConversationsView() {
                 )}
               </div>
 
-              <div className="border-t border-white/[0.07] p-3">
-                <div
-                  aria-disabled="true"
-                  className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 text-[13px] text-gray-600"
-                >
-                  <span className="flex-1">Responder desde Nexo estará disponible próximamente</span>
-                  <svg
-                    className="h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.75"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden
-                  >
-                    <rect x="5" y="11" width="14" height="9" rx="2" />
-                    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-                  </svg>
-                </div>
-              </div>
+              <Composer
+                key={selected.id}
+                conversationId={selected.id}
+                onSent={(message) => {
+                  setMessages((current) =>
+                    current && !current.some((m) => m.id === message.id)
+                      ? [...current, message]
+                      : current
+                  );
+                  void loadList();
+                }}
+              />
             </>
           ) : (
             <EmptyState title="Selecciona una conversación" />
