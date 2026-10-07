@@ -32,7 +32,8 @@ export type DashboardSection =
   | "insights-ia"
   | "agentes"
   | "integraciones"
-  | "conversaciones";
+  | "conversaciones"
+  | "usuarios";
 
 export type Perfil = {
   id: string;

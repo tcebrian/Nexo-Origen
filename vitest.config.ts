@@ -11,6 +11,7 @@ export default defineConfig({
       "lib/conversations/**/*.test.ts",
       "lib/supabase/conversations-*.test.ts",
       "lib/whatsapp/**/*.test.ts",
+      "lib/auth/**/*.test.ts",
       "lib/reports/network-summary/**/*.test.ts",
     ],
   },

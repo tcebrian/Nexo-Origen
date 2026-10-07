@@ -170,11 +170,30 @@ async function resolveBrandIdsFromRestauranteIds(
   return resolveBrandIdsFromMarcaIds(client, marcaIds);
 }
 
+export type FetchUserScopeOptions = {
+  /**
+   * Aplica el alcance por rol aunque `NEXT_PUBLIC_DATA_SCOPING_ENABLED` esté
+   * desactivado. Lo usan los canales que NUNCA deben ver todo por defecto
+   * (WhatsApp, informes automáticos): con la fase 1 de la web (sin filtrado) un
+   * contacto vinculado vería todos los restaurantes.
+   */
+  enforceScoping?: boolean;
+};
+
 /**
- * Resuelve el alcance de datos del usuario.
- * super_admin: sin filtros (ignora perfil.empresa_id aunque sea NULL).
+ * Resuelve el alcance de datos del usuario. ÚNICA fuente de verdad del alcance:
+ * la web, el contacto de WhatsApp y los informes lo consumen desde aquí.
+ *  - super_admin: sin filtros (ignora perfil.empresa_id aunque sea NULL).
+ *  - empresa_admin: todos los restaurantes de su empresa (los nuevos entran solos).
+ *  - marca_admin: todos los restaurantes de sus marcas (usuario_marcas).
+ *  - restaurante_user: los de usuario_restaurantes (varios).
+ * El alcance depende SIEMPRE del rol actual: las asignaciones de otro rol no cuentan.
  */
-export async function fetchUserScope(userId: string, perfil: Perfil): Promise<UserScope> {
+export async function fetchUserScope(
+  userId: string,
+  perfil: Perfil,
+  options: FetchUserScopeOptions = {}
+): Promise<UserScope> {
   const rol = normalizeRole(perfil.rol);
   if (!rol) return emptyScope("restaurante_user");
 
@@ -182,7 +201,7 @@ export async function fetchUserScope(userId: string, perfil: Perfil): Promise<Us
     return unrestrictedScope(rol);
   }
 
-  if (!DATA_SCOPING_ENABLED) {
+  if (!DATA_SCOPING_ENABLED && !options.enforceScoping) {
     return unrestrictedScope(rol);
   }
 

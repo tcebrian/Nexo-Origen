@@ -685,6 +685,184 @@ function Composer({
   );
 }
 
+type ContactAccess = {
+  displayName: string;
+  phone: string;
+  linkedUser: { id: string; nombre: string; rol: string; empresaNombre: string | null } | null;
+  access: { count: number; restaurants: { id: number; name: string; brand: string; city: string }[] };
+};
+
+type LinkableUser = { id: string; nombre: string; rol: string; empresaNombre: string | null; linkedElsewhere: boolean };
+
+const ACCESS_ROLE_LABELS: Record<string, string> = {
+  super_admin: "Super administrador",
+  empresa_admin: "Administrador de empresa",
+  marca_admin: "Administrador de marca",
+  restaurante_user: "Supervisor / restaurante",
+};
+
+/**
+ * Persona de Nexo vinculada al contacto y su acceso efectivo. Solo vincula y
+ * muestra: los restaurantes NO se editan aquí, sino en "Usuarios y permisos".
+ */
+function ContactAccessPanel({ conversationId }: { conversationId: string }) {
+  const [contact, setContact] = useState<ContactAccess | null>(null);
+  const [users, setUsers] = useState<LinkableUser[] | null>(null);
+  const [choice, setChoice] = useState("");
+  const [changing, setChanging] = useState(false);
+  const [showRestaurants, setShowRestaurants] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchJson<ContactAccess>(`/api/conversations/${conversationId}/contact`)
+      .then((data) => {
+        if (!cancelled) setContact(data);
+      })
+      .catch(() => {
+        if (!cancelled) setError("No se pudo cargar el acceso del contacto.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId]);
+
+  async function startChange() {
+    setChanging(true);
+    setError(null);
+    try {
+      const data = await fetchJson<{ users: LinkableUser[] }>(`/api/conversations/${conversationId}/linkable-users`);
+      setUsers(data.users);
+    } catch {
+      setError("No se pudieron cargar los usuarios.");
+    }
+  }
+
+  async function link(usuarioId: string | null) {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/conversations/${conversationId}/contact`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuarioId }),
+      });
+      const data = (await response.json().catch(() => null)) as (ContactAccess & { error?: string }) | null;
+      if (!response.ok || !data) {
+        setError(data?.error ?? "No se pudo guardar el vínculo");
+        return;
+      }
+      setContact(data);
+      setChanging(false);
+      setChoice("");
+      setShowRestaurants(false);
+    } catch {
+      setError("No se pudo guardar el vínculo");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!contact) {
+    return <div className="border-b border-white/[0.07] px-4 py-3 text-xs text-gray-500">{error ?? "Cargando…"}</div>;
+  }
+
+  const linked = contact.linkedUser;
+  const picking = changing || !linked;
+
+  return (
+    <div className="space-y-2 border-b border-white/[0.07] bg-white/[0.02] px-4 py-3 text-[13px]">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">Usuario Nexo vinculado</p>
+
+      {linked ? (
+        <div className="space-y-1">
+          <p className="font-medium text-white">{linked.nombre}</p>
+          <p className="text-xs text-gray-400">
+            {ACCESS_ROLE_LABELS[linked.rol] ?? linked.rol}
+            {linked.empresaNombre ? ` · ${linked.empresaNombre}` : ""}
+          </p>
+          <p className="text-xs text-gray-400">
+            Acceso efectivo hoy: <span className="font-medium text-gray-200">{contact.access.count} restaurantes</span>
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs text-amber-200">
+          Sin usuario vinculado: este contacto puede escribir, pero no puede consultar datos ni recibir informes.
+        </p>
+      )}
+
+      {picking ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={choice}
+            onChange={(event) => setChoice(event.target.value)}
+            onFocus={() => {
+              if (!users) void startChange();
+            }}
+            disabled={busy}
+            aria-label="Usuario de Nexo"
+            className="min-w-[220px] rounded-xl border border-white/[0.08] bg-[#0d0a14] px-3 py-2 text-[13px] text-white"
+          >
+            <option value="">Elige un usuario…</option>
+            {(users ?? []).map((user) => (
+              <option key={user.id} value={user.id} disabled={user.linkedElsewhere}>
+                {user.nombre} · {ACCESS_ROLE_LABELS[user.rol] ?? user.rol}
+                {user.linkedElsewhere ? " (ya vinculado a otro teléfono)" : ""}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            disabled={busy || choice === ""}
+            onClick={() => void link(choice)}
+            className="rounded-xl border border-violet-400/30 bg-violet-500/25 px-3.5 py-2 text-[13px] font-medium text-white transition hover:bg-violet-500/35 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Vincular
+          </button>
+          {linked ? (
+            <button type="button" onClick={() => setChanging(false)} className="text-xs text-gray-400 hover:text-white">
+              Cancelar
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          <button type="button" onClick={() => setShowRestaurants((open) => !open)} className="text-violet-300 hover:text-violet-200">
+            {showRestaurants ? "Ocultar restaurantes" : "Ver restaurantes"}
+          </button>
+          <a href={`/dashboard/usuarios?user=${linked!.id}`} className="text-violet-300 hover:text-violet-200">
+            Gestionar permisos
+          </a>
+          <button type="button" onClick={() => void startChange()} disabled={busy} className="text-gray-400 hover:text-white">
+            Cambiar usuario
+          </button>
+          <button type="button" onClick={() => void link(null)} disabled={busy} className="text-gray-400 hover:text-rose-300">
+            Desvincular
+          </button>
+        </div>
+      )}
+
+      {showRestaurants && linked ? (
+        <ul className="max-h-40 space-y-0.5 overflow-y-auto rounded-xl border border-white/[0.06] p-2 text-xs text-gray-300">
+          {contact.access.restaurants.length === 0 ? <li className="text-gray-500">Ningún restaurante.</li> : null}
+          {contact.access.restaurants.map((restaurant) => (
+            <li key={restaurant.id}>
+              {restaurant.name} <span className="text-gray-600">{restaurant.brand}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {error ? (
+        <p role="alert" className="text-xs text-rose-300">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function ConversationsView() {
   const [conversations, setConversations] = useState<ConversationListItem[] | null>(null);
   const [listError, setListError] = useState(false);
@@ -693,6 +871,7 @@ export function ConversationsView() {
   const [messages, setMessages] = useState<ConversationMessage[] | null>(null);
   const [messagesError, setMessagesError] = useState(false);
   const selectedRef = useRef<string | null>(null);
+  const [accessOpenFor, setAccessOpenFor] = useState<string | null>(null);
 
   const loadList = useCallback(async () => {
     try {
@@ -831,6 +1010,14 @@ export function ConversationsView() {
                   <p className="truncate text-sm font-medium text-white">{selected.displayName}</p>
                   <p className="truncate text-xs text-gray-500">{selected.phone}</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setAccessOpenFor((current) => (current === selected.id ? null : selected.id))}
+                  aria-expanded={accessOpenFor === selected.id}
+                  className="shrink-0 rounded-full border border-white/[0.08] px-2.5 py-1 text-[10px] font-medium text-gray-300 transition hover:bg-white/[0.06] hover:text-white"
+                >
+                  Acceso
+                </button>
                 <span
                   className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-medium ${
                     selected.status === "open"
@@ -841,6 +1028,8 @@ export function ConversationsView() {
                   {STATUS_LABEL[selected.status]}
                 </span>
               </div>
+
+              {accessOpenFor === selected.id ? <ContactAccessPanel key={selected.id} conversationId={selected.id} /> : null}
 
               <div className="flex min-h-0 flex-1 flex-col">
                 {messages === null ? (

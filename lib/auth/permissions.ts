@@ -15,6 +15,7 @@ const SUPER_ADMIN_ONLY: DashboardSection[] = [
   "agentes",
   "integraciones",
   "conversaciones",
+  "usuarios",
   "ajustes",
 ];
 

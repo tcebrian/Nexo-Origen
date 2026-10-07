@@ -95,6 +95,18 @@ function setCachedPerfil(userId: string, perfil: Perfil | null, denied: boolean)
   });
 }
 
+/**
+ * Perfil leído SIEMPRE de base de datos (sin la caché de 30 s de `fetchPerfilForAuth`).
+ * Para canales no interactivos (WhatsApp, informes) donde un cambio de rol o de
+ * empresa debe aplicarse de inmediato. Solo servidor (service role).
+ */
+export async function fetchPerfilFresh(userId: string): Promise<Perfil | null> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return null;
+  const { perfil } = await queryPerfil(admin, userId);
+  return perfil;
+}
+
 export function invalidatePerfilCache(userId?: string) {
   if (userId) {
     perfilCache.delete(normalizeUserId(userId));

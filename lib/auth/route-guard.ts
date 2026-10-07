@@ -6,6 +6,7 @@ const SECTION_PATHS: { section: DashboardSection; prefix: string }[] = [
   { section: "talento", prefix: "/dashboard/talento" },
   { section: "ajustes", prefix: "/dashboard/ajustes" },
   { section: "conversaciones", prefix: "/dashboard/conversaciones" },
+  { section: "usuarios", prefix: "/dashboard/usuarios" },
   { section: "insights-ia", prefix: "/dashboard/insights-ia" },
   { section: "nexo-prevent", prefix: "/dashboard/nexo-prevent" },
   { section: "ranking", prefix: "/dashboard/ranking" },
