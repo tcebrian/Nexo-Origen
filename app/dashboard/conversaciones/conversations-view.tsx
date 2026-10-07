@@ -941,8 +941,11 @@ function NewContactForm({
     }
   }
 
-  const fieldClass =
-    "w-full rounded-xl border border-white/[0.08] bg-[#0d0a14] px-3 py-2 text-[13px] text-white placeholder:text-gray-600 focus:border-violet-400/40 focus:outline-none";
+  // La base NO fija ancho: cada campo declara el suyo (evita utilidades `w-*` en conflicto).
+  const fieldBase =
+    "rounded-xl border border-white/[0.08] bg-[#0d0a14] px-3 py-2 text-[13px] text-white placeholder:text-gray-600 focus:border-violet-400/40 focus:outline-none";
+  const fullWidthField = `${fieldBase} w-full`;
+  const labelClass = "mb-1 block text-[11px] font-medium text-gray-400";
 
   return (
     <div className="space-y-2 border-b border-white/[0.07] bg-white/[0.02] p-3">
@@ -988,48 +991,68 @@ function NewContactForm({
             void submit();
           }}
         >
-          <input
-            value={nombre}
-            onChange={(event) => setNombre(event.target.value)}
-            placeholder="Nombre"
-            aria-label="Nombre"
-            maxLength={100}
-            className={fieldClass}
-          />
-          <div className="flex gap-2">
+          <div>
+            <label htmlFor="new-contact-name" className={labelClass}>
+              Nombre
+            </label>
             <input
-              value={prefijo}
-              onChange={(event) => setPrefijo(event.target.value)}
-              aria-label="Prefijo del país"
-              inputMode="tel"
-              className={`${fieldClass} w-[72px] shrink-0`}
-            />
-            <input
-              value={telefono}
-              onChange={(event) => setTelefono(event.target.value)}
-              placeholder="Teléfono"
-              aria-label="Teléfono"
-              inputMode="tel"
-              className={fieldClass}
+              id="new-contact-name"
+              value={nombre}
+              onChange={(event) => setNombre(event.target.value)}
+              placeholder="Nombre del contacto"
+              maxLength={100}
+              className={fullWidthField}
             />
           </div>
-          <select
-            value={usuarioId}
-            onChange={(event) => setUsuarioId(event.target.value)}
-            aria-label="Usuario Nexo vinculado (opcional)"
-            className={fieldClass}
-          >
-            <option value="">Usuario Nexo vinculado (opcional)</option>
-            {(users ?? []).map((user) => (
-              <option key={user.id} value={user.id} disabled={user.linkedElsewhere}>
-                {user.nombre} · {ACCESS_ROLE_LABELS[user.rol] ?? user.rol}
-                {user.linkedElsewhere ? " (ya vinculado a otro teléfono)" : ""}
-              </option>
-            ))}
-          </select>
+
+          <div>
+            <label htmlFor="new-contact-phone" className={labelClass}>
+              Teléfono
+            </label>
+            <div className="flex gap-2">
+              <input
+                value={prefijo}
+                onChange={(event) => setPrefijo(event.target.value)}
+                placeholder="+34"
+                aria-label="Prefijo del país"
+                inputMode="tel"
+                autoComplete="off"
+                className={`${fieldBase} w-[76px] shrink-0 text-center`}
+              />
+              <input
+                id="new-contact-phone"
+                value={telefono}
+                onChange={(event) => setTelefono(event.target.value)}
+                placeholder="651 346 517"
+                inputMode="tel"
+                autoComplete="off"
+                className={`${fieldBase} min-w-0 flex-1`}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="new-contact-user" className={labelClass}>
+              Usuario Nexo (opcional)
+            </label>
+            <select
+              id="new-contact-user"
+              value={usuarioId}
+              onChange={(event) => setUsuarioId(event.target.value)}
+              aria-label="Usuario Nexo vinculado (opcional)"
+              className={fullWidthField}
+            >
+              <option value="">Sin usuario vinculado</option>
+              {(users ?? []).map((user) => (
+                <option key={user.id} value={user.id} disabled={user.linkedElsewhere}>
+                  {user.nombre} · {ACCESS_ROLE_LABELS[user.rol] ?? user.rol}
+                  {user.linkedElsewhere ? " (ya vinculado a otro teléfono)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
           <p className="text-[11px] text-gray-500">
-            Sin usuario vinculado, el contacto puede escribir pero no tiene acceso a datos. Los restaurantes se gestionan en
-            Usuarios y permisos.
+            Si no se vincula a un usuario, el contacto podrá escribir pero no tendrá acceso a datos.
           </p>
           {error ? (
             <p role="alert" className="text-xs text-rose-300">
