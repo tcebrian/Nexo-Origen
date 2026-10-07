@@ -5,17 +5,34 @@ import { NextResponse } from "next/server";
 
 const requireApiAuth = vi.fn();
 const createManualContact = vi.fn();
-const listLinkableUsers = vi.fn();
+const getUserFormOptions = vi.fn();
+
+class FakeContactError extends Error {
+  constructor(
+    readonly status: number,
+    message: string
+  ) {
+    super(message);
+  }
+}
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/api-auth", () => ({ requireApiAuth }));
+vi.mock("@/lib/auth/user-access.server", () => ({ getUserFormOptions }));
 vi.mock("@/lib/conversations/manual-contact.server", () => ({ createManualContact }));
-vi.mock("@/lib/conversations/contact-link.server", () => ({ listLinkableUsers }));
+vi.mock("@/lib/conversations/contact-link.server", () => ({ ContactError: FakeContactError }));
 
 const route = await import("@/app/api/conversations/contacts/route");
 
-const USER = "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d";
-const valid = { nombre: "Víctor", countryCallingCode: "+34", nationalNumber: "688 718 820", usuarioId: USER };
+const valid = {
+  nombre: "Víctor",
+  countryCallingCode: "+34",
+  nationalNumber: "688 718 820",
+  tipo: "supervisor",
+  empresaId: 1,
+  todosRestaurantes: false,
+  restaurantIds: [1, 2, 4],
+};
 
 const asRole = (rol: string) => requireApiAuth.mockResolvedValue({ ok: true, session: { userId: "a", perfil: { rol }, scope: {} } });
 const post = (body: unknown) =>
@@ -30,7 +47,7 @@ const post = (body: unknown) =>
 beforeEach(() => {
   vi.resetAllMocks();
   asRole("super_admin");
-  createManualContact.mockResolvedValue({ status: "created", contactId: "c-1", conversationId: "conv-1", linked: true });
+  createManualContact.mockResolvedValue({ status: "created", contactId: "c-1", conversationId: "conv-1" });
 });
 
 describe("POST /api/conversations/contacts", () => {
@@ -45,52 +62,50 @@ describe("POST /api/conversations/contacts", () => {
     expect((await post(valid)).status).toBe(403);
     expect((await route.GET(new Request("http://localhost/api/conversations/contacts"))).status).toBe(403);
     expect(createManualContact).not.toHaveBeenCalled();
-    expect(listLinkableUsers).not.toHaveBeenCalled();
+    expect(getUserFormOptions).not.toHaveBeenCalled();
   });
 
-  it("super_admin crea el contacto con el teléfono normalizado a E.164 → 201", async () => {
+  it("super_admin crea el contacto con el teléfono E.164 y los permisos elegidos aquí → 201", async () => {
     const res = await post(valid);
     expect(res.status).toBe(201);
-    expect(createManualContact).toHaveBeenCalledWith({ nombre: "Víctor", telefonoE164: "+34688718820", usuarioId: USER });
-    expect(await res.json()).toEqual({ existing: false, conversationId: "conv-1", linked: true });
+    expect(createManualContact).toHaveBeenCalledWith({
+      nombre: "Víctor",
+      telefonoE164: "+34688718820",
+      access: { tipo: "supervisor", empresaId: 1, todosRestaurantes: false, restaurantIds: [1, 2, 4] },
+    });
+    expect(await res.json()).toEqual({ existing: false, conversationId: "conv-1" });
   });
 
   it("un teléfono que ya existe devuelve el contacto existente (200) con el aviso `existing`", async () => {
-    createManualContact.mockResolvedValue({ status: "existing", contactId: "c-1", conversationId: "conv-1", linked: false });
+    createManualContact.mockResolvedValue({ status: "existing", contactId: "c-1", conversationId: "conv-1" });
     const res = await post(valid);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ existing: true, conversationId: "conv-1", linked: false });
+    expect(await res.json()).toEqual({ existing: true, conversationId: "conv-1" });
   });
 
-  it("conflictos → 409: usuario ya vinculado a otro número, o número vinculado a otro usuario", async () => {
-    createManualContact.mockResolvedValueOnce({ status: "user_already_linked" });
-    expect((await post(valid)).status).toBe(409);
-    createManualContact.mockResolvedValueOnce({ status: "phone_linked_to_other_user" });
-    expect((await post(valid)).status).toBe(409);
+  it("selección inválida (restaurante de otra empresa…) → el error de dominio conserva su estado", async () => {
+    createManualContact.mockRejectedValueOnce(new FakeContactError(400, "Hay restaurantes que no son de la empresa elegida"));
+    const res = await post(valid);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("no son de la empresa");
   });
 
-  it("usuario inexistente → 404; teléfono o cuerpo inválidos → 400 sin tocar nada", async () => {
-    createManualContact.mockResolvedValueOnce({ status: "user_not_found" });
-    expect((await post(valid)).status).toBe(404);
-
-    createManualContact.mockClear();
+  it("teléfono o cuerpo inválidos → 400 sin tocar nada", async () => {
     expect((await post({ ...valid, nationalNumber: "abc" })).status).toBe(400);
     expect((await post({ ...valid, countryCallingCode: "" })).status).toBe(400);
-    expect((await post({ ...valid, usuarioId: "x" })).status).toBe(400);
     expect((await post("{no json")).status).toBe(400);
     expect(createManualContact).not.toHaveBeenCalled();
   });
 
-  it("no se pueden asignar restaurantes ni permisos desde este formulario: se ignoran", async () => {
-    await post({ ...valid, restaurantIds: [1, 2, 3], marcaIds: [10], rol: "super_admin", empresaId: 1, scope: {} });
-    expect(createManualContact).toHaveBeenCalledWith({ nombre: "Víctor", telefonoE164: "+34688718820", usuarioId: USER });
+  it("la cuenta web no interviene: usuarioId, rol y scope enviados se ignoran", async () => {
+    await post({ ...valid, usuarioId: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d", rol: "super_admin", scope: { rol: "super_admin" } });
+    const arg = createManualContact.mock.calls[0]![0];
+    expect(JSON.stringify(arg)).not.toMatch(/usuarioId|usuario_id|super_admin|9b1deb4d/);
   });
 
   it("la respuesta no expone teléfono, raw_payload ni identificadores internos", async () => {
     const raw = JSON.stringify(await (await post(valid)).json());
-    for (const hidden of ["34688718820", "raw_payload", "c-1", "usuario_id", USER]) {
-      expect(raw).not.toContain(hidden);
-    }
+    for (const hidden of ["34688718820", "raw_payload", "c-1", "usuario_id"]) expect(raw).not.toContain(hidden);
   });
 
   it("un fallo interno devuelve 500 genérico sin datos personales", async () => {
@@ -99,35 +114,48 @@ describe("POST /api/conversations/contacts", () => {
     const res = await post(valid);
     expect(res.status).toBe(500);
     expect(JSON.stringify(await res.json())).not.toContain("34688");
-    expect(JSON.stringify(spy.mock.calls)).toContain("manual contact failed");
     spy.mockRestore();
   });
 
-  it("el listado de usuarios para el formulario solo lo ve el super_admin", async () => {
-    listLinkableUsers.mockResolvedValue([{ id: USER, nombre: "Víctor", rol: "restaurante_user", empresaNombre: "Grupo", linkedElsewhere: false }]);
+  it("las opciones del formulario (tipos, empresas y restaurantes) solo las ve el super_admin", async () => {
+    getUserFormOptions.mockResolvedValue({ empresas: [{ id: 1, nombre: "Grupo" }], marcas: [], restaurants: [] });
     const res = await route.GET(new Request("http://localhost/api/conversations/contacts"));
     expect(res.status).toBe(200);
-    expect(listLinkableUsers).toHaveBeenCalledWith(null);
+    const json = await res.json();
+    expect(json.types.map((t: { label: string }) => t.label)).toEqual([
+      "Dirección",
+      "Operaciones",
+      "Supervisor",
+      "Responsable de marca",
+      "Responsable de restaurante",
+      "Otro",
+    ]);
+    expect(json.options.empresas).toEqual([{ id: 1, nombre: "Grupo" }]);
   });
 });
 
-describe("el formulario no duplica permisos", () => {
-  it("la capa de alta no lee ni escribe asignaciones de restaurantes, marcas ni roles", () => {
-    for (const file of ["lib/conversations/manual-contact.server.ts", "lib/conversations/manual-contact.ts", "app/api/conversations/contacts/route.ts"]) {
-      const source = readFileSync(path.join(process.cwd(), file), "utf-8");
-      for (const forbidden of ["usuario_restaurantes", "usuario_marcas", "nexo_set_user_access", "restaurantIds", "fetchUserScope"]) {
-        // Se permite mencionarlos solo en comentarios de la propia advertencia.
-        const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-        expect(code, `${file} → ${forbidden}`).not.toContain(forbidden);
-      }
+describe("la interfaz del contacto", () => {
+  const view = readFileSync(path.join(process.cwd(), "app/dashboard/conversaciones/conversations-view.tsx"), "utf-8");
+  const form = view.slice(view.indexOf("function NewContactForm"), view.indexOf("export function ConversationsView"));
+
+  it("pide nombre, teléfono, tipo, empresa y restaurantes, con 'todos los restaurantes de la empresa'", () => {
+    for (const text of ["Nombre", "Teléfono", "Tipo de contacto", "Empresa", "Todos los restaurantes de la empresa", "restaurantes seleccionados"]) {
+      expect(view, text).toContain(text);
     }
+    expect(form).toContain("ContactAccessFields");
   });
 
-  it("la interfaz del alta no tiene selector de restaurantes", () => {
-    const view = readFileSync(path.join(process.cwd(), "app/dashboard/conversaciones/conversations-view.tsx"), "utf-8");
-    const form = view.slice(view.indexOf("function NewContactForm"), view.indexOf("export function ConversationsView"));
-    expect(form).toContain("Usuario Nexo vinculado");
-    // Solo teléfono, nombre y persona de Nexo: ningún control ni campo de restaurantes o marcas.
-    expect(form).not.toMatch(/restaurantIds|restauranteIds|marcaIds|type="checkbox"|<optgroup/);
+  it("no exige cuenta web: el alta no tiene selector de usuario ni envía usuarioId", () => {
+    expect(form).not.toMatch(/usuarioId|linkable-users|Usuario Nexo/);
+    expect(form).toContain("No hace falta cuenta web");
+  });
+
+  it("el tipo es descriptivo y no condiciona los permisos", () => {
+    expect(view).toContain("Solo descriptivo: no decide qué restaurantes ve.");
+  });
+
+  it("una cuenta de restaurante no se etiqueta como 'Supervisor'", () => {
+    expect(view).toContain('restaurante_user: "Cuenta de restaurante"');
+    expect(view).not.toMatch(/restaurante_user:\s*"Supervisor/);
   });
 });

@@ -3,10 +3,10 @@ import "server-only";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { SUPABASE_TABLES } from "@/lib/supabase/tables";
 import { ConversationsDbError } from "@/lib/supabase/conversations.server";
-import { summarizeUserAccess } from "@/lib/auth/user-access.server";
+import { resolveContactsRestaurantIds } from "@/lib/conversations/contact-scope.server";
 import {
   buildConversationList,
-  linkedUserIdOf,
+  contactOf,
   buildMessageList,
   type ConversationListItem,
   type ConversationMessage,
@@ -26,7 +26,7 @@ export const CONVERSATIONS_PAGE_SIZE = 200;
 export const MESSAGES_PAGE_SIZE = 500;
 
 const CONVERSATION_SELECT =
-  "id,estado,ultimo_mensaje_at,ultimo_mensaje_preview,conv_contactos(telefono_e164,nombre,nombre_perfil,usuario_id)";
+  "id,estado,ultimo_mensaje_at,ultimo_mensaje_preview,conv_contactos(id,telefono_e164,nombre,nombre_perfil,tipo)";
 const MESSAGE_SELECT =
   "id,direction,sender_type,content_type,text,media,status,provider_timestamp,received_at";
 
@@ -50,16 +50,15 @@ export async function listConversations(
   const rows = (data ?? []) as unknown as ConversationReadRow[];
   const items = buildConversationList(rows);
 
-  // Distintivo de acceso: autorizado/vinculado (rol y restaurantes de hoy) o sin acceso a datos.
-  const userByConversation = new Map(rows.map((row) => [row.id, linkedUserIdOf(row)]));
-  const summaries = new Map<string, Awaited<ReturnType<typeof summarizeUserAccess>>>();
-  for (const userId of new Set([...userByConversation.values()].filter((id): id is string => id !== null))) {
-    summaries.set(userId, await summarizeUserAccess(userId));
-  }
+  // Distintivo de acceso: con permisos propios del contacto (nº de restaurantes de hoy) o sin acceso a datos.
+  const contactByConversation = new Map(rows.map((row) => [row.id, contactOf(row)]));
+  const contactIds = [...new Set([...contactByConversation.values()].map((c) => c.id).filter((id): id is string => id !== null))];
+  const restaurantIdsByContact = await resolveContactsRestaurantIds(contactIds);
 
   return items.map((item) => {
-    const summary = summaries.get(userByConversation.get(item.id) ?? "");
-    return summary ? { ...item, access: { state: "linked" as const, ...summary } } : item;
+    const contact = contactByConversation.get(item.id);
+    const count = contact?.id ? (restaurantIdsByContact.get(contact.id)?.length ?? 0) : 0;
+    return count > 0 ? { ...item, access: { state: "granted" as const, restaurantCount: count, tipo: contact?.tipo ?? null } } : item;
   });
 }
 

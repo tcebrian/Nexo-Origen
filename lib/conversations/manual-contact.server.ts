@@ -1,28 +1,24 @@
 import "server-only";
 
-import { fetchPerfilFresh } from "@/lib/auth/perfiles";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { CONV_CONSTRAINTS, isUniqueViolation } from "@/lib/supabase/conversations-mappers";
 import { findOrCreateConversation, ConversationsDbError } from "@/lib/supabase/conversations.server";
 import { SUPABASE_TABLES } from "@/lib/supabase/tables";
+import { ContactError, assertValidContactAccess, saveContactAccess } from "@/lib/conversations/contact-link.server";
 
 /**
  * Alta manual de contactos de WhatsApp (solo servidor; quien llama ya comprobó
  * super_admin). Reglas:
  *  - Un teléfono = un contacto (`telefono_e164` único): si ya existe se reutiliza,
- *    nunca se duplica y NUNCA se sobrescribe su nombre ni su usuario vinculado.
- *  - Crear un contacto NO da acceso a datos: solo existe acceso si se vincula una
- *    persona de Nexo válida (`usuario_id`); sin vínculo el alcance es vacío.
- *  - No se tocan permisos ni restaurantes: el alcance sigue saliendo de
- *    `fetchUserScope` a través de la persona vinculada.
- *  - Se deja la conversación abierta con el canal central para que el contacto se
- *    vea en la bandeja antes de que escriba (si hay un único canal conectado).
+ *    nunca se duplica y NO se modifica (ni nombre ni permisos): se edita desde su ficha.
+ *  - Los permisos del contacto (empresa, "todos", restaurantes) se eligen aquí mismo y
+ *    se guardan en sus propias tablas; NO hace falta ninguna cuenta web.
+ *  - Sin empresa ni restaurantes, el contacto no tiene acceso a datos (deny by default).
+ *  - Se deja la conversación abierta con el canal central para que el contacto se vea
+ *    en la bandeja antes de que escriba (si hay un único canal conectado).
  */
 
-const USUARIO_CONSTRAINT = "conv_contactos_usuario_id_key";
-const CONTACT_COLUMNS = "id,telefono_e164,nombre,usuario_id";
-
-type ContactRow = { id: string; telefono_e164: string; nombre: string | null; usuario_id: string | null };
+type ContactRow = { id: string };
 
 function requireAdminClient() {
   const client = getSupabaseAdmin();
@@ -30,24 +26,17 @@ function requireAdminClient() {
   return client;
 }
 
-export type ManualContactResult =
-  | {
-      status: "created" | "existing";
-      contactId: string;
-      /** Conversación de la bandeja para abrirla; `null` si no hay un único canal conectado. */
-      conversationId: string | null;
-      linked: boolean;
-    }
-  | { status: "user_not_found" }
-  /** El usuario de Nexo ya está vinculado a otro teléfono. */
-  | { status: "user_already_linked" }
-  /** El teléfono ya pertenece a otra persona de Nexo: no se sobrescribe. */
-  | { status: "phone_linked_to_other_user" };
+export type ManualContactResult = {
+  status: "created" | "existing";
+  contactId: string;
+  /** Conversación de la bandeja para abrirla; `null` si no hay un único canal conectado. */
+  conversationId: string | null;
+};
 
 async function selectByPhone(telefonoE164: string): Promise<ContactRow | null> {
   const { data, error } = await requireAdminClient()
     .from(SUPABASE_TABLES.conv_contactos)
-    .select(CONTACT_COLUMNS)
+    .select("id")
     .eq("telefono_e164", telefonoE164)
     .maybeSingle();
   if (error) throw new ConversationsDbError("manualContact.select", error.code);
@@ -73,76 +62,48 @@ async function conversationFor(contactId: string): Promise<string | null> {
   return conversation.id;
 }
 
-async function linkUser(contactId: string, usuarioId: string): Promise<"ok" | "user_already_linked"> {
-  const { error } = await requireAdminClient()
-    .from(SUPABASE_TABLES.conv_contactos)
-    .update({ usuario_id: usuarioId, updated_at: new Date().toISOString() })
-    .eq("id", contactId);
-  if (error) {
-    if (isUniqueViolation(error, USUARIO_CONSTRAINT)) return "user_already_linked";
-    throw new ConversationsDbError("manualContact.link", error.code);
-  }
-  return "ok";
-}
-
 export async function createManualContact(input: {
   nombre: string | null;
   telefonoE164: string;
-  usuarioId: string | null;
+  /** tipo, empresaId, todosRestaurantes y restaurantIds sin validar (se validan aquí). */
+  access: Record<string, unknown>;
 }): Promise<ManualContactResult> {
-  const { nombre, telefonoE164, usuarioId } = input;
+  const { nombre, telefonoE164, access } = input;
 
-  if (usuarioId !== null && !(await fetchPerfilFresh(usuarioId))) return { status: "user_not_found" };
+  // Antes de crear nada: restaurantes de otra empresa, tipo inválido… → 400 sin tocar la base de datos.
+  await assertValidContactAccess(access);
 
   let existing = await selectByPhone(telefonoE164);
+  if (existing) {
+    return { status: "existing", contactId: existing.id, conversationId: await conversationFor(existing.id) };
+  }
 
-  if (!existing) {
-    const { data, error } = await requireAdminClient()
-      .from(SUPABASE_TABLES.conv_contactos)
-      .insert({
-        telefono_e164: telefonoE164,
-        ...(nombre ? { nombre } : {}),
-        ...(usuarioId ? { usuario_id: usuarioId } : {}),
-      })
-      .select(CONTACT_COLUMNS)
-      .single();
+  const { data, error } = await requireAdminClient()
+    .from(SUPABASE_TABLES.conv_contactos)
+    .insert({ telefono_e164: telefonoE164 })
+    .select("id")
+    .single();
 
-    if (!error) {
-      const created = data as ContactRow;
-      return {
-        status: "created",
-        contactId: created.id,
-        conversationId: await conversationFor(created.id),
-        linked: Boolean(created.usuario_id),
-      };
-    }
-    if (isUniqueViolation(error, USUARIO_CONSTRAINT)) return { status: "user_already_linked" };
+  if (error) {
     if (!isUniqueViolation(error, CONV_CONSTRAINTS.contactoTelefono)) {
       throw new ConversationsDbError("manualContact.insert", error.code);
     }
-
-    // Otra petición (p. ej. un mensaje entrante) lo creó a la vez: se reutiliza.
+    // Otra petición (p. ej. un mensaje entrante) lo creó a la vez: se reutiliza sin tocarlo.
     existing = await selectByPhone(telefonoE164);
     if (!existing) throw new Error("conversations.manualContact: contact vanished after conflict");
+    return { status: "existing", contactId: existing.id, conversationId: await conversationFor(existing.id) };
   }
 
-  // Ya existía: se reutiliza sin duplicar ni sobrescribir nombre ni vínculo.
-  const currentUser = existing.usuario_id ?? null;
-  let linked = currentUser !== null;
-  if (usuarioId !== null) {
-    if (currentUser !== null && currentUser !== usuarioId) {
-      return { status: "phone_linked_to_other_user" };
-    }
-    if (currentUser === null) {
-      if ((await linkUser(existing.id, usuarioId)) === "user_already_linked") return { status: "user_already_linked" };
-      linked = true;
-    }
+  const contactId = (data as ContactRow).id;
+
+  try {
+    // Nombre, tipo, empresa, "todos" y restaurantes: validados y guardados en una transacción.
+    await saveContactAccess(contactId, { nombre, access });
+  } catch (cause) {
+    // El contacto recién creado no tiene nada más: se retira para no dejar uno sin su selección.
+    await requireAdminClient().from(SUPABASE_TABLES.conv_contactos).delete().eq("id", contactId);
+    throw cause instanceof ContactError ? cause : new ContactError(500, "No se pudo crear el contacto");
   }
 
-  return {
-    status: "existing",
-    contactId: existing.id,
-    conversationId: await conversationFor(existing.id),
-    linked,
-  };
+  return { status: "created", contactId, conversationId: await conversationFor(contactId) };
 }

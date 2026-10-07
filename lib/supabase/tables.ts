@@ -27,6 +27,8 @@ export const SUPABASE_TABLES = {
   nexo_bot_resumenes_envios: "nexo_bot_resumenes_envios",
   conv_canales: "conv_canales",
   conv_contactos: "conv_contactos",
+  conv_contacto_empresas: "conv_contacto_empresas",
+  conv_contacto_restaurantes: "conv_contacto_restaurantes",
   conv_conversaciones: "conv_conversaciones",
   conv_mensajes: "conv_mensajes",
 } as const;

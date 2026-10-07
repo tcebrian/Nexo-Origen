@@ -8,7 +8,7 @@
 export const USER_KINDS = [
   { id: "empresa", label: "Administrador empresa", rol: "empresa_admin" },
   { id: "marca", label: "Responsable de marca", rol: "marca_admin" },
-  { id: "supervisor", label: "Supervisor", rol: "restaurante_user" },
+  { id: "restaurantes", label: "Cuenta de restaurantes", rol: "restaurante_user" },
 ] as const;
 
 export type UserKindId = (typeof USER_KINDS)[number]["id"];

@@ -28,7 +28,7 @@ const ROLE_LABELS: Record<string, string> = {
   super_admin: "Super administrador",
   empresa_admin: "Administrador de empresa",
   marca_admin: "Administrador de marca",
-  restaurante_user: "Supervisor / restaurante",
+  restaurante_user: "Cuenta de restaurante",
 };
 
 /** Roles que se pueden asignar desde aquí (super_admin no se gestiona desde la web). */
@@ -36,13 +36,13 @@ const EDITABLE_ROLES = ["restaurante_user", "marca_admin", "empresa_admin"] as c
 
 /** Tipos de usuario del alta. El servidor los traduce al rol técnico: el navegador no envía roles. */
 const USER_KINDS = [
-  { id: "supervisor", label: "Supervisor", rol: "restaurante_user" },
+  { id: "restaurantes", label: "Cuenta de restaurantes", rol: "restaurante_user" },
   { id: "marca", label: "Responsable de marca", rol: "marca_admin" },
   { id: "empresa", label: "Administrador empresa", rol: "empresa_admin" },
 ] as const;
 
 const ROLE_HINT: Record<string, string> = {
-  restaurante_user: "Ve solo los restaurantes que marques. Ideal para supervisores que cambian de locales.",
+  restaurante_user: "Ve solo los restaurantes que marques (uno o varios, de cualquier marca).",
   marca_admin: "Ve todos los restaurantes de las marcas que marques, incluidos los nuevos.",
   empresa_admin: "Ve todos los restaurantes de su empresa, incluidos los nuevos. No hace falta marcar nada.",
 };
@@ -217,7 +217,7 @@ function NewUserForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [empresaId, setEmpresaId] = useState("");
-  const [tipo, setTipo] = useState<(typeof USER_KINDS)[number]["id"]>("supervisor");
+  const [tipo, setTipo] = useState<(typeof USER_KINDS)[number]["id"]>("restaurantes");
   const [restaurantIds, setRestaurantIds] = useState<Set<number>>(new Set());
   const [marcaIds, setMarcaIds] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
@@ -252,7 +252,7 @@ function NewUserForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
           email,
           empresaId: Number(empresaId),
           tipo,
-          restaurantIds: tipo === "supervisor" ? [...restaurantIds] : [],
+          restaurantIds: tipo === "restaurantes" ? [...restaurantIds] : [],
           marcaIds: tipo === "marca" ? [...marcaIds] : [],
         }),
       });
@@ -629,7 +629,7 @@ export function UsersView({ initialUserId }: { initialUserId: string | null }) {
           {selectedId ? (
             <Editor key={selectedId} userId={selectedId} onSaved={() => void loadUsers()} />
           ) : (
-            <p className="text-sm text-gray-500">Selecciona una persona para ver y cambiar sus restaurantes.</p>
+            <p className="text-sm text-gray-500">Selecciona una cuenta para ver y cambiar sus restaurantes.</p>
           )}
         </section>
       </div>

@@ -1,18 +1,32 @@
 import "server-only";
 
 import { fetchPerfilFresh } from "@/lib/auth/perfiles";
-import { effectiveAccessFor, type EffectiveAccess } from "@/lib/auth/user-access.server";
+import { loadCatalog } from "@/lib/auth/user-access.server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { isUniqueViolation } from "@/lib/supabase/conversations-mappers";
 import { SUPABASE_TABLES } from "@/lib/supabase/tables";
 import { ConversationsDbError } from "@/lib/supabase/conversations.server";
+import { validateContactAccess, type ContactAccessCatalog, type ContactAccessValue } from "@/lib/conversations/contact-access";
+import { getContactAccessSelection, resolveContactRestaurantIds } from "@/lib/conversations/contact-scope.server";
 import { resolveContactDisplayName } from "@/lib/conversations/read-model";
 
 /**
- * Vínculo contacto de WhatsApp ↔ persona de Nexo (`conv_contactos.usuario_id`) y
- * resumen de su acceso. Aquí NO se editan restaurantes ni permisos: eso se hace
- * solo en la gestión central de usuarios. Solo super_admin (lo comprueba quien llama).
+ * Ficha y permisos de un contacto de WhatsApp. Los permisos (empresa, "todos",
+ * restaurantes) se guardan SOLO en las tablas del contacto, con una transacción
+ * (`nexo_set_contact_access`), y no se copian de ninguna cuenta web. El vínculo con
+ * una cuenta web (`usuario_id`) es opcional e informativo: no da ni quita acceso.
+ * Solo super_admin (lo comprueba quien llama).
  */
+
+export class ContactError extends Error {
+  constructor(
+    readonly status: 400 | 404 | 409 | 500,
+    message: string
+  ) {
+    super(message);
+    this.name = "ContactError";
+  }
+}
 
 function requireAdminClient() {
   const client = getSupabaseAdmin();
@@ -20,15 +34,46 @@ function requireAdminClient() {
   return client;
 }
 
-export type LinkedUser = { id: string; nombre: string; rol: string; empresaNombre: string | null };
+export function contactCatalog(catalog: Awaited<ReturnType<typeof loadCatalog>>): ContactAccessCatalog {
+  return {
+    empresaIds: new Set(catalog.empresas.map((empresa) => Number(empresa.id))),
+    restaurants: catalog.restaurantes.map((restaurant) => ({
+      id: Number(restaurant.id),
+      empresaId: restaurant.empresa_id === null ? null : Number(restaurant.empresa_id),
+    })),
+  };
+}
 
-export type ContactAccessSummary = {
-  displayName: string;
-  phone: string;
-  linkedUser: LinkedUser | null;
-  /** Sin usuario vinculado: 0 restaurantes (deny by default). */
-  access: EffectiveAccess;
-};
+/** Valida tipo, empresa y restaurantes contra el catálogo (400 si hay restaurantes de otra empresa, etc.). */
+export async function assertValidContactAccess(access: unknown): Promise<ContactAccessValue> {
+  const validation = validateContactAccess(access, contactCatalog(await loadCatalog()));
+  if (!validation.ok) throw new ContactError(400, validation.error);
+  return validation.value;
+}
+
+/** Guarda nombre, tipo, empresa, "todos" y restaurantes de un contacto en una única transacción SQL. */
+export async function saveContactAccess(
+  contactoId: string,
+  input: { nombre: string | null; access: unknown }
+): Promise<void> {
+  const value = await assertValidContactAccess(input.access);
+
+  const { error } = await requireAdminClient().rpc("nexo_set_contact_access", {
+    p_contacto_id: contactoId,
+    p_nombre: input.nombre,
+    p_tipo: value.tipo,
+    p_empresa_id: value.empresaId,
+    p_todos: value.todosRestaurantes,
+    p_restaurante_ids: value.restaurantIds,
+  });
+
+  if (error) {
+    // Solo el SQLSTATE: el mensaje de la base de datos puede incluir valores.
+    if (error.code === "22023") throw new ContactError(400, "Selección no válida");
+    if (error.code === "P0002") throw new ContactError(404, "Contacto no encontrado");
+    throw new ContactError(500, "No se pudo guardar el contacto");
+  }
+}
 
 async function findContactOfConversation(conversationId: string) {
   const { data, error } = await requireAdminClient()
@@ -40,49 +85,103 @@ async function findContactOfConversation(conversationId: string) {
   return (data as { contacto_id: string } | null)?.contacto_id ?? null;
 }
 
+export type LinkedUser = { id: string; nombre: string; rol: string; empresaNombre: string | null };
+
+export type ContactDetail = {
+  displayName: string;
+  phone: string;
+  nombre: string | null;
+  tipo: string | null;
+  /** Lo guardado, para editar. */
+  selection: { empresaId: number | null; todosRestaurantes: boolean; restaurantIds: number[] };
+  /** Lo que puede consultar HOY (resuelto desde las tablas del contacto). */
+  access: { count: number; restaurants: { id: number; name: string; brand: string; city: string }[] };
+  /** Cuenta web opcional; solo informativa. */
+  linkedUser: LinkedUser | null;
+};
+
 async function empresaNombre(empresaId: string | null): Promise<string | null> {
   if (!empresaId) return null;
   const { data } = await requireAdminClient().from(SUPABASE_TABLES.empresas).select("nombre").eq("id", empresaId).maybeSingle();
   return (data as { nombre: string } | null)?.nombre ?? null;
 }
 
-/** Contacto de la conversación con su usuario vinculado y su acceso efectivo de HOY. */
-export async function getConversationContactAccess(conversationId: string): Promise<ContactAccessSummary | null> {
+export async function getConversationContactDetail(conversationId: string): Promise<ContactDetail | null> {
   const contactoId = await findContactOfConversation(conversationId);
   if (!contactoId) return null;
 
   const { data, error } = await requireAdminClient()
     .from(SUPABASE_TABLES.conv_contactos)
-    .select("telefono_e164,nombre,nombre_perfil,usuario_id")
+    .select("telefono_e164,nombre,nombre_perfil,tipo,usuario_id")
     .eq("id", contactoId)
     .maybeSingle();
   if (error) throw new ConversationsDbError("contact.get", error.code);
   if (!data) return null;
 
-  const contact = data as { telefono_e164: string; nombre: string | null; nombre_perfil: string | null; usuario_id: string | null };
-  const base = {
-    displayName: resolveContactDisplayName(contact),
-    phone: contact.telefono_e164,
+  const contact = data as {
+    telefono_e164: string;
+    nombre: string | null;
+    nombre_perfil: string | null;
+    tipo: string | null;
+    usuario_id: string | null;
   };
 
-  const perfil = contact.usuario_id ? await fetchPerfilFresh(contact.usuario_id) : null;
-  if (!perfil) return { ...base, linkedUser: null, access: { count: 0, restaurants: [] } };
+  const [selection, restaurantIds, catalog, perfil] = await Promise.all([
+    getContactAccessSelection(contactoId),
+    resolveContactRestaurantIds(contactoId),
+    loadCatalog(),
+    contact.usuario_id ? fetchPerfilFresh(contact.usuario_id) : Promise.resolve(null),
+  ]);
+
+  const allowed = new Set(restaurantIds);
+  const brandName = new Map(catalog.marcas.map((marca) => [Number(marca.id), marca.nombre]));
+  const restaurants = catalog.restaurantes
+    .filter((restaurant) => allowed.has(Number(restaurant.id)))
+    .map((restaurant) => ({
+      id: Number(restaurant.id),
+      name: restaurant.nombre,
+      brand: restaurant.marca_id === null ? "" : (brandName.get(Number(restaurant.marca_id)) ?? ""),
+      city: restaurant.ciudad ?? "",
+    }));
 
   return {
-    ...base,
-    linkedUser: {
-      id: perfil.id,
-      nombre: perfil.nombre ?? "",
-      rol: perfil.rol,
-      empresaNombre: await empresaNombre(perfil.empresaId),
-    },
-    access: await effectiveAccessFor(perfil),
+    displayName: resolveContactDisplayName(contact),
+    phone: contact.telefono_e164,
+    nombre: contact.nombre,
+    tipo: contact.tipo,
+    selection,
+    access: { count: restaurants.length, restaurants },
+    linkedUser: perfil
+      ? { id: perfil.id, nombre: perfil.nombre ?? "", rol: perfil.rol, empresaNombre: await empresaNombre(perfil.empresaId) }
+      : null,
   };
+}
+
+/** Edita nombre, tipo, empresa, "todos" y restaurantes del contacto de la conversación. */
+export async function updateConversationContact(conversationId: string, input: unknown): Promise<ContactDetail> {
+  const record = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
+
+  let nombre: string | null = null;
+  if (record.nombre !== undefined && record.nombre !== null) {
+    if (typeof record.nombre !== "string" || Array.from(record.nombre.trim()).length > 100) {
+      throw new ContactError(400, "Nombre no válido");
+    }
+    nombre = record.nombre.trim() === "" ? null : record.nombre.trim();
+  }
+
+  const contactoId = await findContactOfConversation(conversationId);
+  if (!contactoId) throw new ContactError(404, "Conversación no encontrada");
+
+  await saveContactAccess(contactoId, { nombre, access: record });
+
+  const detail = await getConversationContactDetail(conversationId);
+  if (!detail) throw new ContactError(404, "Conversación no encontrada");
+  return detail;
 }
 
 export type LinkResult = "ok" | "conversation_not_found" | "user_not_found" | "already_linked";
 
-/** Vincula (o desvincula con `null`) el contacto de la conversación a una persona de Nexo. */
+/** Vincula (o desvincula con `null`) el contacto a una cuenta web. Solo informativo: no cambia permisos. */
 export async function setConversationContactUser(conversationId: string, usuarioId: string | null): Promise<LinkResult> {
   const contactoId = await findContactOfConversation(conversationId);
   if (!contactoId) return "conversation_not_found";
@@ -95,7 +194,7 @@ export async function setConversationContactUser(conversationId: string, usuario
     .eq("id", contactoId);
 
   if (error) {
-    // Un usuario de Nexo = un teléfono (índice único parcial).
+    // Una cuenta web = un teléfono (índice único parcial).
     if (isUniqueViolation(error, "conv_contactos_usuario_id_key")) return "already_linked";
     throw new ConversationsDbError("contact.link", error.code);
   }
@@ -111,10 +210,9 @@ export type LinkableUser = {
   linkedElsewhere: boolean;
 };
 
-/** Personas de Nexo que se pueden vincular a un contacto (`null` = contacto nuevo). */
+/** Cuentas web que se pueden vincular a un contacto. */
 export async function listLinkableUsers(conversationId: string | null): Promise<LinkableUser[]> {
   const client = requireAdminClient();
-  // Sin conversación (contacto nuevo): cualquier usuario ya vinculado cuenta como "otro teléfono".
   const contactoId = conversationId ? await findContactOfConversation(conversationId) : null;
 
   const [perfiles, empresas, linked] = await Promise.all([

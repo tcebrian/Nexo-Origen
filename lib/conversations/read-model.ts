@@ -15,8 +15,10 @@ export type ContactReadRow = {
   telefono_e164: string;
   nombre: string | null;
   nombre_perfil: string | null;
-  /** Persona de Nexo vinculada. Solo se usa en servidor para el distintivo; no viaja al navegador. */
-  usuario_id?: string | null;
+  /** Id del contacto: solo se usa en servidor para resolver su acceso; no viaja al navegador. */
+  id?: string;
+  /** Tipo descriptivo (dirección, operaciones…). */
+  tipo?: string | null;
 };
 
 export type ConversationReadRow = {
@@ -45,10 +47,13 @@ export type MessageReadRow = {
 export type ConversationStatus = "open" | "closed";
 
 /**
- * Acceso del contacto a datos de Nexo. Sin persona de Nexo vinculada NO hay acceso
- * (deny by default); con ella, el rol y el nº de restaurantes efectivos de hoy.
+ * Acceso del contacto a datos de Nexo, resuelto desde SUS permisos (empresa y
+ * restaurantes del contacto; no depende de ninguna cuenta web). Sin permisos NO hay
+ * acceso (deny by default).
  */
-export type ConversationAccess = { state: "unlinked" } | { state: "linked"; rol: string; restaurantCount: number };
+export type ConversationAccess =
+  | { state: "none" }
+  | { state: "granted"; restaurantCount: number; tipo: string | null };
 
 export type ConversationListItem = {
   id: string;
@@ -119,15 +124,15 @@ export function mapConversationRow(row: ConversationReadRow): ConversationListIt
     status: row.estado === "closed" ? "closed" : "open",
     lastMessageAt: row.ultimo_mensaje_at,
     lastMessagePreview: clean(row.ultimo_mensaje_preview),
-    // Se completa en servidor con el rol y el acceso efectivo de la persona vinculada.
-    access: { state: "unlinked" },
+    // Se completa en servidor con los restaurantes que el contacto puede consultar hoy.
+    access: { state: "none" },
   };
 }
 
-/** Persona de Nexo vinculada al contacto de la fila, si la hay. */
-export function linkedUserIdOf(row: ConversationReadRow): string | null {
+/** Contacto de la fila (id y tipo), si lo hay. */
+export function contactOf(row: ConversationReadRow): { id: string | null; tipo: string | null } {
   const contact = Array.isArray(row.conv_contactos) ? row.conv_contactos[0] : row.conv_contactos;
-  return contact?.usuario_id ?? null;
+  return { id: contact?.id ?? null, tipo: contact?.tipo ?? null };
 }
 
 export function buildConversationList(rows: ConversationReadRow[]): ConversationListItem[] {

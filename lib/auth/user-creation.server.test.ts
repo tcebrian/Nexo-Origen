@@ -41,7 +41,7 @@ const supervisor = {
   nombre: "Lidia",
   email: "Lidia@Example.com",
   empresaId: 1,
-  tipo: "supervisor",
+  tipo: "restaurantes",
   restaurantIds: [1, 3],
 };
 

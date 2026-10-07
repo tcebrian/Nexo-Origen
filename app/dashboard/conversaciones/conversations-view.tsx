@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { canSubmitDraft } from "@/lib/conversations/compose";
+import { contactTypeLabel } from "@/lib/conversations/contact-access";
 import { describeDeliveryStatus, type DeliveryIndicator } from "@/lib/conversations/delivery-status";
 import {
   MAX_OUTBOUND_TEXT_CHARS,
@@ -146,9 +147,10 @@ function ConversationRow({
               </span>
             ) : null}
           </span>
-          {item.access.state === "linked" ? (
+          {item.access.state === "granted" ? (
             <span className="mt-1 inline-block rounded-full border border-violet-400/20 bg-violet-500/10 px-2 py-0.5 text-[10px] text-violet-200">
-              Vinculado · {ACCESS_ROLE_LABELS[item.access.rol] ?? item.access.rol} · {item.access.restaurantCount} restaurantes
+              Autorizado · {contactTypeLabel(item.access.tipo) ? `${contactTypeLabel(item.access.tipo)} · ` : ""}
+              {item.access.restaurantCount} restaurantes
             </span>
           ) : (
             <span className="mt-1 inline-block text-[10px] text-gray-600">Sin acceso a datos</span>
@@ -692,168 +694,340 @@ function Composer({
   );
 }
 
-type ContactAccess = {
+type ContactOptions = {
+  types: { id: string; label: string }[];
+  options: {
+    empresas: { id: number; nombre: string }[];
+    restaurants: { id: number; name: string; city: string; brand: string; empresaId: number | null }[];
+  };
+};
+
+type ContactDetail = {
   displayName: string;
   phone: string;
-  linkedUser: { id: string; nombre: string; rol: string; empresaNombre: string | null } | null;
+  nombre: string | null;
+  tipo: string | null;
+  selection: { empresaId: number | null; todosRestaurantes: boolean; restaurantIds: number[] };
   access: { count: number; restaurants: { id: number; name: string; brand: string; city: string }[] };
+  linkedUser: { id: string; nombre: string; rol: string; empresaNombre: string | null } | null;
 };
 
 type LinkableUser = { id: string; nombre: string; rol: string; empresaNombre: string | null; linkedElsewhere: boolean };
 
-const ACCESS_ROLE_LABELS: Record<string, string> = {
+/** Rol de la CUENTA WEB (no el tipo del contacto): nombres neutros, sin llamar "Supervisor" a una cuenta de restaurante. */
+const WEB_ACCOUNT_LABELS: Record<string, string> = {
   super_admin: "Super administrador",
   empresa_admin: "Administrador de empresa",
   marca_admin: "Administrador de marca",
-  restaurante_user: "Supervisor / restaurante",
+  restaurante_user: "Cuenta de restaurante",
 };
 
+const contactFieldClass =
+  "rounded-xl border border-white/[0.08] bg-[#0d0a14] px-3 py-2 text-[13px] text-white placeholder:text-gray-600 focus:border-violet-400/40 focus:outline-none";
+const contactLabelClass = "mb-1 block text-[11px] font-medium text-gray-400";
+
 /**
- * Persona de Nexo vinculada al contacto y su acceso efectivo. Solo vincula y
- * muestra: los restaurantes NO se editan aquí, sino en "Usuarios y permisos".
+ * Tipo, empresa y restaurantes de un contacto. Los permisos salen SOLO de la empresa y
+ * de los restaurantes marcados (o de "todos"): el tipo es descriptivo y no decide nada.
+ * Lo comparten el alta y la edición para que se comporten igual.
  */
-function ContactAccessPanel({ conversationId }: { conversationId: string }) {
-  const [contact, setContact] = useState<ContactAccess | null>(null);
-  const [users, setUsers] = useState<LinkableUser[] | null>(null);
-  const [choice, setChoice] = useState("");
-  const [changing, setChanging] = useState(false);
+function ContactAccessFields({
+  config,
+  tipo,
+  onTipo,
+  empresaId,
+  onEmpresa,
+  todos,
+  onTodos,
+  restaurantIds,
+  onRestaurants,
+}: {
+  config: ContactOptions;
+  tipo: string;
+  onTipo: (value: string) => void;
+  empresaId: string;
+  onEmpresa: (value: string) => void;
+  todos: boolean;
+  onTodos: (value: boolean) => void;
+  restaurantIds: Set<number>;
+  onRestaurants: (value: Set<number>) => void;
+}) {
+  const [query, setQuery] = useState("");
+
+  const brands = useMemo(() => {
+    const normalize = (value: string) => value.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+    const groups = new Map<string, ContactOptions["options"]["restaurants"]>();
+    for (const restaurant of config.options.restaurants) {
+      if (restaurant.empresaId !== Number(empresaId)) continue;
+      if (query.trim() !== "" && !normalize(`${restaurant.name} ${restaurant.city} ${restaurant.brand}`).includes(normalize(query))) continue;
+      const brand = restaurant.brand || "Sin marca";
+      groups.set(brand, [...(groups.get(brand) ?? []), restaurant]);
+    }
+    return [...groups];
+  }, [config, empresaId, query]);
+
+  const total = config.options.restaurants.filter((restaurant) => restaurant.empresaId === Number(empresaId)).length;
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <label htmlFor="contact-type" className={contactLabelClass}>
+          Tipo de contacto
+        </label>
+        <select id="contact-type" value={tipo} onChange={(event) => onTipo(event.target.value)} className={`${contactFieldClass} w-full`}>
+          <option value="">Sin tipo</option>
+          {config.types.map((type) => (
+            <option key={type.id} value={type.id}>
+              {type.label}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-[11px] text-gray-600">Solo descriptivo: no decide qué restaurantes ve.</p>
+      </div>
+
+      <div>
+        <label htmlFor="contact-company" className={contactLabelClass}>
+          Empresa
+        </label>
+        <select
+          id="contact-company"
+          value={empresaId}
+          onChange={(event) => {
+            onEmpresa(event.target.value);
+            // Los restaurantes son de una empresa: al cambiarla se reinicia la selección.
+            onRestaurants(new Set());
+            onTodos(false);
+          }}
+          className={`${contactFieldClass} w-full`}
+        >
+          <option value="">Sin empresa (sin acceso a datos)</option>
+          {config.options.empresas.map((empresa) => (
+            <option key={empresa.id} value={empresa.id}>
+              {empresa.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {empresaId !== "" ? (
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-[13px] text-gray-200">
+            <input type="checkbox" className="accent-violet-500" checked={todos} onChange={(event) => onTodos(event.target.checked)} />
+            Todos los restaurantes de la empresa
+          </label>
+          {todos ? (
+            <p className="text-[11px] text-gray-500">
+              Ve los {total} restaurantes actuales y los que se añadan en el futuro.
+            </p>
+          ) : (
+            <>
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Buscar restaurante…"
+                aria-label="Buscar restaurante"
+                className={`${contactFieldClass} w-full`}
+              />
+              <div className="max-h-56 space-y-3 overflow-y-auto rounded-xl border border-white/[0.06] p-3">
+                {brands.length === 0 ? <p className="text-xs text-gray-500">Sin resultados.</p> : null}
+                {brands.map(([brand, items]) => (
+                  <div key={brand}>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-500">{brand}</p>
+                    <div className="grid gap-1">
+                      {items.map((item) => (
+                        <label key={item.id} className="flex items-center gap-2 text-[13px] text-gray-200">
+                          <input
+                            type="checkbox"
+                            className="accent-violet-500"
+                            checked={restaurantIds.has(item.id)}
+                            onChange={() => {
+                              const next = new Set(restaurantIds);
+                              if (next.has(item.id)) next.delete(item.id);
+                              else next.add(item.id);
+                              onRestaurants(next);
+                            }}
+                          />
+                          {item.name}
+                          {item.city ? <span className="text-[11px] text-gray-600">{item.city}</span> : null}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400">{restaurantIds.size} restaurantes seleccionados</p>
+            </>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Lo que se envía al guardar: solo tipo, empresa y restaurantes. */
+function accessBody(tipo: string, empresaId: string, todos: boolean, restaurantIds: Set<number>) {
+  return {
+    tipo: tipo === "" ? null : tipo,
+    empresaId: empresaId === "" ? null : Number(empresaId),
+    todosRestaurantes: todos,
+    restaurantIds: [...restaurantIds],
+  };
+}
+
+/**
+ * Ficha del contacto: nombre, tipo, empresa y restaurantes (editables) y, aparte, la
+ * cuenta web opcional. Los permisos no se copian de ninguna cuenta: se guardan aquí.
+ */
+function ContactPanel({ conversationId, onChanged }: { conversationId: string; onChanged: () => void }) {
+  const [detail, setDetail] = useState<ContactDetail | null>(null);
+  const [config, setConfig] = useState<ContactOptions | null>(null);
+  const [nombre, setNombre] = useState("");
+  const [tipo, setTipo] = useState("");
+  const [empresaId, setEmpresaId] = useState("");
+  const [todos, setTodos] = useState(false);
+  const [restaurantIds, setRestaurantIds] = useState<Set<number>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [showRestaurants, setShowRestaurants] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [users, setUsers] = useState<LinkableUser[] | null>(null);
+  const [userChoice, setUserChoice] = useState("");
+  const [linkBusy, setLinkBusy] = useState(false);
+
+  const fill = useCallback((data: ContactDetail) => {
+    setDetail(data);
+    setNombre(data.nombre ?? "");
+    setTipo(data.tipo ?? "");
+    setEmpresaId(data.selection.empresaId === null ? "" : String(data.selection.empresaId));
+    setTodos(data.selection.todosRestaurantes);
+    setRestaurantIds(new Set(data.selection.restaurantIds));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    fetchJson<ContactAccess>(`/api/conversations/${conversationId}/contact`)
-      .then((data) => {
-        if (!cancelled) setContact(data);
+    Promise.all([
+      fetchJson<ContactDetail>(`/api/conversations/${conversationId}/contact`),
+      fetchJson<ContactOptions>("/api/conversations/contacts"),
+    ])
+      .then(([data, options]) => {
+        if (cancelled) return;
+        fill(data);
+        setConfig(options);
       })
       .catch(() => {
-        if (!cancelled) setError("No se pudo cargar el acceso del contacto.");
+        if (!cancelled) setMessage({ kind: "error", text: "No se pudo cargar el contacto." });
       });
     return () => {
       cancelled = true;
     };
-  }, [conversationId]);
+  }, [conversationId, fill]);
 
-  async function startChange() {
-    setChanging(true);
-    setError(null);
+  async function save() {
+    setSaving(true);
+    setMessage(null);
     try {
-      const data = await fetchJson<{ users: LinkableUser[] }>(`/api/conversations/${conversationId}/linkable-users`);
-      setUsers(data.users);
+      const response = await fetch(`/api/conversations/${conversationId}/contact`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, ...accessBody(tipo, empresaId, todos, restaurantIds) }),
+      });
+      const data = (await response.json().catch(() => null)) as (ContactDetail & { error?: string }) | null;
+      if (!response.ok || !data) {
+        setMessage({ kind: "error", text: data?.error ?? "No se pudo guardar el contacto" });
+        return;
+      }
+      fill(data);
+      setMessage({ kind: "ok", text: `Guardado. Ahora puede consultar ${data.access.count} restaurantes.` });
+      onChanged();
     } catch {
-      setError("No se pudieron cargar los usuarios.");
+      setMessage({ kind: "error", text: "No se pudo guardar el contacto" });
+    } finally {
+      setSaving(false);
     }
   }
 
   async function link(usuarioId: string | null) {
-    setBusy(true);
-    setError(null);
+    setLinkBusy(true);
+    setMessage(null);
     try {
       const response = await fetch(`/api/conversations/${conversationId}/contact`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ usuarioId }),
       });
-      const data = (await response.json().catch(() => null)) as (ContactAccess & { error?: string }) | null;
+      const data = (await response.json().catch(() => null)) as (ContactDetail & { error?: string }) | null;
       if (!response.ok || !data) {
-        setError(data?.error ?? "No se pudo guardar el vínculo");
+        setMessage({ kind: "error", text: data?.error ?? "No se pudo guardar el vínculo" });
         return;
       }
-      setContact(data);
-      setChanging(false);
-      setChoice("");
-      setShowRestaurants(false);
+      // Solo cambia el vínculo informativo; lo que el usuario esté editando en el formulario se conserva.
+      setDetail(data);
+      setUserChoice("");
     } catch {
-      setError("No se pudo guardar el vínculo");
+      setMessage({ kind: "error", text: "No se pudo guardar el vínculo" });
     } finally {
-      setBusy(false);
+      setLinkBusy(false);
     }
   }
 
-  if (!contact) {
-    return <div className="border-b border-white/[0.07] px-4 py-3 text-xs text-gray-500">{error ?? "Cargando…"}</div>;
+  if (!detail || !config) {
+    return <div className="border-b border-white/[0.07] px-4 py-3 text-xs text-gray-500">{message?.text ?? "Cargando…"}</div>;
   }
 
-  const linked = contact.linkedUser;
-  const picking = changing || !linked;
-
   return (
-    <div className="space-y-2 border-b border-white/[0.07] bg-white/[0.02] px-4 py-3 text-[13px]">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">Usuario Nexo vinculado</p>
+    <div className="max-h-[55vh] space-y-3 overflow-y-auto border-b border-white/[0.07] bg-white/[0.02] px-4 py-3 text-[13px]">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">Contacto y permisos</p>
 
-      {linked ? (
-        <div className="space-y-1">
-          <p className="font-medium text-white">{linked.nombre}</p>
-          <p className="text-xs text-gray-400">
-            {ACCESS_ROLE_LABELS[linked.rol] ?? linked.rol}
-            {linked.empresaNombre ? ` · ${linked.empresaNombre}` : ""}
-          </p>
-          <p className="text-xs text-gray-400">
-            Acceso efectivo hoy: <span className="font-medium text-gray-200">{contact.access.count} restaurantes</span>
-          </p>
-        </div>
-      ) : (
-        <p className="text-xs text-amber-200">
-          Sin usuario vinculado: este contacto puede escribir, pero no puede consultar datos ni recibir informes.
-        </p>
-      )}
+      <div>
+        <label htmlFor="contact-name" className={contactLabelClass}>
+          Nombre
+        </label>
+        <input
+          id="contact-name"
+          value={nombre}
+          onChange={(event) => setNombre(event.target.value)}
+          placeholder="Nombre del contacto"
+          maxLength={100}
+          className={`${contactFieldClass} w-full`}
+        />
+      </div>
 
-      {picking ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={choice}
-            onChange={(event) => setChoice(event.target.value)}
-            onFocus={() => {
-              if (!users) void startChange();
-            }}
-            disabled={busy}
-            aria-label="Usuario de Nexo"
-            className="min-w-[220px] rounded-xl border border-white/[0.08] bg-[#0d0a14] px-3 py-2 text-[13px] text-white"
-          >
-            <option value="">Elige un usuario…</option>
-            {(users ?? []).map((user) => (
-              <option key={user.id} value={user.id} disabled={user.linkedElsewhere}>
-                {user.nombre} · {ACCESS_ROLE_LABELS[user.rol] ?? user.rol}
-                {user.linkedElsewhere ? " (ya vinculado a otro teléfono)" : ""}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            disabled={busy || choice === ""}
-            onClick={() => void link(choice)}
-            className="rounded-xl border border-violet-400/30 bg-violet-500/25 px-3.5 py-2 text-[13px] font-medium text-white transition hover:bg-violet-500/35 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Vincular
-          </button>
-          {linked ? (
-            <button type="button" onClick={() => setChanging(false)} className="text-xs text-gray-400 hover:text-white">
-              Cancelar
-            </button>
-          ) : null}
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          <button type="button" onClick={() => setShowRestaurants((open) => !open)} className="text-violet-300 hover:text-violet-200">
+      <ContactAccessFields
+        config={config}
+        tipo={tipo}
+        onTipo={setTipo}
+        empresaId={empresaId}
+        onEmpresa={setEmpresaId}
+        todos={todos}
+        onTodos={setTodos}
+        restaurantIds={restaurantIds}
+        onRestaurants={setRestaurantIds}
+      />
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={saving}
+          className="rounded-xl border border-violet-400/30 bg-violet-500/25 px-4 py-2 text-[13px] font-medium text-white transition hover:bg-violet-500/35 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {saving ? "Guardando…" : "Guardar cambios"}
+        </button>
+        <span className="text-xs text-gray-400">
+          Puede consultar hoy: <span className="font-medium text-gray-200">{detail.access.count} restaurantes</span>
+        </span>
+        {detail.access.count > 0 ? (
+          <button type="button" onClick={() => setShowRestaurants((open) => !open)} className="text-xs text-violet-300 hover:text-violet-200">
             {showRestaurants ? "Ocultar restaurantes" : "Ver restaurantes"}
           </button>
-          <a href={`/dashboard/usuarios?user=${linked!.id}`} className="text-violet-300 hover:text-violet-200">
-            Gestionar permisos
-          </a>
-          <button type="button" onClick={() => void startChange()} disabled={busy} className="text-gray-400 hover:text-white">
-            Cambiar usuario
-          </button>
-          <button type="button" onClick={() => void link(null)} disabled={busy} className="text-gray-400 hover:text-rose-300">
-            Desvincular
-          </button>
-        </div>
-      )}
+        ) : (
+          <span className="text-xs text-amber-200">Sin acceso a datos</span>
+        )}
+      </div>
 
-      {showRestaurants && linked ? (
+      {showRestaurants ? (
         <ul className="max-h-40 space-y-0.5 overflow-y-auto rounded-xl border border-white/[0.06] p-2 text-xs text-gray-300">
-          {contact.access.restaurants.length === 0 ? <li className="text-gray-500">Ningún restaurante.</li> : null}
-          {contact.access.restaurants.map((restaurant) => (
+          {detail.access.restaurants.map((restaurant) => (
             <li key={restaurant.id}>
               {restaurant.name} <span className="text-gray-600">{restaurant.brand}</span>
             </li>
@@ -861,23 +1035,68 @@ function ContactAccessPanel({ conversationId }: { conversationId: string }) {
         </ul>
       ) : null}
 
-      {error ? (
-        <p role="alert" className="text-xs text-rose-300">
-          {error}
+      {message ? (
+        <p role="status" className={`text-xs ${message.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>
+          {message.text}
         </p>
       ) : null}
+
+      <div className="space-y-1.5 border-t border-white/[0.06] pt-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">Cuenta web (opcional)</p>
+        {detail.linkedUser ? (
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <span className="text-gray-300">
+              {detail.linkedUser.nombre} · {WEB_ACCOUNT_LABELS[detail.linkedUser.rol] ?? detail.linkedUser.rol}
+              {detail.linkedUser.empresaNombre ? ` · ${detail.linkedUser.empresaNombre}` : ""}
+            </span>
+            <button type="button" disabled={linkBusy} onClick={() => void link(null)} className="text-gray-400 hover:text-rose-300">
+              Desvincular
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={userChoice}
+              onChange={(event) => setUserChoice(event.target.value)}
+              onFocus={() => {
+                if (!users) {
+                  fetchJson<{ users: LinkableUser[] }>(`/api/conversations/${conversationId}/linkable-users`)
+                    .then((data) => setUsers(data.users))
+                    .catch(() => setMessage({ kind: "error", text: "No se pudieron cargar las cuentas." }));
+                }
+              }}
+              aria-label="Cuenta web vinculada"
+              className={`${contactFieldClass} min-w-[200px]`}
+            >
+              <option value="">Ninguna</option>
+              {(users ?? []).map((user) => (
+                <option key={user.id} value={user.id} disabled={user.linkedElsewhere}>
+                  {user.nombre} · {WEB_ACCOUNT_LABELS[user.rol] ?? user.rol}
+                  {user.linkedElsewhere ? " (ya vinculada a otro teléfono)" : ""}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={linkBusy || userChoice === ""}
+              onClick={() => void link(userChoice)}
+              className="text-xs text-violet-300 hover:text-violet-200 disabled:opacity-40"
+            >
+              Vincular
+            </button>
+          </div>
+        )}
+        <p className="text-[11px] text-gray-600">
+          Solo informativo: vincular una cuenta no cambia los restaurantes de este contacto.
+        </p>
+      </div>
     </div>
   );
 }
 
-type NewContactUser = { id: string; nombre: string; rol: string; empresaNombre: string | null; linkedElsewhere: boolean };
+type NewContactResult = { existing: boolean; conversationId: string | null };
 
-type NewContactResult = { existing: boolean; conversationId: string | null; linked: boolean };
-
-/**
- * Alta manual de un contacto de WhatsApp. Solo vincula teléfono ↔ persona de Nexo:
- * los restaurantes NO se eligen aquí, salen de los permisos de esa persona.
- */
+/** Alta manual de un contacto de WhatsApp con sus permisos. No hace falta cuenta web. */
 function NewContactForm({
   onClose,
   onCreated,
@@ -886,23 +1105,26 @@ function NewContactForm({
   /** Se llama tras crear o reutilizar el contacto; abre su conversación si existe. */
   onCreated: (conversationId: string | null) => void;
 }) {
+  const [config, setConfig] = useState<ContactOptions | null>(null);
   const [nombre, setNombre] = useState("");
   const [prefijo, setPrefijo] = useState("+34");
   const [telefono, setTelefono] = useState("");
-  const [usuarioId, setUsuarioId] = useState("");
-  const [users, setUsers] = useState<NewContactUser[] | null>(null);
+  const [tipo, setTipo] = useState("");
+  const [empresaId, setEmpresaId] = useState("");
+  const [todos, setTodos] = useState(false);
+  const [restaurantIds, setRestaurantIds] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<NewContactResult | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetchJson<{ users: NewContactUser[] }>("/api/conversations/contacts")
+    fetchJson<ContactOptions>("/api/conversations/contacts")
       .then((data) => {
-        if (!cancelled) setUsers(data.users);
+        if (!cancelled) setConfig(data);
       })
       .catch(() => {
-        if (!cancelled) setError("No se pudieron cargar los usuarios de Nexo.");
+        if (!cancelled) setError("No se pudieron cargar las empresas y restaurantes.");
       });
     return () => {
       cancelled = true;
@@ -920,7 +1142,7 @@ function NewContactForm({
           nombre,
           countryCallingCode: prefijo,
           nationalNumber: telefono,
-          usuarioId: usuarioId === "" ? null : usuarioId,
+          ...accessBody(tipo, empresaId, todos, restaurantIds),
         }),
       });
       const data = (await response.json().catch(() => null)) as (NewContactResult & { error?: string }) | null;
@@ -941,14 +1163,8 @@ function NewContactForm({
     }
   }
 
-  // La base NO fija ancho: cada campo declara el suyo (evita utilidades `w-*` en conflicto).
-  const fieldBase =
-    "rounded-xl border border-white/[0.08] bg-[#0d0a14] px-3 py-2 text-[13px] text-white placeholder:text-gray-600 focus:border-violet-400/40 focus:outline-none";
-  const fullWidthField = `${fieldBase} w-full`;
-  const labelClass = "mb-1 block text-[11px] font-medium text-gray-400";
-
   return (
-    <div className="space-y-2 border-b border-white/[0.07] bg-white/[0.02] p-3">
+    <div className="max-h-[60vh] space-y-2 overflow-y-auto border-b border-white/[0.07] bg-white/[0.02] p-3">
       <div className="flex items-center justify-between">
         <p className="text-[13px] font-medium text-white">Nuevo contacto</p>
         <button type="button" onClick={onClose} className="text-xs text-gray-400 hover:text-white">
@@ -960,10 +1176,7 @@ function NewContactForm({
         <div className="space-y-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] p-3">
           <p className="text-[13px] font-medium text-amber-200">Este número ya existe.</p>
           <p className="text-xs text-gray-400">
-            {result.linked
-              ? "Ya está vinculado a un usuario de Nexo."
-              : "Todavía no está vinculado a ningún usuario: no tiene acceso a datos."}{" "}
-            No se ha cambiado su nombre ni su vínculo.
+            No se ha cambiado nada. Ábrelo para editar su nombre, su tipo y sus restaurantes.
           </p>
           <div className="flex gap-3">
             {result.conversationId ? (
@@ -975,7 +1188,7 @@ function NewContactForm({
                 }}
                 className="rounded-xl border border-violet-400/30 bg-violet-500/25 px-3.5 py-2 text-[13px] font-medium text-white transition hover:bg-violet-500/35"
               >
-                Abrir conversación
+                Abrir contacto
               </button>
             ) : null}
             <button type="button" onClick={onClose} className="text-xs text-gray-400 hover:text-white">
@@ -983,6 +1196,8 @@ function NewContactForm({
             </button>
           </div>
         </div>
+      ) : !config ? (
+        <p className="text-xs text-gray-500">{error ?? "Cargando…"}</p>
       ) : (
         <form
           className="space-y-2"
@@ -992,7 +1207,7 @@ function NewContactForm({
           }}
         >
           <div>
-            <label htmlFor="new-contact-name" className={labelClass}>
+            <label htmlFor="new-contact-name" className={contactLabelClass}>
               Nombre
             </label>
             <input
@@ -1001,12 +1216,12 @@ function NewContactForm({
               onChange={(event) => setNombre(event.target.value)}
               placeholder="Nombre del contacto"
               maxLength={100}
-              className={fullWidthField}
+              className={`${contactFieldClass} w-full`}
             />
           </div>
 
           <div>
-            <label htmlFor="new-contact-phone" className={labelClass}>
+            <label htmlFor="new-contact-phone" className={contactLabelClass}>
               Teléfono
             </label>
             <div className="flex gap-2">
@@ -1017,7 +1232,7 @@ function NewContactForm({
                 aria-label="Prefijo del país"
                 inputMode="tel"
                 autoComplete="off"
-                className={`${fieldBase} w-[76px] shrink-0 text-center`}
+                className={`${contactFieldClass} w-[76px] shrink-0 text-center`}
               />
               <input
                 id="new-contact-phone"
@@ -1026,33 +1241,25 @@ function NewContactForm({
                 placeholder="651 346 517"
                 inputMode="tel"
                 autoComplete="off"
-                className={`${fieldBase} min-w-0 flex-1`}
+                className={`${contactFieldClass} min-w-0 flex-1`}
               />
             </div>
           </div>
 
-          <div>
-            <label htmlFor="new-contact-user" className={labelClass}>
-              Usuario Nexo (opcional)
-            </label>
-            <select
-              id="new-contact-user"
-              value={usuarioId}
-              onChange={(event) => setUsuarioId(event.target.value)}
-              aria-label="Usuario Nexo vinculado (opcional)"
-              className={fullWidthField}
-            >
-              <option value="">Sin usuario vinculado</option>
-              {(users ?? []).map((user) => (
-                <option key={user.id} value={user.id} disabled={user.linkedElsewhere}>
-                  {user.nombre} · {ACCESS_ROLE_LABELS[user.rol] ?? user.rol}
-                  {user.linkedElsewhere ? " (ya vinculado a otro teléfono)" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ContactAccessFields
+            config={config}
+            tipo={tipo}
+            onTipo={setTipo}
+            empresaId={empresaId}
+            onEmpresa={setEmpresaId}
+            todos={todos}
+            onTodos={setTodos}
+            restaurantIds={restaurantIds}
+            onRestaurants={setRestaurantIds}
+          />
+
           <p className="text-[11px] text-gray-500">
-            Si no se vincula a un usuario, el contacto podrá escribir pero no tendrá acceso a datos.
+            Sin empresa ni restaurantes, el contacto podrá escribir pero no tendrá acceso a datos. No hace falta cuenta web.
           </p>
           {error ? (
             <p role="alert" className="text-xs text-rose-300">
@@ -1244,7 +1451,7 @@ export function ConversationsView() {
                   aria-expanded={accessOpenFor === selected.id}
                   className="shrink-0 rounded-full border border-white/[0.08] px-2.5 py-1 text-[10px] font-medium text-gray-300 transition hover:bg-white/[0.06] hover:text-white"
                 >
-                  Acceso
+                  Permisos
                 </button>
                 <span
                   className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-medium ${
@@ -1257,7 +1464,9 @@ export function ConversationsView() {
                 </span>
               </div>
 
-              {accessOpenFor === selected.id ? <ContactAccessPanel key={selected.id} conversationId={selected.id} /> : null}
+              {accessOpenFor === selected.id ? (
+                <ContactPanel key={selected.id} conversationId={selected.id} onChanged={() => void loadList()} />
+              ) : null}
 
               <div className="flex min-h-0 flex-1 flex-col">
                 {messages === null ? (

@@ -36,7 +36,7 @@ const confirmRoute = await import("@/app/auth/confirm/route");
 
 const USER = "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d";
 const LINK = "https://nexo.example/auth/confirm?token_hash=SECRET-TOKEN&type=recovery";
-const body = { nombre: "Lidia", email: "lidia@example.com", empresaId: 1, tipo: "supervisor", restaurantIds: [1, 3] };
+const body = { nombre: "Lidia", email: "lidia@example.com", empresaId: 1, tipo: "restaurantes", restaurantIds: [1, 3] };
 
 const asRole = (rol: string) => requireApiAuth.mockResolvedValue({ ok: true, session: { userId: "actor-1", perfil: { rol }, scope: {} } });
 const post = (payload: unknown) =>
@@ -174,7 +174,9 @@ describe("interfaz", () => {
 
   it("tiene el botón y los tres tipos de usuario con los textos pedidos", () => {
     expect(view).toContain("+ Nuevo usuario");
-    for (const label of ["Administrador empresa", "Responsable de marca", "Supervisor"]) expect(view).toContain(label);
+    for (const label of ["Administrador empresa", "Responsable de marca", "Cuenta de restaurantes"]) expect(view).toContain(label);
+    // Una cuenta de restaurante (p. ej. "Burger King Soria") no se etiqueta como "Supervisor".
+    expect(view).not.toMatch(/restaurante_user:\s*"Supervisor|label: "Supervisor"/);
   });
 
   it("el formulario de alta no tiene campo de contraseña y no envía roles técnicos", () => {

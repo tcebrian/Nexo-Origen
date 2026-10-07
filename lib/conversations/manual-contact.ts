@@ -1,17 +1,22 @@
 import { normalizeManualPhone } from "@/lib/conversations/normalize-phone";
-import { isValidConversationId } from "@/lib/conversations/read-model";
 
 /**
  * Alta manual de un contacto de WhatsApp (solo super_admin). Función pura de
- * validación: normaliza el teléfono con la lógica E.164 existente y descarta
- * cualquier otro campo. El formulario solo vincula teléfono ↔ persona de Nexo:
- * NO acepta restaurantes, rol, empresa ni permisos de ningún tipo.
+ * validación: normaliza el teléfono con la lógica E.164 existente y valida el nombre.
+ * Los permisos (tipo, empresa, restaurantes) se devuelven SIN validar: los valida
+ * `validateContactAccess` contra el catálogo. La cuenta web NO interviene en el alta.
  */
 
 export const MAX_CONTACT_NAME_CHARS = 100;
 
 export type ParsedManualContact =
-  | { ok: true; nombre: string | null; telefonoE164: string; usuarioId: string | null }
+  | {
+      ok: true;
+      nombre: string | null;
+      telefonoE164: string;
+      /** tipo, empresaId, todosRestaurantes y restaurantIds, sin validar. */
+      access: Record<string, unknown>;
+    }
   | { ok: false; error: string };
 
 export function parseManualContactBody(body: unknown): ParsedManualContact {
@@ -34,13 +39,15 @@ export function parseManualContactBody(body: unknown): ParsedManualContact {
     nombre = trimmed === "" ? null : trimmed;
   }
 
-  let usuarioId: string | null = null;
-  if (record.usuarioId !== undefined && record.usuarioId !== null && record.usuarioId !== "") {
-    if (typeof record.usuarioId !== "string" || !isValidConversationId(record.usuarioId)) {
-      return { ok: false, error: "Usuario no válido" };
-    }
-    usuarioId = record.usuarioId;
-  }
-
-  return { ok: true, nombre, telefonoE164, usuarioId };
+  return {
+    ok: true,
+    nombre,
+    telefonoE164,
+    access: {
+      tipo: record.tipo,
+      empresaId: record.empresaId,
+      todosRestaurantes: record.todosRestaurantes,
+      restaurantIds: record.restaurantIds,
+    },
+  };
 }

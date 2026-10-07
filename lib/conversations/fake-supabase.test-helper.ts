@@ -56,7 +56,7 @@ export function createFakeDb(initial: Tables = {}): FakeDb {
   let nextId = 1;
 
   function builder(table: string) {
-    const state: { op: "select" | "update" | "insert"; values?: Row; filters: Filter[] } = { op: "select", filters: [] };
+    const state: { op: "select" | "update" | "insert" | "delete"; values?: Row; filters: Filter[] } = { op: "select", filters: [] };
     const matches = (row: Row) =>
       state.filters.every((f) => {
         if (f.op === "notnull") return row[f.column] !== null && row[f.column] !== undefined;
@@ -91,6 +91,12 @@ export function createFakeDb(initial: Tables = {}): FakeDb {
         return { data: [{ ...row }], error: null };
       }
 
+      if (state.op === "delete") {
+        const hit = rows.filter(matches);
+        db.tables[table] = rows.filter((row) => !hit.includes(row));
+        return { data: hit.map((row) => ({ ...row })), error: null };
+      }
+
       if (state.op === "update") {
         const hit = rows.filter(matches);
         for (const row of hit) {
@@ -115,6 +121,7 @@ export function createFakeDb(initial: Tables = {}): FakeDb {
       select: () => api,
       insert: (values: Row) => ((state.op = "insert"), (state.values = values), api),
       update: (values: Row) => ((state.op = "update"), (state.values = values), api),
+      delete: () => ((state.op = "delete"), api),
       eq: (column: string, value: unknown) => (state.filters.push({ op: "eq", column, value }), api),
       in: (column: string, value: unknown[]) => (state.filters.push({ op: "in", column, value }), api),
       not: (column: string) => (state.filters.push({ op: "notnull", column }), api),
