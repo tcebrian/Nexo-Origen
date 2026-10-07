@@ -10,6 +10,7 @@ vi.mock("@/lib/auth/api-auth", () => ({ requireApiAuth }));
 vi.mock("@/lib/conversations/outbound.server", () => ({ outboundRepository: {} }));
 vi.mock("@/lib/whatsapp/cloud-api.server", () => ({
   sendTextMessage: vi.fn(),
+  sendImageMessage: vi.fn(),
   isWhatsAppSenderConfigured: () => true,
 }));
 vi.mock("@/lib/conversations/read.server", () => ({ listConversations, getConversationMessages }));

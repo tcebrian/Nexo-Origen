@@ -249,8 +249,18 @@ function EmptyState({ title }: { title: string }) {
   );
 }
 
+type ReportFormat = "pdf" | "image";
+
+type ReportSelection = {
+  reportType: "monthly";
+  format: ReportFormat;
+  restaurantId: number;
+  offset: number;
+};
+
 type ReportOptions = {
   reportTypes: { id: "monthly"; label: string }[];
+  formats: { id: ReportFormat; label: string }[];
   restaurants: { id: number; name: string; brand: string; city: string }[];
   periods: { offset: number; label: string }[];
 };
@@ -268,12 +278,13 @@ function ReportPanel({
 }: {
   sending: boolean;
   onCancel: () => void;
-  onSend: (selection: { reportType: "monthly"; restaurantId: number; offset: number }) => void;
+  onSend: (selection: ReportSelection) => void;
 }) {
   const [options, setOptions] = useState<ReportOptions | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [restaurantId, setRestaurantId] = useState("");
   const [offset, setOffset] = useState("0");
+  const [format, setFormat] = useState<ReportFormat>("pdf");
 
   useEffect(() => {
     let cancelled = false;
@@ -355,6 +366,26 @@ function ReportPanel({
         </div>
       )}
 
+      {options ? (
+        <fieldset className="mt-3 flex items-center gap-4" disabled={sending}>
+          <legend className="sr-only">Formato</legend>
+          <span className="text-[11px] text-gray-500">Formato</span>
+          {options.formats.map((option) => (
+            <label key={option.id} className="flex items-center gap-1.5 text-[13px] text-gray-200">
+              <input
+                type="radio"
+                name="report-format"
+                value={option.id}
+                checked={format === option.id}
+                onChange={() => setFormat(option.id)}
+                className="accent-violet-500"
+              />
+              {option.label}
+            </label>
+          ))}
+        </fieldset>
+      ) : null}
+
       <div className="mt-3 flex items-center justify-end gap-2">
         <button
           type="button"
@@ -368,7 +399,7 @@ function ReportPanel({
           type="button"
           disabled={sending || !options || restaurantId === ""}
           onClick={() =>
-            onSend({ reportType: "monthly", restaurantId: Number(restaurantId), offset: Number(offset) })
+            onSend({ reportType: "monthly", format, restaurantId: Number(restaurantId), offset: Number(offset) })
           }
           className="rounded-xl border border-violet-400/30 bg-violet-500/25 px-4 py-2 text-[13px] font-medium text-white transition hover:bg-violet-500/35 disabled:cursor-not-allowed disabled:border-white/[0.06] disabled:bg-white/[0.03] disabled:text-gray-600"
         >
@@ -446,9 +477,9 @@ function Composer({
     }
   }
 
-  async function submitReport(selection: { reportType: "monthly"; restaurantId: number; offset: number }) {
+  async function submitReport(selection: ReportSelection) {
     // La misma selección reutiliza el requestId (doble clic o reintento no duplican).
-    const key = `${selection.reportType}:${selection.restaurantId}:${selection.offset}`;
+    const key = `${selection.reportType}:${selection.format}:${selection.restaurantId}:${selection.offset}`;
     if (reportRequestRef.current?.key !== key) {
       reportRequestRef.current = { key, requestId: crypto.randomUUID() };
     }

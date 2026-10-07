@@ -9,6 +9,7 @@ import {
 import type {
   RejectionReason,
   SendDocumentInput,
+  SendImageInput,
   SendMessageResult,
   SendTextInput,
   UploadMediaInput,
@@ -18,7 +19,8 @@ import type {
 /**
  * Caso de uso: enviar desde Nexo a un contacto de WhatsApp una OPERACIÓN, que es
  *   · un texto (si supera 4096 caracteres se divide en varios mensajes), o
- *   · un documento PDF generado por Nexo en servidor (p. ej. un informe).
+ *   · uno o varios archivos (PDF o imagen) generados por Nexo en servidor, p. ej.
+ *     un informe: se envían en orden, uno por mensaje de WhatsApp.
  * Sin dependencia de Next, Supabase ni Meta: persistencia y proveedor se inyectan.
  *
  * IDEMPOTENCIA (reserva antes de enviar, un id estable por mensaje)
@@ -33,7 +35,7 @@ import type {
  *        · `pending`             → resultado incierto: se DETIENE la operación.
  *   2. Meta acepta → `markSent` (wamid + `sent`). 4xx → `markFailed`.
  *      Timeout/red/5xx → la fila queda `pending` (incierto).
- *   3. Para documentos, la reserva ocurre ANTES de generar el PDF y de subirlo: un
+ *   3. Para archivos, la reserva ocurre ANTES de generarlos y de subirlos: un
  *      reintento ya enviado o pendiente no vuelve a generar ni a subir nada. Generar
  *      o subir NO entrega nada, así que un fallo ahí marca `failed` y se puede
  *      reintentar sin riesgo.
@@ -62,16 +64,19 @@ export type OutboundMedia = {
   size?: number;
   /** Se completa cuando Meta acepta el archivo. */
   provider_media_id?: string;
-  /** Origen del documento (p. ej. "nexo_report") y datos para reconocer la misma operación. */
+  /** Origen del archivo (p. ej. "nexo_report") y datos para reconocer la misma operación. */
   source?: string;
   report_type?: string;
+  report_format?: string;
+  /** Posición (desde 0) del archivo dentro de la operación. */
+  page_index?: number;
   restaurant_id?: number;
   period?: string;
 };
 
 export type OutboundContent =
   | { contentType: "text"; text: string }
-  | { contentType: "document"; text: string | null; media: OutboundMedia };
+  | { contentType: "document" | "image"; text: string | null; media: OutboundMedia };
 
 export type ClaimResult =
   | { status: "claimed"; message: OutboundRecord }
@@ -104,10 +109,13 @@ export interface OutboundRepository {
   }): Promise<boolean>;
 }
 
-/** Documento PDF que Nexo genera en servidor (nunca bytes recibidos del navegador). */
-export type SendDocument = {
+/** Archivo (PDF o imagen) que Nexo genera en servidor (nunca bytes recibidos del navegador). */
+export type SendFile = {
+  kind: "document" | "image";
   /** Metadatos que se guardan al reservar (sin size ni provider_media_id). */
   media: Omit<OutboundMedia, "size" | "provider_media_id">;
+  /** Pie de foto (se guarda en `text`). Opcional. */
+  caption?: string | null;
   /** Vista previa de la conversación, p. ej. "📊 Informe mensual · BK Zizur". */
   preview: string;
   /**
@@ -122,6 +130,7 @@ export type SendDeps = {
   sendText: (input: SendTextInput) => Promise<SendMessageResult>;
   uploadMedia: (input: UploadMediaInput) => Promise<UploadMediaResult>;
   sendDocument: (input: SendDocumentInput) => Promise<SendMessageResult>;
+  sendImage: (input: SendImageInput) => Promise<SendMessageResult>;
   isConfigured: () => boolean;
   now?: () => Date;
   /** Solo ids técnicos: nunca teléfonos, textos, nombres de archivo ni tokens. */
@@ -191,9 +200,10 @@ export async function sendConversationOperation(
   input: {
     conversationId: string;
     requestId: string;
-    /** Texto completo. Se ignora si hay `document`. */
+    /** Texto completo. Se ignora si hay `files`. */
     text: string;
-    document?: SendDocument;
+    /** Archivos en orden de envío (uno por mensaje de WhatsApp). */
+    files?: SendFile[];
   },
   deps: SendDeps
 ): Promise<SendOutcome> {
@@ -308,47 +318,59 @@ export async function sendConversationOperation(
     return false;
   };
 
-  if (input.document) {
-    const { document } = input;
-    const content: OutboundContent = { contentType: "document", text: null, media: { ...document.media } };
+  if (input.files && input.files.length > 0) {
+    // Archivos consecutivos y en orden: se detiene en el primero que no se confirme.
+    for (let index = 0; index < input.files.length; index++) {
+      const file = input.files[index]!;
+      const caption = file.caption?.trim() || null;
+      const content: OutboundContent = {
+        contentType: file.kind,
+        text: caption,
+        media: { ...file.media },
+      };
 
-    await run(
-      deliver(
-        0,
-        content,
-        async () => {
-          let bytes: Uint8Array;
-          try {
-            bytes = await document.produce();
-          } catch {
-            return { result: { status: "generation_failed" } };
-          }
-          if (bytes.length === 0) return { result: { status: "generation_failed" } };
+      const ok = await run(
+        deliver(
+          index,
+          content,
+          async () => {
+            let bytes: Uint8Array;
+            try {
+              bytes = await file.produce();
+            } catch {
+              return { result: { status: "generation_failed" } };
+            }
+            if (bytes.length === 0) return { result: { status: "generation_failed" } };
 
-          const upload = await deps.uploadMedia({
-            phoneNumberId: context.canal.externalAccountId,
-            bytes,
-            mimeType: document.media.mime_type,
-            filename: document.media.filename,
-          });
-          if (upload.status === "misconfigured") return { result: { status: "misconfigured" } };
-          if (upload.status !== "uploaded") return { result: { status: "upload_failed" } };
+            const upload = await deps.uploadMedia({
+              phoneNumberId: context.canal.externalAccountId,
+              bytes,
+              mimeType: file.media.mime_type,
+              filename: file.media.filename,
+            });
+            if (upload.status === "misconfigured") return { result: { status: "misconfigured" } };
+            if (upload.status !== "uploaded") return { result: { status: "upload_failed" } };
 
-          const result = await deps.sendDocument({
-            phoneNumberId: context.canal.externalAccountId,
-            to: context.contactPhone,
-            mediaId: upload.mediaId,
-            filename: document.media.filename,
-            caption: null,
-          });
-          return {
-            result,
-            media: { ...document.media, size: bytes.length, provider_media_id: upload.mediaId },
-          };
-        },
-        document.preview
-      )
-    );
+            const target = {
+              phoneNumberId: context.canal.externalAccountId,
+              to: context.contactPhone,
+              mediaId: upload.mediaId,
+              caption,
+            };
+            const result =
+              file.kind === "image"
+                ? await deps.sendImage(target)
+                : await deps.sendDocument({ ...target, filename: file.media.filename });
+            return {
+              result,
+              media: { ...file.media, size: bytes.length, provider_media_id: upload.mediaId },
+            };
+          },
+          file.preview
+        )
+      );
+      if (!ok) break;
+    }
   } else {
     // Mensajes consecutivos y en orden: se detiene en el primero que no se confirme.
     const chunks = splitText(input.text);

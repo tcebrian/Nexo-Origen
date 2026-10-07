@@ -28,6 +28,7 @@ vi.mock("@/lib/whatsapp/cloud-api.server", () => ({
   sendTextMessage,
   uploadMedia,
   sendDocumentMessage,
+  sendImageMessage: vi.fn(),
   isWhatsAppSenderConfigured: () => true,
 }));
 

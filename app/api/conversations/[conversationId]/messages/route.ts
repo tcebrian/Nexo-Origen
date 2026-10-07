@@ -9,6 +9,7 @@ import { parseSendFields, sendConversationOperation } from "@/lib/conversations/
 import {
   isWhatsAppSenderConfigured,
   sendDocumentMessage,
+  sendImageMessage,
   sendTextMessage,
   uploadMedia,
 } from "@/lib/whatsapp/cloud-api.server";
@@ -81,6 +82,7 @@ export async function POST(
         sendText: sendTextMessage,
         uploadMedia,
         sendDocument: sendDocumentMessage,
+        sendImage: sendImageMessage,
         isConfigured: isWhatsAppSenderConfigured,
       }
     );

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   parseSendFields,
   sendConversationOperation,
-  type SendDocument,
+  type SendFile,
 } from "@/lib/conversations/send-text";
 import {
   CONVERSATION_ID,
@@ -16,8 +16,9 @@ import type { SendMessageResult, UploadMediaResult } from "@/lib/whatsapp/cloud-
 const silent = { error: () => {} };
 const PDF = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 1, 2, 3]);
 
-function makeDocument(over: Partial<SendDocument> = {}): SendDocument & { produce: ReturnType<typeof vi.fn> } {
+function makeDocument(over: Partial<SendFile> = {}): SendFile & { produce: ReturnType<typeof vi.fn> } {
   return {
+    kind: "document",
     media: {
       mime_type: "application/pdf",
       filename: "Informe_Mensual_BK_Zizur_Septiembre_2026.pdf",
@@ -29,7 +30,7 @@ function makeDocument(over: Partial<SendDocument> = {}): SendDocument & { produc
     preview: "📊 Informe mensual · BK Zizur",
     produce: vi.fn(async () => PDF),
     ...over,
-  } as SendDocument & { produce: ReturnType<typeof vi.fn> };
+  } as SendFile & { produce: ReturnType<typeof vi.fn> };
 }
 
 type Results = {
@@ -47,23 +48,31 @@ function setup(
   let n = 0;
   const sendText = vi.fn(results.text ?? (async () => ({ status: "sent", wamid: `wamid.T${++n}` }) as const));
   const uploadMedia = vi.fn(results.upload ?? (async () => ({ status: "uploaded", mediaId: "MEDIA-1" }) as const));
+  const sendImage = vi.fn(async () => ({ status: "sent", wamid: "wamid.IMG" }) as const);
   const sendDocument = vi.fn(results.media ?? (async () => ({ status: "sent", wamid: "wamid.DOC" }) as const));
 
   const run = (
-    over: { text?: string; document?: SendDocument; requestId?: string; conversationId?: string } = {}
+    over: { text?: string; document?: SendFile; files?: SendFile[]; requestId?: string; conversationId?: string } = {}
   ) =>
     sendConversationOperation(
-      { conversationId: CONVERSATION_ID, requestId: REQUEST_ID, text: "Hola, ¿todo bien?", ...over },
+      {
+        conversationId: CONVERSATION_ID,
+        requestId: REQUEST_ID,
+        text: "Hola, ¿todo bien?",
+        ...over,
+        files: over.files ?? (over.document ? [over.document] : undefined),
+      },
       {
         repository: fake.repo,
         sendText,
         uploadMedia,
         sendDocument,
+        sendImage,
         isConfigured: () => configured,
         logger: silent,
       }
     );
-  return { ...fake, sendText, uploadMedia, sendDocument, run };
+  return { ...fake, sendText, uploadMedia, sendDocument, sendImage, run };
 }
 
 const sentMessages = (o: Awaited<ReturnType<ReturnType<typeof setup>["run"]>>) =>
@@ -164,6 +173,7 @@ describe("operación de texto (un mensaje)", () => {
         sendText: t.sendText,
         uploadMedia: t.uploadMedia,
         sendDocument: t.sendDocument,
+        sendImage: t.sendImage,
         isConfigured: () => true,
         logger,
       }
@@ -379,6 +389,112 @@ describe("operación con documento generado en servidor", () => {
     const other = makeDocument({ media: { ...makeDocument().media, restaurant_id: 999 } });
     expect(await t.run({ document: other })).toMatchObject({ status: "request_conflict" });
     expect(other.produce).not.toHaveBeenCalled();
+  });
+});
+
+describe("varios archivos (imágenes) en una operación", () => {
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+  const makeImages = (count: number): (SendFile & { produce: ReturnType<typeof vi.fn> })[] =>
+    Array.from({ length: count }, (_, i) => ({
+      kind: "image" as const,
+      media: {
+        mime_type: "image/png",
+        filename: `Informe_${i + 1}.png`,
+        source: "nexo_report",
+        report_type: "monthly",
+        report_format: "image",
+        restaurant_id: 123,
+        period: "2026-09",
+        page_index: i,
+      },
+      caption: i === 0 ? "Informe mensual · BK Zizur" : null,
+      preview: "🖼️ Informe mensual · BK Zizur",
+      produce: vi.fn(async () => PNG),
+    }));
+
+  it("una imagen: sube image/png, envía con el media_id y persiste image/sent con page_index y caption", async () => {
+    const t = setup();
+    const [image] = makeImages(1);
+    expect((await t.run({ files: [image!] })).status).toBe("sent");
+
+    expect(t.uploadMedia.mock.calls[0]![0]).toMatchObject({ mimeType: "image/png", bytes: PNG });
+    expect(t.sendImage).toHaveBeenCalledWith({
+      phoneNumberId: "1365004563368241",
+      to: "+34600111222",
+      mediaId: "MEDIA-1",
+      caption: "Informe mensual · BK Zizur",
+    });
+    expect(t.sendDocument).not.toHaveBeenCalled();
+    expect(t.rows[0]).toMatchObject({
+      direction: "outbound",
+      sender_type: "human",
+      content_type: "image",
+      text: "Informe mensual · BK Zizur",
+      external_id: "wamid.IMG",
+      status: "sent",
+      media: { mime_type: "image/png", source: "nexo_report", report_format: "image", page_index: 0, provider_media_id: "MEDIA-1" },
+    });
+    expect(t.touches.map((x) => x.preview)).toEqual(["🖼️ Informe mensual · BK Zizur"]);
+  });
+
+  it("varias imágenes: una llamada por imagen, en orden, con ids derivados distintos", async () => {
+    const t = setup();
+    const files = makeImages(3);
+    const outcome = await t.run({ files });
+
+    expect(outcome.status).toBe("sent");
+    expect(t.sendImage).toHaveBeenCalledTimes(3);
+    expect(t.rows.map((r) => (r.media as { page_index: number }).page_index)).toEqual([0, 1, 2]);
+    expect(new Set(t.rows.map((r) => r.client_request_id)).size).toBe(3);
+    expect(t.rows[0]!.client_request_id).toBe(REQUEST_ID);
+    const times = t.rows.map((r) => Date.parse(r.provider_timestamp));
+    expect([...times].sort((a, b) => a - b)).toEqual(times);
+    expect(new Set(times).size).toBe(3);
+  });
+
+  it("retry con todas enviadas: no se genera ni se envía nada", async () => {
+    const t = setup();
+    const files = makeImages(3);
+    await t.run({ files });
+    const second = await t.run({ files });
+    expect(second).toMatchObject({ status: "sent", deduplicated: true });
+    expect(t.sendImage).toHaveBeenCalledTimes(3);
+    expect(t.uploadMedia).toHaveBeenCalledTimes(3);
+    files.forEach((f) => expect(f.produce).toHaveBeenCalledTimes(1));
+  });
+
+  it("imagen 3 incierta: el retry no reenvía la 1 ni la 2, ni la 3, y no sigue", async () => {
+    let n = 0;
+    const t = setup();
+    t.sendImage.mockImplementation(async () =>
+      ++n === 3 ? ({ status: "unconfirmed" } as never) : ({ status: "sent", wamid: `wamid.${n}` } as never)
+    );
+    const files = makeImages(4);
+
+    const first = await t.run({ files });
+    expect(first).toMatchObject({ status: "unconfirmed" });
+    expect(sentMessages(first)).toHaveLength(2);
+    expect(t.sendImage).toHaveBeenCalledTimes(3);
+
+    const retry = await t.run({ files });
+    expect(retry).toMatchObject({ status: "in_progress" });
+    expect(sentMessages(retry)).toHaveLength(2);
+    expect(t.sendImage).toHaveBeenCalledTimes(3);
+    expect(files[3]!.produce).not.toHaveBeenCalled();
+    expect(t.rows.map((r) => r.status)).toEqual(["sent", "sent", "pending"]);
+  });
+
+  it("imagen rechazada (4xx): el retry solo reintenta esa y sigue con las demás", async () => {
+    let n = 0;
+    const t = setup();
+    t.sendImage.mockImplementation(async () =>
+      ++n === 2 ? ({ status: "rejected", reason: "other" } as never) : ({ status: "sent", wamid: `wamid.${n}` } as never)
+    );
+    const files = makeImages(3);
+    expect(await t.run({ files })).toMatchObject({ status: "rejected" });
+    expect((await t.run({ files })).status).toBe("sent");
+    expect(t.rows.map((r) => r.status)).toEqual(["sent", "sent", "sent"]);
+    expect(t.rows).toHaveLength(3);
   });
 });
 

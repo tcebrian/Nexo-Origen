@@ -8,14 +8,17 @@ import {
 
 const TOKEN = "EAAB-super-secret-token";
 const PDF = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 1, 2, 3, 4]);
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
 const SCOPE = { rol: "super_admin" };
 
 const requireApiAuth = vi.fn();
 const uploadMedia = vi.fn();
 const sendDocumentMessage = vi.fn();
+const sendImageMessage = vi.fn();
 const resolveMonthlyTarget = vi.fn();
 const loadMonthlyReport = vi.fn();
 const generateMonthlyPdf = vi.fn();
+const generateMonthlyPng = vi.fn();
 const listReportableRestaurants = vi.fn();
 let fake = createFakeOutboundRepo();
 
@@ -30,6 +33,7 @@ vi.mock("@/lib/whatsapp/cloud-api.server", () => ({
   sendTextMessage: vi.fn(),
   uploadMedia,
   sendDocumentMessage,
+  sendImageMessage,
   isWhatsAppSenderConfigured: () => true,
 }));
 vi.mock("@/lib/reports/monthly/data", () => ({
@@ -41,6 +45,7 @@ vi.mock("@/lib/reports/monthly/data", () => ({
   }),
 }));
 vi.mock("@/lib/reports/monthly/pdf", () => ({ generateMonthlyPdf }));
+vi.mock("@/lib/reports/monthly/image/capture", () => ({ generateMonthlyPng }));
 
 const { POST } = await import("@/app/api/conversations/[conversationId]/reports/route");
 const { GET: optionsRoute } = await import("@/app/api/conversations/report-options/route");
@@ -76,6 +81,8 @@ beforeEach(() => {
   });
   loadMonthlyReport.mockResolvedValue({ restaurant: { name: "BK Zizur" } });
   generateMonthlyPdf.mockResolvedValue(Buffer.from(PDF));
+  generateMonthlyPng.mockResolvedValue(Buffer.from(PNG));
+  sendImageMessage.mockResolvedValue({ status: "sent", wamid: "wamid.IMAGE" });
   uploadMedia.mockResolvedValue({ status: "uploaded", mediaId: "MEDIA-9" });
   sendDocumentMessage.mockResolvedValue({ status: "sent", wamid: "wamid.REPORT" });
   listReportableRestaurants.mockResolvedValue([{ id: 123, name: "BK Zizur", brand: "Burger King", city: "Zizur" }]);
@@ -104,6 +111,7 @@ describe("POST /api/conversations/[id]/reports", () => {
     expect((await post(validBody, "nope")).status).toBe(400);
     expect((await post({ ...validBody, requestId: "x" })).status).toBe(400);
     expect((await post({ ...validBody, reportType: "semanal" })).status).toBe(400);
+    expect((await post({ ...validBody, format: "gif" })).status).toBe(400);
     expect((await post({ ...validBody, restaurantId: -4 })).status).toBe(400);
     expect((await post({ ...validBody, offset: 99 })).status).toBe(400);
     expect((await post("{no json")).status).toBe(400);
@@ -189,6 +197,72 @@ describe("POST /api/conversations/[id]/reports", () => {
   });
 });
 
+describe("POST /api/conversations/[id]/reports (format=image)", () => {
+  const imageBody = { ...validBody, format: "image" };
+
+  it("no super_admin → 403 sin renderizar", async () => {
+    asRole("empresa_admin");
+    expect((await post(imageBody)).status).toBe(403);
+    expect(generateMonthlyPng).not.toHaveBeenCalled();
+  });
+
+  it("genera la imagen en servidor con el scope de la sesión y la envía con el media_id", async () => {
+    const res = await post({ ...imageBody, bytes: "AAAA", media_id: "x", to: "+34999999999", scope: { rol: "hacker" } });
+    expect(res.status).toBe(200);
+
+    expect(loadMonthlyReport).toHaveBeenCalledWith(123, 0, expect.objectContaining({ rol: "super_admin" }));
+    expect(generateMonthlyPng).toHaveBeenCalledTimes(1);
+    expect(generateMonthlyPdf).not.toHaveBeenCalled();
+
+    expect(uploadMedia.mock.calls[0]![0]).toMatchObject({ mimeType: "image/png", phoneNumberId: "1365004563368241" });
+    expect(Array.from(uploadMedia.mock.calls[0]![0].bytes as Uint8Array)).toEqual(Array.from(PNG));
+    expect(sendImageMessage.mock.calls[0]![0]).toMatchObject({ mediaId: "MEDIA-9", to: "+34600111222" });
+    expect(sendDocumentMessage).not.toHaveBeenCalled();
+
+    expect(fake.rows[0]).toMatchObject({
+      direction: "outbound",
+      sender_type: "human",
+      content_type: "image",
+      status: "sent",
+      external_id: "wamid.IMAGE",
+    });
+    expect(fake.rows[0]!.media).toMatchObject({ source: "nexo_report", report_format: "image", page_index: 0 });
+    expect(fake.touches[0]!.preview).toBe("🖼️ Informe mensual · BK Zizur");
+  });
+
+  it("la respuesta no contiene token, bytes, raw_payload ni ids de Meta", async () => {
+    const json = await (await post(imageBody)).json();
+    expect(json.messages[0]).toMatchObject({ contentType: "image", label: "🖼️ Informe de Nexo" });
+    const raw = JSON.stringify(json);
+    for (const forbidden of [TOKEN, "raw_payload", "MEDIA-9", "wamid.IMAGE", "external_id", "client_request_id", "+34600111222", "iVBOR"]) {
+      expect(raw).not.toContain(forbidden);
+    }
+  });
+
+  it("doble requestId: una sola imagen", async () => {
+    await post(imageBody);
+    expect((await post(imageBody)).status).toBe(200);
+    expect(generateMonthlyPng).toHaveBeenCalledTimes(1);
+    expect(sendImageMessage).toHaveBeenCalledTimes(1);
+    expect(fake.rows).toHaveLength(1);
+  });
+
+  it("incierto → 502 y el retry (409) no renderiza ni reenvía", async () => {
+    sendImageMessage.mockResolvedValue({ status: "unconfirmed" });
+    expect((await post(imageBody)).status).toBe(502);
+    expect((await post(imageBody)).status).toBe(409);
+    expect(generateMonthlyPng).toHaveBeenCalledTimes(1);
+    expect(sendImageMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("el PDF y la imagen son operaciones independientes del mismo informe", async () => {
+    expect((await post({ ...validBody, requestId: "11111111-1111-4111-8111-111111111111" })).status).toBe(200);
+    expect((await post({ ...imageBody, requestId: "22222222-2222-4222-8222-222222222222" })).status).toBe(200);
+    expect(sendDocumentMessage).toHaveBeenCalledTimes(1);
+    expect(sendImageMessage).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("GET /api/conversations/report-options", () => {
   const get = () => optionsRoute(new Request("http://localhost/api/conversations/report-options"));
 
@@ -203,6 +277,10 @@ describe("GET /api/conversations/report-options", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.reportTypes).toEqual([{ id: "monthly", label: "Informe mensual por restaurante" }]);
+    expect(json.formats).toEqual([
+      { id: "pdf", label: "PDF" },
+      { id: "image", label: "Imagen" },
+    ]);
     expect(json.restaurants).toEqual([{ id: 123, name: "BK Zizur", brand: "Burger King", city: "Zizur" }]);
     expect(json.periods[0]).toEqual({ offset: 0, label: "Septiembre 2026" });
     expect(listReportableRestaurants).toHaveBeenCalledWith(expect.objectContaining({ rol: "super_admin" }));

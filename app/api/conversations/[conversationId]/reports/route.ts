@@ -9,6 +9,7 @@ import { errorReply } from "@/lib/conversations/send-reply";
 import {
   isWhatsAppSenderConfigured,
   sendDocumentMessage,
+  sendImageMessage,
   sendTextMessage,
   uploadMedia,
 } from "@/lib/whatsapp/cloud-api.server";
@@ -24,8 +25,8 @@ const UPLOAD_TIMEOUT_MS = 20_000;
 const SEND_TIMEOUT_MS = 15_000;
 
 /**
- * Envía por WhatsApp un informe de Nexo generado en servidor.
- * Body: { requestId, reportType: "monthly", restaurantId, offset }.
+ * Envía por WhatsApp un informe de Nexo generado en servidor (PDF o imagen).
+ * Body: { requestId, reportType: "monthly", format?: "pdf" | "image", restaurantId, offset }.
  * El navegador solo manda identificadores: nunca bytes, teléfono, canal ni media_id.
  */
 export async function POST(
@@ -61,6 +62,7 @@ export async function POST(
       {
         conversationId,
         requestId: parsed.requestId,
+        format: parsed.format,
         restaurantId: parsed.restaurantId,
         offset: parsed.offset,
       },
@@ -70,6 +72,7 @@ export async function POST(
         sendText: sendTextMessage,
         uploadMedia: (input) => uploadMedia(input, { timeoutMs: UPLOAD_TIMEOUT_MS }),
         sendDocument: (input) => sendDocumentMessage(input, { timeoutMs: SEND_TIMEOUT_MS }),
+        sendImage: (input) => sendImageMessage(input, { timeoutMs: SEND_TIMEOUT_MS }),
         isConfigured: isWhatsAppSenderConfigured,
       }
     );

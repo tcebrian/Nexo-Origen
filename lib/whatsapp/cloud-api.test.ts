@@ -7,6 +7,7 @@ const {
   isWhatsAppSenderConfigured,
   uploadMedia,
   sendDocumentMessage,
+  sendImageMessage,
 } = await import("@/lib/whatsapp/cloud-api.server");
 
 const input = { phoneNumberId: "1365004563368241", to: "+34600111222", text: "Hola" };
@@ -190,6 +191,50 @@ describe("sendDocumentMessage", () => {
     });
     await expect(
       sendDocumentMessage({ ...base, mediaId: "../x" }, { accessToken: TOKEN, fetchImpl: r4 as never })
+    ).rejects.toThrow();
+  });
+});
+
+describe("sendImageMessage", () => {
+  const base = { phoneNumberId: "1365004563368241", to: "+34600111222", mediaId: "MEDIA-123" };
+
+  it("type=image con el media_id (nunca una URL) y el pie si existe", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(200, { messages: [{ id: "wamid.IMG" }] }));
+    const result = await sendImageMessage(
+      { ...base, caption: " Informe mensual " },
+      { accessToken: TOKEN, fetchImpl: fetchImpl as never }
+    );
+
+    expect(result).toEqual({ status: "sent", wamid: "wamid.IMG" });
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://graph.facebook.com/v26.0/1365004563368241/messages");
+    expect(JSON.parse(init.body as string)).toEqual({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: "34600111222",
+      type: "image",
+      image: { id: "MEDIA-123", caption: "Informe mensual" },
+    });
+    expect(init.body as string).not.toContain("http");
+  });
+
+  it("sin pie no envía caption; 4xx → rejected; 5xx → unconfirmed; media_id inválido lanza", async () => {
+    const ok = vi.fn(async () => jsonResponse(200, { messages: [{ id: "wamid.IMG" }] }));
+    await sendImageMessage(base, { accessToken: TOKEN, fetchImpl: ok as never });
+    const [, init] = ok.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string).image).toEqual({ id: "MEDIA-123" });
+
+    const r4 = vi.fn(async () => jsonResponse(400, { error: { code: 1 } }));
+    const r5 = vi.fn(async () => jsonResponse(502, {}));
+    expect(await sendImageMessage(base, { accessToken: TOKEN, fetchImpl: r4 as never })).toEqual({
+      status: "rejected",
+      reason: "other",
+    });
+    expect(await sendImageMessage(base, { accessToken: TOKEN, fetchImpl: r5 as never })).toEqual({
+      status: "unconfirmed",
+    });
+    await expect(
+      sendImageMessage({ ...base, mediaId: "../x" }, { accessToken: TOKEN, fetchImpl: r4 as never })
     ).rejects.toThrow();
   });
 });

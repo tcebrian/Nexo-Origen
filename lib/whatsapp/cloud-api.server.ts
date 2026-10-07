@@ -80,7 +80,7 @@ export function isWhatsAppSenderConfigured(accessToken = process.env.WHATSAPP_CL
   return typeof accessToken === "string" && accessToken.trim() !== "";
 }
 
-type MessagePayload = { type: "text" | "document" } & Record<string, unknown>;
+type MessagePayload = { type: "text" | "document" | "image" } & Record<string, unknown>;
 
 /** POST /{phone_number_id}/messages con la semántica sent / rejected / unconfirmed. */
 async function postMessage(
@@ -241,6 +241,29 @@ export async function sendDocumentMessage(
       type: "document",
       document: { id: input.mediaId, filename: input.filename, ...(caption ? { caption } : {}) },
     },
+    deps
+  );
+}
+
+export type SendImageInput = {
+  phoneNumberId: string;
+  to: string;
+  /** media_id devuelto por `uploadMedia`. */
+  mediaId: string;
+  caption?: string | null;
+};
+
+/** Envía una imagen ya subida a Meta (`uploadMedia`) usando su media_id (nunca una URL pública). */
+export async function sendImageMessage(
+  input: SendImageInput,
+  deps: SendDeps = {}
+): Promise<SendMessageResult> {
+  if (!MEDIA_ID_RE.test(input.mediaId)) throw new Error("sendImageMessage: mediaId inválido");
+  const caption = input.caption?.trim();
+  return postMessage(
+    input.phoneNumberId,
+    input.to,
+    { type: "image", image: { id: input.mediaId, ...(caption ? { caption } : {}) } },
     deps
   );
 }

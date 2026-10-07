@@ -7,6 +7,7 @@ import {
   monthlyPeriod,
   resolveMonthlyTarget,
 } from "@/lib/reports/monthly/data";
+import { generateMonthlyPng } from "@/lib/reports/monthly/image/capture";
 import { generateMonthlyPdf } from "@/lib/reports/monthly/pdf";
 import {
   MAX_REPORT_OFFSET,
@@ -16,8 +17,8 @@ import {
 
 /**
  * Cableado real del informe mensual para Conversations: reutiliza directamente
- * `loadMonthlyReport` + `generateMonthlyPdf` (los mismos que `GET
- * /api/informes/mensual/[id]`), sin llamada HTTP interna. El scope lo aplican
+ * `loadMonthlyReport` + `generateMonthlyPdf` / `generateMonthlyPng` (los mismos
+ * que `GET /api/informes/mensual/[id]` y `/imagen`), sin llamada HTTP interna. El scope lo aplican
  * `resolveMonthlyTarget` y `loadMonthlyReport`.
  */
 export function monthlyReportSource(scope: UserScope): MonthlyReportSource {
@@ -31,11 +32,18 @@ export function monthlyReportSource(scope: UserScope): MonthlyReportSource {
       if (!report) throw new Error("Informe no disponible");
       return generateMonthlyPdf(report);
     },
+    async generateImages(restaurantId, offset) {
+      const report = await loadMonthlyReport(restaurantId, offset, scope);
+      if (!report) throw new Error("Informe no disponible");
+      // Misma imagen 1920×1080 que `GET /api/informes/mensual/[id]/imagen`.
+      return [await generateMonthlyPng(report)];
+    },
   };
 }
 
 export type ReportOptions = {
   reportTypes: { id: "monthly"; label: string }[];
+  formats: { id: "pdf" | "image"; label: string }[];
   restaurants: { id: number; name: string; brand: string; city: string }[];
   /** `offset` 0 = último mes completo. */
   periods: { offset: number; label: string }[];
@@ -51,6 +59,10 @@ export async function listReportOptions(scope: UserScope): Promise<ReportOptions
   });
   return {
     reportTypes: [{ id: "monthly", label: "Informe mensual por restaurante" }],
+    formats: [
+      { id: "pdf", label: "PDF" },
+      { id: "image", label: "Imagen" },
+    ],
     restaurants: await listReportableRestaurants(scope),
     periods,
   };

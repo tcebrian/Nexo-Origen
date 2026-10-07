@@ -35,6 +35,8 @@ const nextConfig: NextConfig = {
       "./public/nexo-origen-wordmark-text.png",
       "./public/nexo-origen-report-icon.png",
       "./public/fonts/*.woff2",
+      // Plantillas de la imagen mensual (logos por marca y fuentes), leídas con process.cwd().
+      "./public/design/**/*",
     ],
     "/api/informes/mensual/*": [
       "./node_modules/playwright-core/**/*",

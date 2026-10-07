@@ -208,7 +208,7 @@ export function mapMessageRow(row: MessageReadRow): ConversationMessage {
       label = media.isVoiceMessage ? "🎤 Nota de voz" : "🎤 Audio";
       break;
     case "image":
-      label = "🖼️ Imagen";
+      label = media.isReport ? "🖼️ Informe de Nexo" : "🖼️ Imagen";
       break;
     case "video":
       label = "🎥 Vídeo";
