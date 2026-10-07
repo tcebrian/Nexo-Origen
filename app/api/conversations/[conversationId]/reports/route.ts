@@ -3,8 +3,9 @@ import { requireApiAuth } from "@/lib/auth/api-auth";
 import { authorizeConversationsAccess } from "@/lib/conversations/access";
 import { outboundRepository } from "@/lib/conversations/outbound.server";
 import { isValidConversationId, mapMessageRow } from "@/lib/conversations/read-model";
-import { monthlyReportSource } from "@/lib/conversations/report-delivery.server";
-import { parseSendReportBody, sendMonthlyReport } from "@/lib/conversations/report-send";
+import { reportAdapters } from "@/lib/conversations/report-delivery.server";
+import { parseSendReportBody } from "@/lib/conversations/report-catalog";
+import { sendConversationReport } from "@/lib/conversations/report-send";
 import { errorReply } from "@/lib/conversations/send-reply";
 import {
   isWhatsAppSenderConfigured,
@@ -26,7 +27,8 @@ const SEND_TIMEOUT_MS = 15_000;
 
 /**
  * Envía por WhatsApp un informe de Nexo generado en servidor (PDF o imagen).
- * Body: { requestId, reportType: "monthly", format?: "pdf" | "image", restaurantId, offset }.
+ * Body: { requestId, reportType, format, restaurantId | groupId, period }, validado contra
+ * el catálogo (`report-catalog.ts`). `reportType` y `format` solo pueden ser los habilitados.
  * El navegador solo manda identificadores: nunca bytes, teléfono, canal ni media_id.
  */
 export async function POST(
@@ -58,15 +60,10 @@ export async function POST(
   }
 
   try {
-    const outcome = await sendMonthlyReport(
-      {
-        conversationId,
-        requestId: parsed.requestId,
-        format: parsed.format,
-        restaurantId: parsed.restaurantId,
-        offset: parsed.offset,
-      },
-      monthlyReportSource(auth.session.scope),
+    const outcome = await sendConversationReport(
+      { conversationId, ...parsed },
+      // Un adaptador explícito por tipo de informe; el tipo ya está validado contra el catálogo.
+      reportAdapters({ scope: auth.session.scope, origin: new URL(request.url).origin }),
       {
         repository: outboundRepository,
         sendText: sendTextMessage,

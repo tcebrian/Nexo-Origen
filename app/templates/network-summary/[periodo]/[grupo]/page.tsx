@@ -1,6 +1,8 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { isReportPeriodSlug, resolveReportPeriodRange, type ReportPeriodSlug } from "@/lib/reports/period-ranges";
 import { isNetworkReportGroupId } from "@/lib/reports/network-summary/brand-groups";
+import { INTERNAL_RENDER_HEADER, canRenderNetworkTemplate } from "@/lib/reports/network-summary/render-access";
 import { fetchNetworkSummaryReport } from "@/lib/reports/network-summary/fetch";
 import { NETWORK_SUMMARY_GROUP_VISUALS } from "@/lib/reports/network-summary/group-visuals";
 import { NetworkSummaryStandardTemplate } from "@/templates/network-summary/network-summary-standard-template";
@@ -27,6 +29,11 @@ type PageProps = {
 };
 
 export default async function Page({ params, searchParams }: PageProps) {
+  // Plantilla interna de renderizado: solo super_admin con sesión o el Chromium de
+  // Nexo con la credencial interna. Cualquier otro acceso es un 404.
+  const requestHeaders = await headers();
+  if (!(await canRenderNetworkTemplate(requestHeaders.get(INTERNAL_RENDER_HEADER)))) notFound();
+
   const { periodo, grupo } = await params;
   const { base, offset } = await searchParams;
 

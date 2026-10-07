@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { readdir, rm } from "node:fs/promises";
 
 import { optimizeNetworkSummaryPng } from "./optimize-png";
+import { INTERNAL_RENDER_HEADER, internalRenderToken } from "./render-access";
 import type { NetworkReportGroupId } from "./brand-groups";
 import type { ReportPeriodSlug } from "@/lib/reports/period-ranges";
 
@@ -50,6 +51,13 @@ export async function captureNetworkSummaryPng(
 ): Promise<Buffer> {
   const templateUrl = `${assetBaseUrl.replace(/\/$/, "")}/templates/network-summary/${periodo}/${grupo}?offset=${offset}`;
 
+  // La plantilla ya no es pública: Chromium debe presentar la credencial interna.
+  // Se comprueba antes de lanzar el navegador (el mensaje nunca incluye el valor).
+  const renderToken = internalRenderToken();
+  if (!renderToken) {
+    throw new Error("Falta NEXO_INTERNAL_RENDER_TOKEN (mínimo 16 caracteres) para renderizar la plantilla");
+  }
+
   let chromium: typeof import("playwright-core").chromium;
   try {
     ({ chromium } = await import("playwright-core"));
@@ -95,6 +103,13 @@ export async function captureNetworkSummaryPng(
   }
 
   try {
+    // La cabecera se añade SOLO a la navegación a la plantilla de nuestro propio
+    // origen (no a imágenes, fuentes ni a terceros), para no filtrarla.
+    const template = new URL(templateUrl);
+    await page.route(
+      (url) => url.origin === template.origin && url.pathname === template.pathname,
+      (route) => route.continue({ headers: { ...route.request().headers(), [INTERNAL_RENDER_HEADER]: renderToken } })
+    );
     await page.goto(templateUrl, { waitUntil: "networkidle" });
     await waitForRender(page);
     const canvasHandle = await page.$(CANVAS_SELECTOR);

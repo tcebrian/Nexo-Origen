@@ -71,6 +71,8 @@ export type OutboundMedia = {
   /** Posición (desde 0) del archivo dentro de la operación. */
   page_index?: number;
   restaurant_id?: number;
+  /** Grupo/red del informe (informes de red). */
+  group_id?: string;
   period?: string;
 };
 

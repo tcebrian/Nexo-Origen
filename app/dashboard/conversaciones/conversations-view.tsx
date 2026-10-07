@@ -8,6 +8,7 @@ import {
   countMessageParts,
   textLength,
 } from "@/lib/conversations/text-chunks";
+import type { ReportFormat, ReportOptions, ReportTypeId } from "@/lib/conversations/report-catalog";
 import {
   filterConversations,
   type ConversationListItem,
@@ -249,20 +250,13 @@ function EmptyState({ title }: { title: string }) {
   );
 }
 
-type ReportFormat = "pdf" | "image";
-
+/** Lo que se manda al servidor: solo identificadores. El tipo, formato y periodo salen de las opciones del servidor. */
 type ReportSelection = {
-  reportType: "monthly";
+  reportType: ReportTypeId;
   format: ReportFormat;
-  restaurantId: number;
-  offset: number;
-};
-
-type ReportOptions = {
-  reportTypes: { id: "monthly"; label: string }[];
-  formats: { id: ReportFormat; label: string }[];
-  restaurants: { id: number; name: string; brand: string; city: string }[];
-  periods: { offset: number; label: string }[];
+  period: number;
+  restaurantId?: number;
+  groupId?: string;
 };
 
 const numberFormat = new Intl.NumberFormat("es-ES");
@@ -270,7 +264,11 @@ const numberFormat = new Intl.NumberFormat("es-ES");
 const selectClass =
   "w-full rounded-xl border border-white/[0.08] bg-[#0d0a14] px-3 py-2 text-[13px] text-white focus:border-violet-400/40 focus:outline-none disabled:opacity-50";
 
-/** Panel "📊 Informe de Nexo": solo identificadores; el PDF lo genera y envía el servidor. */
+/**
+ * Panel "📊 Informe de Nexo". No conoce ningún informe concreto: tipos, formatos,
+ * periodos, restaurantes y redes llegan de `/api/conversations/report-options`
+ * (catálogo del servidor), así que un informe nuevo aparece sin tocar este componente.
+ */
 function ReportPanel({
   sending,
   onCancel,
@@ -282,9 +280,10 @@ function ReportPanel({
 }) {
   const [options, setOptions] = useState<ReportOptions | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [restaurantId, setRestaurantId] = useState("");
-  const [offset, setOffset] = useState("0");
-  const [format, setFormat] = useState<ReportFormat>("pdf");
+  const [typeId, setTypeId] = useState("");
+  const [subjectId, setSubjectId] = useState("");
+  const [period, setPeriod] = useState("0");
+  const [formatChoice, setFormatChoice] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -300,6 +299,11 @@ function ReportPanel({
     };
   }, []);
 
+  // El tipo elegido (o el primero disponible) decide sujeto, periodos y formatos.
+  const type = options?.types.find((item) => item.id === typeId) ?? options?.types[0] ?? null;
+  const format = type?.formats.find((item) => item.id === formatChoice)?.id ?? type?.formats[0]?.id ?? null;
+  const periodOffset = type?.periods.some((item) => String(item.offset) === period) ? period : "0";
+
   const brands = useMemo(() => {
     const groups = new Map<string, ReportOptions["restaurants"]>();
     for (const restaurant of options?.restaurants ?? []) {
@@ -308,57 +312,101 @@ function ReportPanel({
     return [...groups];
   }, [options]);
 
+  const ready = Boolean(type && format && subjectId !== "");
+
+  function send() {
+    if (!type || !format || subjectId === "") return;
+    onSend({
+      reportType: type.id,
+      format,
+      period: Number(periodOffset),
+      ...(type.subject === "restaurant" ? { restaurantId: Number(subjectId) } : { groupId: subjectId }),
+    });
+  }
+
   return (
     <div className="mb-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
       <p className="mb-2 text-[13px] font-medium text-white">📊 Informe de Nexo</p>
 
       {loadError ? (
         <p className="text-xs text-rose-300">No se pudieron cargar las opciones de informe.</p>
-      ) : !options ? (
+      ) : !options || !type ? (
         <p className="text-xs text-gray-500">Cargando…</p>
       ) : (
         <div className="grid gap-2 sm:grid-cols-3">
           <label className="block text-[11px] text-gray-500">
             Tipo de informe
-            <select className={`${selectClass} mt-1`} value="monthly" disabled={sending} onChange={() => {}}>
-              {options.reportTypes.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.label}
+            <select
+              className={`${selectClass} mt-1`}
+              value={type.id}
+              disabled={sending}
+              onChange={(event) => {
+                setTypeId(event.target.value);
+                // Sujeto y periodo dependen del tipo: se reinician.
+                setSubjectId("");
+                setPeriod("0");
+                setFormatChoice("");
+              }}
+            >
+              {options.types.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
                 </option>
               ))}
             </select>
           </label>
-          <label className="block text-[11px] text-gray-500">
-            Restaurante
-            <select
-              className={`${selectClass} mt-1`}
-              value={restaurantId}
-              disabled={sending}
-              onChange={(event) => setRestaurantId(event.target.value)}
-            >
-              <option value="">Selecciona…</option>
-              {brands.map(([brand, restaurants]) => (
-                <optgroup key={brand} label={brand}>
-                  {restaurants.map((restaurant) => (
-                    <option key={restaurant.id} value={restaurant.id}>
-                      {restaurant.name}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
+
+          {type.subject === "restaurant" ? (
+            <label className="block text-[11px] text-gray-500">
+              Restaurante
+              <select
+                className={`${selectClass} mt-1`}
+                value={subjectId}
+                disabled={sending}
+                onChange={(event) => setSubjectId(event.target.value)}
+              >
+                <option value="">Selecciona…</option>
+                {brands.map(([brand, restaurants]) => (
+                  <optgroup key={brand} label={brand}>
+                    {restaurants.map((restaurant) => (
+                      <option key={restaurant.id} value={restaurant.id}>
+                        {restaurant.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <label className="block text-[11px] text-gray-500">
+              Marca o red
+              <select
+                className={`${selectClass} mt-1`}
+                value={subjectId}
+                disabled={sending}
+                onChange={(event) => setSubjectId(event.target.value)}
+              >
+                <option value="">Selecciona…</option>
+                {options.groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           <label className="block text-[11px] text-gray-500">
             Periodo
             <select
               className={`${selectClass} mt-1`}
-              value={offset}
+              value={periodOffset}
               disabled={sending}
-              onChange={(event) => setOffset(event.target.value)}
+              onChange={(event) => setPeriod(event.target.value)}
             >
-              {options.periods.map((period) => (
-                <option key={period.offset} value={period.offset}>
-                  {period.label}
+              {type.periods.map((item) => (
+                <option key={item.offset} value={item.offset}>
+                  {item.label}
                 </option>
               ))}
             </select>
@@ -366,18 +414,18 @@ function ReportPanel({
         </div>
       )}
 
-      {options ? (
+      {type ? (
         <fieldset className="mt-3 flex items-center gap-4" disabled={sending}>
           <legend className="sr-only">Formato</legend>
           <span className="text-[11px] text-gray-500">Formato</span>
-          {options.formats.map((option) => (
+          {type.formats.map((option) => (
             <label key={option.id} className="flex items-center gap-1.5 text-[13px] text-gray-200">
               <input
                 type="radio"
                 name="report-format"
                 value={option.id}
                 checked={format === option.id}
-                onChange={() => setFormat(option.id)}
+                onChange={() => setFormatChoice(option.id)}
                 className="accent-violet-500"
               />
               {option.label}
@@ -397,10 +445,8 @@ function ReportPanel({
         </button>
         <button
           type="button"
-          disabled={sending || !options || restaurantId === ""}
-          onClick={() =>
-            onSend({ reportType: "monthly", format, restaurantId: Number(restaurantId), offset: Number(offset) })
-          }
+          disabled={sending || !ready}
+          onClick={send}
           className="rounded-xl border border-violet-400/30 bg-violet-500/25 px-4 py-2 text-[13px] font-medium text-white transition hover:bg-violet-500/35 disabled:cursor-not-allowed disabled:border-white/[0.06] disabled:bg-white/[0.03] disabled:text-gray-600"
         >
           {sending ? "Enviando…" : "Enviar por WhatsApp"}
@@ -479,7 +525,7 @@ function Composer({
 
   async function submitReport(selection: ReportSelection) {
     // La misma selección reutiliza el requestId (doble clic o reintento no duplican).
-    const key = `${selection.reportType}:${selection.format}:${selection.restaurantId}:${selection.offset}`;
+    const key = JSON.stringify(selection);
     if (reportRequestRef.current?.key !== key) {
       reportRequestRef.current = { key, requestId: crypto.randomUUID() };
     }
