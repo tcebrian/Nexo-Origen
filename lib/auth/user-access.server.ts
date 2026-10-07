@@ -97,6 +97,33 @@ export async function effectiveAccessFor(perfil: Perfil, catalog?: Catalog): Pro
   return { count: restaurants.length, restaurants };
 }
 
+/**
+ * Rol y nº de restaurantes efectivos de una persona, para el distintivo de la
+ * bandeja. Usa `fetchUserScope` (misma lógica que todo) y una caché de 10 s porque
+ * la bandeja se refresca cada pocos segundos; el panel de acceso siempre lee en vivo.
+ */
+const SUMMARY_TTL_MS = 10_000;
+const summaryCache = new Map<string, { at: number; value: { rol: string; restaurantCount: number } | null }>();
+
+export async function summarizeUserAccess(userId: string): Promise<{ rol: string; restaurantCount: number } | null> {
+  const hit = summaryCache.get(userId);
+  if (hit && Date.now() - hit.at < SUMMARY_TTL_MS) return hit.value;
+
+  const perfil = await fetchPerfilFresh(userId);
+  let value: { rol: string; restaurantCount: number } | null = null;
+  if (perfil) {
+    const scope = await fetchUserScope(perfil.id, perfil, { enforceScoping: true });
+    let restaurantCount = scope.restauranteIds?.length ?? 0;
+    if (scope.restauranteIds === null) {
+      const { data } = await admin().from(SUPABASE_TABLES.restaurantes).select("id");
+      restaurantCount = data?.length ?? 0;
+    }
+    value = { rol: perfil.rol, restaurantCount };
+  }
+  summaryCache.set(userId, { at: Date.now(), value });
+  return value;
+}
+
 // Listado -------------------------------------------------------------------------------
 
 export type ManagedUserListItem = {

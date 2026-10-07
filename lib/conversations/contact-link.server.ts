@@ -111,10 +111,11 @@ export type LinkableUser = {
   linkedElsewhere: boolean;
 };
 
-/** Personas de Nexo que se pueden vincular a un contacto. */
-export async function listLinkableUsers(conversationId: string): Promise<LinkableUser[]> {
+/** Personas de Nexo que se pueden vincular a un contacto (`null` = contacto nuevo). */
+export async function listLinkableUsers(conversationId: string | null): Promise<LinkableUser[]> {
   const client = requireAdminClient();
-  const contactoId = await findContactOfConversation(conversationId);
+  // Sin conversación (contacto nuevo): cualquier usuario ya vinculado cuenta como "otro teléfono".
+  const contactoId = conversationId ? await findContactOfConversation(conversationId) : null;
 
   const [perfiles, empresas, linked] = await Promise.all([
     client.from(SUPABASE_TABLES.perfiles).select("id,nombre,rol,empresa_id").order("nombre"),

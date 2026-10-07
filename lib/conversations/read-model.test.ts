@@ -84,7 +84,7 @@ describe("buildConversationList", () => {
       conversationRow({ id: "a", estado: "closed", ultimo_mensaje_preview: "  hola " }),
     ]);
     expect(Object.keys(item!).sort()).toEqual(
-      ["displayName", "id", "lastMessageAt", "lastMessagePreview", "phone", "profileName", "status"].sort()
+      ["access", "displayName", "id", "lastMessageAt", "lastMessagePreview", "phone", "profileName", "status"].sort()
     );
     expect(item!.status).toBe("closed");
     expect(item!.lastMessagePreview).toBe("hola");

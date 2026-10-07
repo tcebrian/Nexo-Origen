@@ -146,6 +146,13 @@ function ConversationRow({
               </span>
             ) : null}
           </span>
+          {item.access.state === "linked" ? (
+            <span className="mt-1 inline-block rounded-full border border-violet-400/20 bg-violet-500/10 px-2 py-0.5 text-[10px] text-violet-200">
+              Vinculado · {ACCESS_ROLE_LABELS[item.access.rol] ?? item.access.rol} · {item.access.restaurantCount} restaurantes
+            </span>
+          ) : (
+            <span className="mt-1 inline-block text-[10px] text-gray-600">Sin acceso a datos</span>
+          )}
         </span>
       </button>
     </li>
@@ -863,6 +870,185 @@ function ContactAccessPanel({ conversationId }: { conversationId: string }) {
   );
 }
 
+type NewContactUser = { id: string; nombre: string; rol: string; empresaNombre: string | null; linkedElsewhere: boolean };
+
+type NewContactResult = { existing: boolean; conversationId: string | null; linked: boolean };
+
+/**
+ * Alta manual de un contacto de WhatsApp. Solo vincula teléfono ↔ persona de Nexo:
+ * los restaurantes NO se eligen aquí, salen de los permisos de esa persona.
+ */
+function NewContactForm({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  /** Se llama tras crear o reutilizar el contacto; abre su conversación si existe. */
+  onCreated: (conversationId: string | null) => void;
+}) {
+  const [nombre, setNombre] = useState("");
+  const [prefijo, setPrefijo] = useState("+34");
+  const [telefono, setTelefono] = useState("");
+  const [usuarioId, setUsuarioId] = useState("");
+  const [users, setUsers] = useState<NewContactUser[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<NewContactResult | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchJson<{ users: NewContactUser[] }>("/api/conversations/contacts")
+      .then((data) => {
+        if (!cancelled) setUsers(data.users);
+      })
+      .catch(() => {
+        if (!cancelled) setError("No se pudieron cargar los usuarios de Nexo.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function submit() {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/conversations/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre,
+          countryCallingCode: prefijo,
+          nationalNumber: telefono,
+          usuarioId: usuarioId === "" ? null : usuarioId,
+        }),
+      });
+      const data = (await response.json().catch(() => null)) as (NewContactResult & { error?: string }) | null;
+      if (!response.ok || !data) {
+        setError(data?.error ?? "No se pudo crear el contacto");
+        return;
+      }
+      if (data.existing) {
+        setResult(data);
+      } else {
+        onCreated(data.conversationId);
+        onClose();
+      }
+    } catch {
+      setError("No se pudo crear el contacto");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const fieldClass =
+    "w-full rounded-xl border border-white/[0.08] bg-[#0d0a14] px-3 py-2 text-[13px] text-white placeholder:text-gray-600 focus:border-violet-400/40 focus:outline-none";
+
+  return (
+    <div className="space-y-2 border-b border-white/[0.07] bg-white/[0.02] p-3">
+      <div className="flex items-center justify-between">
+        <p className="text-[13px] font-medium text-white">Nuevo contacto</p>
+        <button type="button" onClick={onClose} className="text-xs text-gray-400 hover:text-white">
+          Cerrar
+        </button>
+      </div>
+
+      {result ? (
+        <div className="space-y-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] p-3">
+          <p className="text-[13px] font-medium text-amber-200">Este número ya existe.</p>
+          <p className="text-xs text-gray-400">
+            {result.linked
+              ? "Ya está vinculado a un usuario de Nexo."
+              : "Todavía no está vinculado a ningún usuario: no tiene acceso a datos."}{" "}
+            No se ha cambiado su nombre ni su vínculo.
+          </p>
+          <div className="flex gap-3">
+            {result.conversationId ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onCreated(result.conversationId);
+                  onClose();
+                }}
+                className="rounded-xl border border-violet-400/30 bg-violet-500/25 px-3.5 py-2 text-[13px] font-medium text-white transition hover:bg-violet-500/35"
+              >
+                Abrir conversación
+              </button>
+            ) : null}
+            <button type="button" onClick={onClose} className="text-xs text-gray-400 hover:text-white">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <form
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
+          }}
+        >
+          <input
+            value={nombre}
+            onChange={(event) => setNombre(event.target.value)}
+            placeholder="Nombre"
+            aria-label="Nombre"
+            maxLength={100}
+            className={fieldClass}
+          />
+          <div className="flex gap-2">
+            <input
+              value={prefijo}
+              onChange={(event) => setPrefijo(event.target.value)}
+              aria-label="Prefijo del país"
+              inputMode="tel"
+              className={`${fieldClass} w-[72px] shrink-0`}
+            />
+            <input
+              value={telefono}
+              onChange={(event) => setTelefono(event.target.value)}
+              placeholder="Teléfono"
+              aria-label="Teléfono"
+              inputMode="tel"
+              className={fieldClass}
+            />
+          </div>
+          <select
+            value={usuarioId}
+            onChange={(event) => setUsuarioId(event.target.value)}
+            aria-label="Usuario Nexo vinculado (opcional)"
+            className={fieldClass}
+          >
+            <option value="">Usuario Nexo vinculado (opcional)</option>
+            {(users ?? []).map((user) => (
+              <option key={user.id} value={user.id} disabled={user.linkedElsewhere}>
+                {user.nombre} · {ACCESS_ROLE_LABELS[user.rol] ?? user.rol}
+                {user.linkedElsewhere ? " (ya vinculado a otro teléfono)" : ""}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-gray-500">
+            Sin usuario vinculado, el contacto puede escribir pero no tiene acceso a datos. Los restaurantes se gestionan en
+            Usuarios y permisos.
+          </p>
+          {error ? (
+            <p role="alert" className="text-xs text-rose-300">
+              {error}
+            </p>
+          ) : null}
+          <button
+            type="submit"
+            disabled={busy || telefono.trim() === ""}
+            className="w-full rounded-xl border border-violet-400/30 bg-violet-500/25 px-3.5 py-2 text-[13px] font-medium text-white transition hover:bg-violet-500/35 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {busy ? "Creando…" : "Crear contacto"}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export function ConversationsView() {
   const [conversations, setConversations] = useState<ConversationListItem[] | null>(null);
   const [listError, setListError] = useState(false);
@@ -872,6 +1058,7 @@ export function ConversationsView() {
   const [messagesError, setMessagesError] = useState(false);
   const selectedRef = useRef<string | null>(null);
   const [accessOpenFor, setAccessOpenFor] = useState<string | null>(null);
+  const [newContactOpen, setNewContactOpen] = useState(false);
 
   const loadList = useCallback(async () => {
     try {
@@ -945,6 +1132,14 @@ export function ConversationsView() {
           className={`${selected ? "hidden md:flex" : "flex"} w-full shrink-0 flex-col border-r border-white/[0.07] md:w-[340px]`}
         >
           <div className="border-b border-white/[0.07] p-3">
+            <button
+              type="button"
+              onClick={() => setNewContactOpen((open) => !open)}
+              aria-expanded={newContactOpen}
+              className="mb-2 w-full rounded-xl border border-violet-400/25 bg-violet-500/10 px-3.5 py-2 text-[13px] font-medium text-violet-200 transition hover:bg-violet-500/20"
+            >
+              + Nuevo contacto
+            </button>
             <input
               type="search"
               value={query}
@@ -954,6 +1149,16 @@ export function ConversationsView() {
               className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3.5 py-2 text-[13px] text-white placeholder:text-gray-600 focus:border-violet-400/40 focus:outline-none"
             />
           </div>
+
+          {newContactOpen ? (
+            <NewContactForm
+              onClose={() => setNewContactOpen(false)}
+              onCreated={(conversationId) => {
+                void loadList();
+                if (conversationId) select(conversationId);
+              }}
+            />
+          ) : null}
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             {conversations === null ? (
