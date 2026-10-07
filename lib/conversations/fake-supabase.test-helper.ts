@@ -27,7 +27,20 @@ export type FakeDb = {
   uniques: Record<string, UniqueRule[]>;
   rpcCalls: { fn: string; args: Record<string, unknown> }[];
   rpcResult: { error: { code: string } | null };
-  client: { from: (table: string) => unknown; rpc: (fn: string, args: Record<string, unknown>) => Promise<unknown> };
+  /** Cuentas de Supabase Auth simuladas y sus operaciones de administración. */
+  auth: {
+    users: { id: string; email: string; password?: string }[];
+    created: Record<string, unknown>[];
+    deleted: string[];
+    links: Record<string, unknown>[];
+    createError: { code?: string; status?: number } | null;
+    linkError: { code?: string } | null;
+  };
+  client: {
+    from: (table: string) => unknown;
+    rpc: (fn: string, args: Record<string, unknown>) => Promise<unknown>;
+    auth: { admin: Record<string, (...args: never[]) => Promise<unknown>> };
+  };
 };
 
 export function createFakeDb(initial: Tables = {}): FakeDb {
@@ -37,7 +50,8 @@ export function createFakeDb(initial: Tables = {}): FakeDb {
     uniques: {},
     rpcCalls: [],
     rpcResult: { error: null },
-    client: { from: () => null, rpc: async () => null },
+    auth: { users: [], created: [], deleted: [], links: [], createError: null, linkError: null },
+    client: { from: () => null, rpc: async () => null, auth: { admin: {} } },
   };
   let nextId = 1;
 
@@ -115,6 +129,35 @@ export function createFakeDb(initial: Tables = {}): FakeDb {
   }
 
   db.client = {
+    auth: {
+      admin: {
+        createUser: async (params: Record<string, unknown>) => {
+          db.auth.created.push(params);
+          if (db.auth.createError) return { data: { user: null }, error: db.auth.createError };
+          const email = String(params.email);
+          if (db.auth.users.some((user) => user.email === email)) {
+            return { data: { user: null }, error: { code: "email_exists", status: 422 } };
+          }
+          const user = { id: `auth-${db.auth.users.length + 1}`, email, password: params.password as string | undefined };
+          db.auth.users.push(user);
+          return { data: { user }, error: null };
+        },
+        // Imita ON DELETE CASCADE: el perfil y sus asignaciones se van con la cuenta.
+        deleteUser: async (id: string) => {
+          db.auth.deleted.push(id);
+          db.auth.users = db.auth.users.filter((user) => user.id !== id);
+          db.tables.perfiles = (db.tables.perfiles ?? []).filter((row) => row.id !== id);
+          db.tables.usuario_restaurantes = (db.tables.usuario_restaurantes ?? []).filter((row) => row.user_id !== id);
+          db.tables.usuario_marcas = (db.tables.usuario_marcas ?? []).filter((row) => row.user_id !== id);
+          return { data: null, error: null };
+        },
+        generateLink: async (params: Record<string, unknown>) => {
+          db.auth.links.push(params);
+          if (db.auth.linkError) return { data: { properties: null }, error: db.auth.linkError };
+          return { data: { properties: { hashed_token: `HASHED-${db.auth.links.length}` } }, error: null };
+        },
+      },
+    },
     from: (table: string) => builder(table),
     rpc: async (fn: string, args: Record<string, unknown>) => {
       db.rpcCalls.push({ fn, args });

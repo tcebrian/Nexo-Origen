@@ -21,7 +21,7 @@ import type { Perfil } from "@/lib/auth/types";
 
 export class UserAccessError extends Error {
   constructor(
-    readonly status: 400 | 403 | 404 | 500,
+    readonly status: 400 | 403 | 404 | 409 | 500,
     message: string
   ) {
     super(message);
@@ -29,7 +29,7 @@ export class UserAccessError extends Error {
   }
 }
 
-function admin() {
+export function admin() {
   const client = getSupabaseAdmin();
   if (!client) throw new UserAccessError(500, "Servicio no configurado");
   return client;
@@ -44,7 +44,7 @@ type RestaurantRow = {
   activo: boolean | null;
 };
 
-async function loadCatalog() {
+export async function loadCatalog() {
   const client = admin();
   const [empresas, marcas, restaurantes] = await Promise.all([
     client.from(SUPABASE_TABLES.empresas).select("id,nombre").order("nombre"),
@@ -61,9 +61,9 @@ async function loadCatalog() {
   };
 }
 
-type Catalog = Awaited<ReturnType<typeof loadCatalog>>;
+export type Catalog = Awaited<ReturnType<typeof loadCatalog>>;
 
-function accessCatalog(catalog: Catalog): AccessCatalog {
+export function accessCatalog(catalog: Catalog): AccessCatalog {
   return {
     empresaIds: new Set(catalog.empresas.map((empresa) => Number(empresa.id))),
     restaurants: catalog.restaurantes.map((restaurant) => ({
@@ -191,14 +191,6 @@ export async function getManagedUserDetail(userId: string): Promise<ManagedUserD
   ]);
   if (restaurantRows.error || marcaRows.error) throw new UserAccessError(500, "No se pudo cargar el acceso");
 
-  const brandName = new Map(catalog.marcas.map((marca) => [Number(marca.id), marca.nombre]));
-  const marcaEmpresas = new Map<number, Set<number>>();
-  for (const restaurant of catalog.restaurantes) {
-    if (restaurant.marca_id === null || restaurant.empresa_id === null) continue;
-    const set = marcaEmpresas.get(Number(restaurant.marca_id)) ?? new Set<number>();
-    set.add(Number(restaurant.empresa_id));
-    marcaEmpresas.set(Number(restaurant.marca_id), set);
-  }
   const empresa = catalog.empresas.find((item) => String(item.id) === perfil.empresaId);
 
   return {
@@ -215,23 +207,41 @@ export async function getManagedUserDetail(userId: string): Promise<ManagedUserD
       marcaIds: (marcaRows.data ?? []).map((row) => Number((row as { marca_id: number }).marca_id)),
     },
     effective: await effectiveAccessFor(perfil, catalog),
-    options: {
-      empresas: catalog.empresas.map((item) => ({ id: Number(item.id), nombre: item.nombre })),
-      marcas: catalog.marcas.map((marca) => ({
-        id: Number(marca.id),
-        nombre: marca.nombre,
-        empresaIds: [...(marcaEmpresas.get(Number(marca.id)) ?? [])],
-      })),
-      restaurants: catalog.restaurantes.map((restaurant) => ({
-        id: Number(restaurant.id),
-        name: restaurant.nombre,
-        city: restaurant.ciudad ?? "",
-        brand: restaurant.marca_id === null ? "" : (brandName.get(Number(restaurant.marca_id)) ?? ""),
-        marcaId: restaurant.marca_id === null ? null : Number(restaurant.marca_id),
-        empresaId: restaurant.empresa_id === null ? null : Number(restaurant.empresa_id),
-      })),
-    },
+    options: buildFormOptions(catalog),
   };
+}
+
+/** Opciones de los formularios de acceso (edición y alta): empresas, marcas y restaurantes. */
+export function buildFormOptions(catalog: Catalog): ManagedUserDetail["options"] {
+  const brandName = new Map(catalog.marcas.map((marca) => [Number(marca.id), marca.nombre]));
+  const marcaEmpresas = new Map<number, Set<number>>();
+  for (const restaurant of catalog.restaurantes) {
+    if (restaurant.marca_id === null || restaurant.empresa_id === null) continue;
+    const set = marcaEmpresas.get(Number(restaurant.marca_id)) ?? new Set<number>();
+    set.add(Number(restaurant.empresa_id));
+    marcaEmpresas.set(Number(restaurant.marca_id), set);
+  }
+
+  return {
+    empresas: catalog.empresas.map((item) => ({ id: Number(item.id), nombre: item.nombre })),
+    marcas: catalog.marcas.map((marca) => ({
+      id: Number(marca.id),
+      nombre: marca.nombre,
+      empresaIds: [...(marcaEmpresas.get(Number(marca.id)) ?? [])],
+    })),
+    restaurants: catalog.restaurantes.map((restaurant) => ({
+      id: Number(restaurant.id),
+      name: restaurant.nombre,
+      city: restaurant.ciudad ?? "",
+      brand: restaurant.marca_id === null ? "" : (brandName.get(Number(restaurant.marca_id)) ?? ""),
+      marcaId: restaurant.marca_id === null ? null : Number(restaurant.marca_id),
+      empresaId: restaurant.empresa_id === null ? null : Number(restaurant.empresa_id),
+    })),
+  };
+}
+
+export async function getUserFormOptions(): Promise<ManagedUserDetail["options"]> {
+  return buildFormOptions(await loadCatalog());
 }
 
 // Guardado ------------------------------------------------------------------------------
