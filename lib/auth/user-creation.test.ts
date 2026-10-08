@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { MIN_PASSWORD_CHARS, USER_KINDS, parseNewUserBody, validateNewPassword } from "@/lib/auth/user-creation";
+import { MIN_PASSWORD_CHARS, USER_KINDS, parseNewUserBody, validateNewPassword, validatePasswordValue } from "@/lib/auth/user-creation";
 
-const base = { nombre: " Víctor Soria ", email: " Victor@Example.COM ", empresaId: 1 };
+const base = { nombre: " Víctor Soria ", email: " Victor@Example.COM ", password: "inicial-12345", empresaId: 1 };
 
 describe("parseNewUserBody", () => {
   it("traduce el tipo visible al rol técnico", () => {
@@ -48,10 +48,18 @@ describe("parseNewUserBody", () => {
     expect(parseNewUserBody(null).ok).toBe(false);
   });
 
-  it("no existe ningún campo de contraseña: si llega, se ignora y no se propaga", () => {
-    const parsed = parseNewUserBody({ ...base, tipo: "restaurantes", password: "secreta-123456", contrasena: "x" });
-    expect(parsed.ok).toBe(true);
-    expect(JSON.stringify(parsed)).not.toContain("secreta");
+  it("la contraseña inicial es obligatoria y válida (10-72 caracteres)", () => {
+    for (const password of [undefined, null, 5, "", "corta", "a".repeat(MIN_PASSWORD_CHARS - 1), "a".repeat(73)]) {
+      expect(parseNewUserBody({ ...base, tipo: "restaurantes", password }).ok).toBe(false);
+    }
+    expect(parseNewUserBody({ ...base, tipo: "restaurantes", password: "a".repeat(10) }).ok).toBe(true);
+    expect(validatePasswordValue(" ".repeat(10)).ok).toBe(true); // no se recorta
+  });
+
+  it("obligar a cambiar la contraseña es lo normal; solo un false explícito lo desactiva", () => {
+    expect(parseNewUserBody({ ...base, tipo: "restaurantes" })).toMatchObject({ ok: true, mustChangePassword: true });
+    expect(parseNewUserBody({ ...base, tipo: "restaurantes", mustChangePassword: false })).toMatchObject({ mustChangePassword: false });
+    expect(parseNewUserBody({ ...base, tipo: "restaurantes", mustChangePassword: "no" }).ok).toBe(false);
   });
 
   it("devuelve las listas sin validar: las valida el acceso contra la empresa elegida", () => {

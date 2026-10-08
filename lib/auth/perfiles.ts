@@ -5,7 +5,7 @@ import { normalizeRole } from "@/lib/auth/permissions";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 /** Columnas reales de public.perfiles (id = auth.users.id). */
-const PERFIL_COLUMNS = "id,nombre,email,rol,empresa_id,created_at";
+const PERFIL_COLUMNS = "id,nombre,email,rol,empresa_id,must_change_password,created_at";
 
 function normalizeUserId(userId: string): string {
   return userId.trim().toLowerCase();
@@ -43,6 +43,7 @@ function mapPerfilRow(row: Record<string, unknown>, authUserId: string): Perfil 
     nombre: readText(row, "nombre", "name"),
     email: readText(row, "email"),
     empresaId: readEmpresaId(row),
+    mustChangePassword: row.must_change_password === true,
   };
 }
 

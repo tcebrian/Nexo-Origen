@@ -33,6 +33,8 @@ export type FakeDb = {
     created: Record<string, unknown>[];
     deleted: string[];
     links: Record<string, unknown>[];
+    updated: { id: string; attrs: Record<string, unknown> }[];
+    updateError: { code?: string; status?: number } | null;
     createError: { code?: string; status?: number } | null;
     linkError: { code?: string } | null;
   };
@@ -50,7 +52,7 @@ export function createFakeDb(initial: Tables = {}): FakeDb {
     uniques: {},
     rpcCalls: [],
     rpcResult: { error: null },
-    auth: { users: [], created: [], deleted: [], links: [], createError: null, linkError: null },
+    auth: { users: [], created: [], deleted: [], links: [], updated: [], updateError: null, createError: null, linkError: null },
     client: { from: () => null, rpc: async () => null, auth: { admin: {} } },
   };
   let nextId = 1;
@@ -157,6 +159,13 @@ export function createFakeDb(initial: Tables = {}): FakeDb {
           db.tables.usuario_restaurantes = (db.tables.usuario_restaurantes ?? []).filter((row) => row.user_id !== id);
           db.tables.usuario_marcas = (db.tables.usuario_marcas ?? []).filter((row) => row.user_id !== id);
           return { data: null, error: null };
+        },
+        updateUserById: async (id: string, attrs: Record<string, unknown>) => {
+          db.auth.updated.push({ id, attrs });
+          if (db.auth.updateError) return { data: { user: null }, error: db.auth.updateError };
+          const user = db.auth.users.find((candidate) => candidate.id === id);
+          if (user && typeof attrs.password === "string") user.password = attrs.password;
+          return { data: { user: user ?? { id } }, error: null };
         },
         generateLink: async (params: Record<string, unknown>) => {
           db.auth.links.push(params);

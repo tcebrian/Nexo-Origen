@@ -23,9 +23,10 @@ export async function GET(request: Request) {
 }
 
 /**
- * Alta de un usuario: { nombre, email, empresaId, tipo: "empresa" | "marca" | "supervisor",
- * restaurantIds?, marcaIds? }. Crea la cuenta sin contraseña, su perfil y sus asignaciones,
- * y devuelve un enlace de un solo uso para que la persona fije su contraseña.
+ * Alta de un usuario: { nombre, email, password, mustChangePassword?, empresaId,
+ * tipo: "empresa" | "marca" | "restaurantes", restaurantIds?, marcaIds? }.
+ * Crea la cuenta en Supabase Auth con esa contraseña inicial (solo server-side), su perfil y sus
+ * asignaciones. La respuesta NUNCA incluye la contraseña: solo el id del usuario.
  */
 export async function POST(request: Request) {
   const auth = await requireApiAuth(request);
@@ -37,15 +38,11 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
 
   try {
-    const created = await createManagedUser(
-      { userId: auth.session.userId, rol: auth.session.perfil.rol },
-      body,
-      new URL(request.url).origin
-    );
+    const created = await createManagedUser({ userId: auth.session.userId, rol: auth.session.perfil.rol }, body);
     return NextResponse.json(created, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof UserAccessError) return NextResponse.json({ error: error.message }, { status: error.status });
-    // Solo el mensaje técnico: nunca email, nombre ni enlace.
+    // Solo el mensaje técnico: nunca email, nombre ni contraseña.
     console.error("[platform/users] create failed", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "No se pudo crear el usuario" }, { status: 500 });
   }

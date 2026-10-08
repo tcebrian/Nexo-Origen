@@ -3,12 +3,18 @@ import { AuthProvider } from "./_components/auth-context";
 import { DateRangeProvider } from "./_components/date-range-context";
 import { DashboardShell } from "./_components/dashboard-shell";
 import { getAuthSession } from "@/lib/auth/session";
+import { CHANGE_PASSWORD_PATH, isPasswordChangePending } from "@/lib/auth/password-gate";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await getAuthSession();
 
   if (!session) {
     redirect("/login");
+  }
+
+  // Segunda barrera (la primera es el middleware): contraseña inicial sin cambiar.
+  if (await isPasswordChangePending(session.perfil)) {
+    redirect(CHANGE_PASSWORD_PATH);
   }
 
   return (

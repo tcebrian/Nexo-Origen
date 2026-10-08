@@ -42,6 +42,8 @@ export type Perfil = {
   nombre: string | null;
   email: string | null;
   empresaId: string | null;
+  /** true = debe cambiar su contraseña antes de usar Nexo (primer acceso con contraseña inicial). */
+  mustChangePassword: boolean;
 };
 
 /**

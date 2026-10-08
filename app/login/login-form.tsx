@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { RECOVERY_SENT_MESSAGE, buildRecoveryRedirect, isValidRecoveryEmail } from "@/lib/auth/password-recovery";
 
 export function LoginForm() {
   const searchParams = useSearchParams();
@@ -30,6 +31,8 @@ export function LoginForm() {
     return null;
   });
   const [loading, setLoading] = useState(false);
+  const [forgot, setForgot] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     async function prepareLogin() {
@@ -95,6 +98,88 @@ export function LoginForm() {
     }
   }
 
+  /** "¿Olvidaste tu contraseña?": pide el enlace por email. Misma respuesta exista o no la cuenta. */
+  async function handleForgot(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setNotice(null);
+
+    if (!isValidRecoveryEmail(email)) {
+      setError("Escribe tu email para enviarte el enlace.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error: resetError } = await createClient().auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: buildRecoveryRedirect(window.location.origin),
+      });
+      if (resetError?.status === 429) {
+        setError("Has pedido demasiados enlaces seguidos. Espera unos minutos e inténtalo de nuevo.");
+        return;
+      }
+      // Cualquier otro caso (incluida una cuenta inexistente) responde igual: no se revela qué emails existen.
+      setNotice(RECOVERY_SENT_MESSAGE);
+    } catch {
+      setError("No se pudo enviar el enlace. Comprueba tu conexión e inténtalo de nuevo.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (forgot) {
+    return (
+      <form className="mt-5 space-y-3.5 sm:mt-9 sm:space-y-5" onSubmit={handleForgot}>
+        <p className="text-center text-sm text-gray-200/90">Te enviaremos un enlace para elegir una contraseña nueva.</p>
+
+        {error ? (
+          <p className="rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-center text-sm text-red-100">{error}</p>
+        ) : null}
+        {notice ? (
+          <p className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-center text-sm text-emerald-100">
+            {notice}
+          </p>
+        ) : null}
+
+        <div>
+          <label className="mb-2 block text-sm text-gray-200/90">Email</label>
+          <input
+            type="email"
+            name="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="ejemplo@empresa.com"
+            className="w-full rounded-xl border border-white/15 bg-black/25 px-5 py-3 text-white outline-none backdrop-blur-xl transition placeholder:text-gray-400/60 focus:border-purple-300/80 focus:ring-2 focus:ring-purple-500/25 sm:py-4"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.14] bg-white/[0.08] py-3 text-[15px] font-medium text-white transition hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-60 sm:py-4"
+        >
+          {loading ? "Enviando..." : "Enviar enlace"}
+        </button>
+
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => {
+              setForgot(false);
+              setError(null);
+              setNotice(null);
+            }}
+            className="text-sm text-purple-200/85 transition hover:text-white"
+          >
+            Volver a iniciar sesión
+          </button>
+        </div>
+      </form>
+    );
+  }
+
   return (
     <form className="mt-5 space-y-3.5 sm:mt-9 sm:space-y-5" onSubmit={handleSubmit}>
       {hasSession ? (
@@ -145,7 +230,14 @@ export function LoginForm() {
         />
 
         <div className="mt-3 text-right">
-          <button type="button" className="text-sm text-purple-200/85 transition hover:text-white">
+          <button
+            type="button"
+            onClick={() => {
+              setForgot(true);
+              setError(null);
+            }}
+            className="text-sm text-purple-200/85 transition hover:text-white"
+          >
             ¿Olvidaste tu contraseña?
           </button>
         </div>

@@ -170,43 +170,40 @@ function AccessPicker({
   return null;
 }
 
-/** Enlace de un solo uso para que la persona elija su contraseña. */
-function ActivationLink({ url, onClose }: { url: string; onClose?: () => void }) {
-  const [copied, setCopied] = useState(false);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-    } catch {
-      setCopied(false);
-    }
-  }
-
+/**
+ * Contraseña inicial / nueva contraseña definida por el administrador. Solo se envía al servidor
+ * (que la pasa a Supabase Auth): no se guarda en el navegador, ni se muestra ni se devuelve nunca.
+ */
+function PasswordFields({
+  password,
+  onPassword,
+  mustChange,
+  onMustChange,
+  label,
+}: {
+  password: string;
+  onPassword: (value: string) => void;
+  mustChange: boolean;
+  onMustChange: (value: boolean) => void;
+  label: string;
+}) {
   return (
-    <div className="space-y-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] p-3">
-      <p className="text-[13px] font-medium text-emerald-200">Enlace para elegir la contraseña</p>
-      <p className="text-xs text-gray-400">
-        Envíaselo a la persona (por WhatsApp, por ejemplo). Es de un solo uso y caduca pronto: si no llega a tiempo, genera
-        otro desde su ficha. Nexo no guarda ni muestra contraseñas.
-      </p>
-      <div className="flex gap-2">
+    <div className="space-y-2">
+      <label className="block text-[11px] text-gray-500">
+        {label}
         <input
-          readOnly
-          value={url}
-          aria-label="Enlace de activación"
-          onFocus={(event) => event.currentTarget.select()}
-          className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#0d0a14] px-3 py-2 text-xs text-gray-300"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(event) => onPassword(event.target.value)}
+          placeholder="Mínimo 10 caracteres"
+          className={inputClass}
         />
-        <button type="button" onClick={() => void copy()} className={`${primaryButton} shrink-0 !px-4 !py-2`}>
-          {copied ? "Copiado" : "Copiar"}
-        </button>
-      </div>
-      {onClose ? (
-        <button type="button" onClick={onClose} className="text-xs text-gray-400 hover:text-white">
-          Cerrar
-        </button>
-      ) : null}
+      </label>
+      <label className="flex items-center gap-2 text-[13px] text-gray-200">
+        <input type="checkbox" className="accent-violet-500" checked={mustChange} onChange={(event) => onMustChange(event.target.checked)} />
+        Obligar a cambiar contraseña al primer acceso
+      </label>
     </div>
   );
 }
@@ -222,7 +219,9 @@ function NewUserForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
   const [marcaIds, setMarcaIds] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<{ activationUrl: string | null } | null>(null);
+  const [password, setPassword] = useState("");
+  const [mustChange, setMustChange] = useState(true);
+  const [created, setCreated] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -244,38 +243,36 @@ function NewUserForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
     setSaving(true);
     setError(null);
     try {
-      const result = await fetchJson<{ activationUrl: string | null }>("/api/platform/users", {
+      await fetchJson<{ userId: string }>("/api/platform/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nombre,
           email,
+          password,
+          mustChangePassword: mustChange,
           empresaId: Number(empresaId),
           tipo,
           restaurantIds: tipo === "restaurantes" ? [...restaurantIds] : [],
           marcaIds: tipo === "marca" ? [...marcaIds] : [],
         }),
       });
-      setCreated(result);
+      setCreated(true);
       onCreated();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo crear el usuario");
     } finally {
+      // La contraseña no se conserva en el navegador más de lo imprescindible.
+      setPassword("");
       setSaving(false);
     }
   }
 
   if (created) {
     return (
-      <section className="space-y-3 rounded-3xl border border-white/[0.08] bg-white/[0.025] p-5">
-        <p className="text-sm font-semibold text-white">Usuario creado</p>
-        {created.activationUrl ? (
-          <ActivationLink url={created.activationUrl} />
-        ) : (
-          <p className="text-xs text-amber-200">
-            El usuario se ha creado, pero no se pudo generar el enlace. Genera uno desde su ficha.
-          </p>
-        )}
+      <section className="space-y-2 rounded-3xl border border-white/[0.08] bg-white/[0.025] p-5">
+        <p className="text-sm font-semibold text-emerald-200">Usuario creado correctamente</p>
+        <p className="text-xs text-gray-400">Comparte con el usuario su email y contraseña inicial de forma segura.</p>
         <button type="button" onClick={onClose} className="text-xs text-gray-400 hover:text-white">
           Cerrar
         </button>
@@ -283,7 +280,7 @@ function NewUserForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
     );
   }
 
-  const ready = nombre.trim() !== "" && email.trim() !== "" && empresaId !== "";
+  const ready = nombre.trim() !== "" && email.trim() !== "" && password.length >= 10 && empresaId !== "";
 
   return (
     <section className="space-y-4 rounded-3xl border border-white/[0.08] bg-white/[0.025] p-5">
@@ -365,9 +362,13 @@ function NewUserForm({ onClose, onCreated }: { onClose: () => void; onCreated: (
             />
           ) : null}
 
-          <p className="text-xs text-gray-500">
-            No se pide contraseña: al crear el usuario recibirás un enlace para que la elija la propia persona.
-          </p>
+          <PasswordFields
+            label="Contraseña inicial"
+            password={password}
+            onPassword={setPassword}
+            mustChange={mustChange}
+            onMustChange={setMustChange}
+          />
           {error ? (
             <p role="alert" className="text-xs text-rose-300">
               {error}
@@ -391,8 +392,10 @@ function Editor({ userId, onSaved }: { userId: string; onSaved: () => void }) {
   const [marcaIds, setMarcaIds] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
-  const [activationUrl, setActivationUrl] = useState<string | null>(null);
-  const [linkBusy, setLinkBusy] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [mustChange, setMustChange] = useState(true);
+  const [passwordBusy, setPasswordBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -444,16 +447,23 @@ function Editor({ userId, onSaved }: { userId: string; onSaved: () => void }) {
     }
   }
 
-  async function generateLink() {
-    setLinkBusy(true);
+  async function savePassword() {
+    setPasswordBusy(true);
     setMessage(null);
     try {
-      const result = await fetchJson<{ activationUrl: string }>(`/api/platform/users/${userId}/activation-link`, { method: "POST" });
-      setActivationUrl(result.activationUrl);
+      await fetchJson<{ ok: true }>(`/api/platform/users/${userId}/password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword, mustChangePassword: mustChange }),
+      });
+      setPasswordOpen(false);
+      setMessage({ kind: "ok", text: "Contraseña actualizada. Comparte la nueva contraseña con la persona de forma segura." });
     } catch (error) {
-      setMessage({ kind: "error", text: error instanceof Error ? error.message : "No se pudo generar el enlace" });
+      setMessage({ kind: "error", text: error instanceof Error ? error.message : "No se pudo guardar la contraseña" });
     } finally {
-      setLinkBusy(false);
+      // La contraseña no se conserva en el navegador más de lo imprescindible.
+      setNewPassword("");
+      setPasswordBusy(false);
     }
   }
 
@@ -536,7 +546,39 @@ function Editor({ userId, onSaved }: { userId: string; onSaved: () => void }) {
         </p>
       ) : null}
 
-      {activationUrl ? <ActivationLink url={activationUrl} onClose={() => setActivationUrl(null)} /> : null}
+      {passwordOpen && !readOnly ? (
+        <div className="space-y-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+          <p className="text-[13px] font-medium text-white">Establecer nueva contraseña</p>
+          <PasswordFields
+            label="Nueva contraseña"
+            password={newPassword}
+            onPassword={setNewPassword}
+            mustChange={mustChange}
+            onMustChange={setMustChange}
+          />
+          <p className="text-[11px] text-gray-500">La contraseña actual no se puede ver: Supabase no la expone.</p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => void savePassword()}
+              disabled={passwordBusy || newPassword.length < 10}
+              className={primaryButton}
+            >
+              {passwordBusy ? "Guardando…" : "Guardar contraseña"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPasswordOpen(false);
+                setNewPassword("");
+              }}
+              className="text-xs text-gray-400 hover:text-white"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {!readOnly ? (
         <div className="flex flex-wrap items-center gap-3">
@@ -545,11 +587,10 @@ function Editor({ userId, onSaved }: { userId: string; onSaved: () => void }) {
           </button>
           <button
             type="button"
-            onClick={() => void generateLink()}
-            disabled={linkBusy}
-            className="text-xs text-violet-300 hover:text-violet-200 disabled:opacity-50"
+            onClick={() => setPasswordOpen((open) => !open)}
+            className="text-xs text-violet-300 hover:text-violet-200"
           >
-            {linkBusy ? "Generando…" : "Generar enlace de contraseña"}
+            Establecer nueva contraseña
           </button>
         </div>
       ) : null}

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { fetchPerfilForAuth } from "@/lib/auth/perfiles";
+import { CHANGE_PASSWORD_PATH, isPasswordChangePending } from "@/lib/auth/password-gate";
 import { isPerfilAuthorized, normalizeRole } from "@/lib/auth/permissions";
 import {
   canAccessDashboardPath,
@@ -54,6 +55,15 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
+    // Primera sesión con contraseña inicial: no se entra al dashboard hasta cambiarla.
+    // `/auth/change-password` no cuelga de /dashboard ni de /api, así que no hay bucle.
+    if (await isPasswordChangePending(perfil!)) {
+      const changeUrl = request.nextUrl.clone();
+      changeUrl.pathname = CHANGE_PASSWORD_PATH;
+      changeUrl.search = "";
+      return NextResponse.redirect(changeUrl);
+    }
+
     const rol = normalizeRole(perfil!.rol);
     if (!canAccessDashboardPath(rol, pathname)) {
       const deniedUrl = request.nextUrl.clone();
@@ -74,6 +84,13 @@ export async function middleware(request: NextRequest) {
 
     if (!isPerfilAuthorized(perfil)) {
       return NextResponse.json({ error: "Perfil no autorizado" }, { status: 403 });
+    }
+
+    if (await isPasswordChangePending(perfil!)) {
+      return NextResponse.json(
+        { error: "Debes cambiar tu contraseña antes de continuar", code: "password_change_required" },
+        { status: 403 }
+      );
     }
 
     if (isSuperAdminApiPath(pathname) && !isSuperAdmin(normalizeRole(perfil!.rol))) {

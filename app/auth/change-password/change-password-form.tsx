@@ -1,15 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { MIN_PASSWORD_CHARS, validateNewPassword } from "@/lib/auth/user-creation";
 
 const field =
   "w-full rounded-xl border border-white/15 bg-black/25 px-4 py-3 text-white outline-none transition placeholder:text-gray-400/60 focus:border-purple-300/80 focus:ring-2 focus:ring-purple-500/25";
 
-export function SetPasswordForm() {
-  const router = useRouter();
+export function ChangePasswordForm({ canCancel }: { canCancel: boolean }) {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -24,14 +22,28 @@ export function SetPasswordForm() {
 
     setSaving(true);
     setError(null);
-    const { error: updateError } = await createClient().auth.updateUser({ password });
-    if (updateError) {
-      setError("No se pudo guardar la contraseña. Pide un enlace nuevo.");
+    try {
+      // El servidor la guarda en Supabase Auth y solo entonces levanta el cambio obligatorio.
+      const response = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) {
+        setError(data?.error ?? "No se pudo guardar la contraseña.");
+        return;
+      }
+      // Navegación completa: el middleware vuelve a leer el perfil ya sin el cambio pendiente.
+      window.location.assign("/dashboard");
+    } catch {
+      setError("No se pudo guardar la contraseña.");
+    } finally {
+      // La contraseña no se conserva en el navegador más de lo imprescindible.
+      setPassword("");
+      setConfirmation("");
       setSaving(false);
-      return;
     }
-    router.replace("/dashboard");
-    router.refresh();
   }
 
   return (
@@ -73,8 +85,13 @@ export function SetPasswordForm() {
         disabled={saving}
         className="w-full rounded-xl border border-white/[0.14] bg-white/[0.08] py-3 text-[15px] font-medium text-white transition hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {saving ? "Guardando…" : "Guardar contraseña y entrar"}
+        {saving ? "Guardando…" : "Guardar contraseña"}
       </button>
+      {canCancel ? (
+        <Link href="/dashboard" className="block text-center text-sm text-gray-400 hover:text-white">
+          Cancelar
+        </Link>
+      ) : null}
     </form>
   );
 }
