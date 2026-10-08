@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { loadMonthlyReport } from "@/lib/reports/monthly/data";
-import { generateMonthlyPdf } from "@/lib/reports/monthly/pdf";
+import { renderViaInternal } from "@/lib/render/internal-render-client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   try {
     const report = await loadMonthlyReport(restaurantId, offset, auth.session.scope);
     if (!report) return NextResponse.json({ error: "Restaurante no disponible" }, { status: 404 });
-    const pdf = await generateMonthlyPdf(report);
+    const pdf = await renderViaInternal({ op: "monthly_pdf", report });
     const slug = report.restaurant.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
       .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const filename = `Nexo_Origen_${slug}_${report.startKey.slice(0, 7)}.pdf`;

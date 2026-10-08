@@ -1,3 +1,4 @@
+import { renderViaInternal } from "@/lib/render/internal-render-client";
 import { buildAlertDataForResena } from "@/lib/notifications/build-alert-for-resena";
 
 export const runtime = "nodejs";
@@ -28,11 +29,7 @@ export async function GET(request: Request) {
     const data = await buildAlertDataForResena(resenaId);
     if (!data) return new Response("Reseña no encontrada", { status: 404 });
 
-    const origin = new URL(request.url).origin;
-    const { captureNegativeReviewAlertPng } = await import(
-      "@/lib/templates/negative-review-alert/capture-image"
-    );
-    const png = await captureNegativeReviewAlertPng(data, { assetBaseUrl: origin });
+    const png = await renderViaInternal({ op: "whatsapp_alert_image", data });
 
     return new Response(new Uint8Array(png), {
       status: 200,

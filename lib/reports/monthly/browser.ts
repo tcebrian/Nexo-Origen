@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { rm } from "node:fs/promises";
 import type { Page } from "playwright-core";
+import { installNetworkGuard } from "@/lib/render/network-guard";
 
 /** Abre el navegador: Chromium empaquetado en serverless (Vercel), el de Playwright en local. */
 export async function launchReportBrowser(options: {
@@ -18,6 +19,8 @@ export async function launchReportBrowser(options: {
       args: ["--font-render-hinting=none", "--force-color-profile=srgb"],
     });
     const page = await browser.newPage(options);
+    // El HTML de los informes lo lleva todo incrustado (data:): Chromium no necesita red.
+    await installNetworkGuard(page, null);
     return { page, close: () => browser.close() };
   }
 
@@ -30,6 +33,7 @@ export async function launchReportBrowser(options: {
     ...options,
   });
   const page = context.pages()[0] ?? (await context.newPage());
+  await installNetworkGuard(page, null);
   return {
     page,
     close: async () => {

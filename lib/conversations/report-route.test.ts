@@ -42,9 +42,16 @@ vi.mock("@/lib/reports/monthly/data", () => ({
   loadMonthlyReport,
   listReportableRestaurants,
 }));
-vi.mock("@/lib/reports/monthly/pdf", () => ({ generateMonthlyPdf }));
-vi.mock("@/lib/reports/monthly/image/capture", () => ({ generateMonthlyPng }));
-vi.mock("@/lib/reports/network-summary/capture-image", () => ({ captureNetworkSummaryPng }));
+// Conversations ya no carga Chromium: pide el PDF/imagen al renderer interno. Estos spies siguen siendo
+// los "generadores" de cada operación para que las comprobaciones de la ruta no cambien.
+vi.mock("@/lib/render/internal-render-client", () => ({
+  renderViaInternal: (request: { op: string; report?: unknown; periodo?: string; grupo?: string; offset?: number }) => {
+    if (request.op === "monthly_pdf") return generateMonthlyPdf(request.report);
+    if (request.op === "monthly_image") return generateMonthlyPng(request.report);
+    if (request.op === "network_summary_image") return captureNetworkSummaryPng(request.periodo, request.grupo, undefined, request.offset);
+    throw new Error(`operación inesperada ${request.op}`);
+  },
+}));
 
 const { POST } = await import("@/app/api/conversations/[conversationId]/reports/route");
 const { GET: optionsRoute } = await import("@/app/api/conversations/report-options/route");
@@ -259,7 +266,7 @@ describe("POST reports: informes de red (semanal y trimestral)", () => {
     const res = await post({ ...weekly, bytes: "AAAA", media_id: "x", to: "+34999999999" });
     expect(res.status).toBe(200);
 
-    expect(captureNetworkSummaryPng).toHaveBeenCalledWith("semanal", "bk", "https://nexo.example", 1);
+    expect(captureNetworkSummaryPng).toHaveBeenCalledWith("semanal", "bk", undefined, 1);
     expect(generateMonthlyPng).not.toHaveBeenCalled();
     expect(uploadMedia.mock.calls[0]![0]).toMatchObject({ mimeType: "image/png", phoneNumberId: "1365004563368241" });
     expect(sendImageMessage.mock.calls[0]![0]).toMatchObject({ mediaId: "MEDIA-9", to: "+34600111222" });
@@ -281,7 +288,7 @@ describe("POST reports: informes de red (semanal y trimestral)", () => {
 
   it("trimestral: usa el periodo trimestral y la red elegida", async () => {
     expect((await post(quarterly)).status).toBe(200);
-    expect(captureNetworkSummaryPng).toHaveBeenCalledWith("trimestral", "sg-es", "https://nexo.example", 0);
+    expect(captureNetworkSummaryPng).toHaveBeenCalledWith("trimestral", "sg-es", undefined, 0);
     expect(fake.touches[0]!.preview).toBe("🖼️ Informe trimestral · Santa Gloria España");
   });
 

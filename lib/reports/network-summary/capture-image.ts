@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { readdir, rm } from "node:fs/promises";
 
+import { installNetworkGuard } from "@/lib/render/network-guard";
 import { optimizeNetworkSummaryPng } from "./optimize-png";
 import { INTERNAL_RENDER_HEADER, internalRenderToken } from "./render-access";
 import type { NetworkReportGroupId } from "./brand-groups";
@@ -47,7 +48,9 @@ export async function captureNetworkSummaryPng(
   periodo: ReportPeriodSlug,
   grupo: NetworkReportGroupId,
   assetBaseUrl: string,
-  offset: number = 0
+  offset: number = 0,
+  /** Con `allowedOrigin`, Chromium solo puede salir a ese origen (más `data:`). Lo pasa el renderer interno. */
+  options: { allowedOrigin?: string } = {}
 ): Promise<Buffer> {
   const templateUrl = `${assetBaseUrl.replace(/\/$/, "")}/templates/network-summary/${periodo}/${grupo}?offset=${offset}`;
 
@@ -106,9 +109,18 @@ export async function captureNetworkSummaryPng(
     // La cabecera se añade SOLO a la navegación a la plantilla de nuestro propio
     // origen (no a imágenes, fuentes ni a terceros), para no filtrarla.
     const template = new URL(templateUrl);
+    if (options.allowedOrigin) await installNetworkGuard(page, options.allowedOrigin);
+    const bypass = options.allowedOrigin ? process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim() : undefined;
     await page.route(
       (url) => url.origin === template.origin && url.pathname === template.pathname,
-      (route) => route.continue({ headers: { ...route.request().headers(), [INTERNAL_RENDER_HEADER]: renderToken } })
+      (route) =>
+        route.continue({
+          headers: {
+            ...route.request().headers(),
+            [INTERNAL_RENDER_HEADER]: renderToken,
+            ...(bypass ? { "x-vercel-protection-bypass": bypass } : {}),
+          },
+        })
     );
     await page.goto(templateUrl, { waitUntil: "networkidle" });
     await waitForRender(page);

@@ -4,11 +4,17 @@ import { randomUUID } from "node:crypto";
 import { readdir, rm } from "node:fs/promises";
 
 import { resolveDesignCanvasSize } from "@/lib/templates/negative-review-alert/dimensions";
+import { installNetworkGuard } from "@/lib/render/network-guard";
 import { optimizeAlertPng } from "@/lib/templates/negative-review-alert/optimize-png";
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
 export type CaptureImageOptions = {
   assetBaseUrl: string;
   deviceScaleFactor?: number;
+  /**
+   * Si se indica, Chromium solo puede salir a este origen (más `data:`); lo demás se aborta.
+   * El renderer interno lo pasa siempre con el origen fijado por el servidor.
+   */
+  allowedOrigin?: string;
 };
 
 const CAPTURE_SCALE_FACTOR = 3;
@@ -46,7 +52,10 @@ export async function captureNegativeReviewAlertPng(
     "@/lib/templates/negative-review-alert/parse-payload"
   );
   const templateUrl = buildAlertTemplateUrl(data, options.assetBaseUrl);
-  return captureNegativeReviewAlertViaUrl(data, templateUrl, options);
+  return captureNegativeReviewAlertViaUrl(data, templateUrl, {
+    deviceScaleFactor: options.deviceScaleFactor,
+    allowedOrigin: options.allowedOrigin,
+  });
 }
 
 export async function captureNegativeReviewAlertViaUrl(
@@ -133,6 +142,18 @@ export async function captureNegativeReviewAlertViaUrl(
     closeBrowser = () => browser.close();
   }
   try {
+    if (options.allowedOrigin) {
+      await installNetworkGuard(page, options.allowedOrigin);
+      // Solo en previews de Vercel protegidos: la cabecera de bypass va únicamente a la plantilla.
+      const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+      if (bypass) {
+        const template = new URL(templateUrl);
+        await page.route(
+          (url) => url.origin === template.origin && url.pathname === template.pathname,
+          (route) => route.continue({ headers: { ...route.request().headers(), "x-vercel-protection-bypass": bypass } })
+        );
+      }
+    }
     await page.goto(templateUrl, { waitUntil: "networkidle" });
     await waitForRender(page);
     const canvasHandle = await page.$(CANVAS_SELECTOR);

@@ -17,7 +17,6 @@ function unusedDesignFiles(keep: string[]): string[] {
 }
 
 const CHROMIUM_FILES = ["./node_modules/playwright-core/**/*", "./node_modules/@sparticuz/chromium/bin/**/*"];
-const RENDER_PACKAGES = ["./node_modules/playwright-core/**", "./node_modules/@sparticuz/chromium/**", "./node_modules/sharp/**", "./node_modules/@img/**"];
 
 // Assets de /public que leen las plantillas mensuales (`lib/reports/monthly/html.ts` para el PDF y
 // `lib/reports/monthly/image/*` para la imagen).
@@ -82,41 +81,24 @@ const nextConfig: NextConfig = {
   // confundirlo con un logo real de la plantilla.
   devIndicators: false,
   serverExternalPackages: ["playwright-core", "sharp", "@sparticuz/chromium"],
-  // El análisis estático de Next para decidir qué archivos incluir en cada
-  // función serverless no detecta bien los `require()` con rutas dinámicas
-  // que usan playwright-core (p. ej. browsers.json) ni el binario de
-  // Chromium de @sparticuz/chromium (carpeta bin/*.br) — sin esto la
-  // función se despliega incompleta y captureNegativeReviewAlertPng falla
-  // en producción aunque funcione en local. playwright-core pesa ~13 MB,
-  // así que se incluye entero en vez de perseguir archivo a archivo.
+  // Chromium (playwright-core + @sparticuz/chromium), sharp y los assets de las plantillas viven SOLO en el
+  // renderer interno (`/api/internal/render`). Las rutas públicas de informes, alertas y Conversations
+  // preparan los datos y le piden el PDF/imagen (`lib/render/internal-render-client.ts`), así que no
+  // importan nada de eso y no lo empaquetan.
   //
-  // /public: varias rutas leen assets con `path.join(process.cwd(), "public", ...)`, y Next, al no
-  // poder resolver el nombre, mete TODO /public (~31 MB) en cada función. Por eso cada ruta que lee
-  // de /public lo excluye entero y vuelve a incluir solo los archivos que lee de verdad (listas de
-  // abajo). Si una ruta pasa a leer otro archivo de /public, hay que añadirlo a su lista.
+  // El análisis estático de Next no detecta bien los `require()` dinámicos de playwright-core (p. ej.
+  // browsers.json) ni el binario de Chromium de @sparticuz/chromium (carpeta bin/*.br), por eso se incluyen
+  // a mano. playwright-core pesa ~13 MB, así que se incluye entero en vez de perseguir archivo a archivo.
+  //
+  // /public: las plantillas leen assets con `path.join(process.cwd(), "public", ...)` y Next, al no poder
+  // resolver el nombre, mete TODO /public (~31 MB). Se incluyen exactamente los archivos que leen
+  // (MONTHLY_ASSETS) y se excluye el resto. Si una plantilla pasa a leer otro archivo de /public, hay que
+  // quitarlo de MONTHLY_UNUSED_PUBLIC y añadirlo a MONTHLY_ASSETS (las dos listas no se solapan).
   outputFileTracingIncludes: {
-    "/api/generate-negative-review-image": CHROMIUM_FILES,
-    "/api/notifications/whatsapp-alert-image": CHROMIUM_FILES,
-    "/api/generate-network-summary-image": CHROMIUM_FILES,
-    // Envío de informes por WhatsApp: PDF mensual + imagen mensual (el informe de red se captura
-    // navegando a su plantilla, sin leer /public desde la función).
-    "/api/conversations/*/reports": [...CHROMIUM_FILES, ...MONTHLY_ASSETS],
-    // PDF e imagen mensual. (La clave termina en /route a propósito: así no coincide con el listado
-    // `/api/informes/mensual`, que no renderiza nada.)
-    "/api/informes/mensual/*/route": [...CHROMIUM_FILES, ...MONTHLY_ASSETS],
-    "/api/informes/mensual/*/imagen/route": [...CHROMIUM_FILES, ...MONTHLY_ASSETS],
+    "/api/internal/render": [...CHROMIUM_FILES, ...MONTHLY_ASSETS],
   },
-  // /public: varias rutas leen assets con `path.join(process.cwd(), "public", ...)` y Next, al no
-  // poder resolver el nombre, mete TODO /public (~31 MB) en cada función. Se excluye lo que la ruta no
-  // lee. Si una ruta pasa a leer otro archivo de /public, hay que quitarlo de la exclusión y, si hace
-  // falta, añadirlo a su lista de inclusiones.
   outputFileTracingExcludes: {
-    "/api/conversations/*/reports": MONTHLY_UNUSED_PUBLIC,
-    "/api/informes/mensual/*/route": MONTHLY_UNUSED_PUBLIC,
-    "/api/informes/mensual/*/imagen/route": MONTHLY_UNUSED_PUBLIC,
-    // Solo listan opciones/restaurantes: no renderizan ni leen assets.
-    "/api/conversations/report-options": ["./public/**", ...RENDER_PACKAGES],
-    "/api/informes/mensual/route": ["./public/**", ...RENDER_PACKAGES],
+    "/api/internal/render": MONTHLY_UNUSED_PUBLIC,
   },
   images: {
     formats: ["image/avif", "image/webp"],

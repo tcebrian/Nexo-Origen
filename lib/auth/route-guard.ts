@@ -48,6 +48,8 @@ export function isProtectedApiPath(pathname: string): boolean {
     "/api/cron/",
     "/api/integrations/make/",
     "/api/internal/test-hambar-daily-summary",
+    // Renderer interno: lo llama el servidor sin sesión; se autentica con firma HMAC (lib/render/protocol.ts).
+    "/api/internal/render",
     "/api/notifications/whatsapp-alert-image",
   ];
   return !publicPrefixes.some((prefix) => pathname.startsWith(prefix));

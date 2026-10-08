@@ -1,7 +1,7 @@
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { isReportPeriodSlug, REPORT_PERIOD_LABELS } from "@/lib/reports/period-ranges";
 import { isNetworkReportGroupId, NETWORK_REPORT_GROUPS } from "@/lib/reports/network-summary/brand-groups";
-import { captureNetworkSummaryPng } from "@/lib/reports/network-summary/capture-image";
+import { renderViaInternal } from "@/lib/render/internal-render-client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
 
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const periodo = searchParams.get("periodo") ?? "";
   const grupo = searchParams.get("grupo") ?? "";
   const offsetParam = searchParams.get("offset");
@@ -25,7 +25,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    const png = await captureNetworkSummaryPng(periodo, grupo, origin, Number.isFinite(offset) ? offset : 0);
+    const png = await renderViaInternal({
+      op: "network_summary_image",
+      periodo,
+      grupo,
+      offset: Number.isFinite(offset) ? offset : 0,
+    });
     const group = NETWORK_REPORT_GROUPS[grupo];
     const slug = group.label
       .toLowerCase()

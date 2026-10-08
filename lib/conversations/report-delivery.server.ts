@@ -6,10 +6,8 @@ import {
   loadMonthlyReport,
   resolveMonthlyTarget,
 } from "@/lib/reports/monthly/data";
-import { generateMonthlyPng } from "@/lib/reports/monthly/image/capture";
-import { generateMonthlyPdf } from "@/lib/reports/monthly/pdf";
 import { NETWORK_REPORT_GROUPS, isNetworkReportGroupId } from "@/lib/reports/network-summary/brand-groups";
-import { captureNetworkSummaryPng } from "@/lib/reports/network-summary/capture-image";
+import { renderViaInternal } from "@/lib/render/internal-render-client";
 import { resolveReportPeriodRange, type ReportPeriodSlug } from "@/lib/reports/period-ranges";
 import {
   enabledReportDefinitions,
@@ -55,23 +53,24 @@ export function monthlyReportSource(scope: UserScope): MonthlyReportSource {
     async generatePdf(restaurantId, offset) {
       const report = await loadMonthlyReport(restaurantId, offset, scope);
       if (!report) throw new Error("Informe no disponible");
-      return generateMonthlyPdf(report);
+      return renderViaInternal({ op: "monthly_pdf", report });
     },
     async generateImages(restaurantId, offset) {
       const report = await loadMonthlyReport(restaurantId, offset, scope);
       if (!report) throw new Error("Informe no disponible");
       // Misma imagen 1920×1080 que `GET /api/informes/mensual/[id]/imagen`.
-      return [await generateMonthlyPng(report)];
+      return [await renderViaInternal({ op: "monthly_image", report })];
     },
   };
 }
 
 /**
- * Informes de red: el generador existente captura la plantilla
- * `/templates/network-summary/...` del propio despliegue, por lo que necesita su
- * origen (el de la petición ya autenticada del super_admin).
+ * Informes de red: el renderer interno captura la plantilla `/templates/network-summary/...` del
+ * propio despliegue con el origen que fija el servidor, así que el origen de la petición ya no se usa
+ * (se conserva el parámetro por compatibilidad).
  */
-export function networkReportSource(origin: string): NetworkReportSource {
+export function networkReportSource(_origin: string): NetworkReportSource {
+  void _origin;
   return {
     async resolveTarget(kind: NetworkPeriodKind, groupId, offset) {
       const slug = PERIOD_SLUGS[kind];
@@ -88,7 +87,7 @@ export function networkReportSource(origin: string): NetworkReportSource {
     async generateImage(kind: NetworkPeriodKind, groupId, offset) {
       const slug = PERIOD_SLUGS[kind];
       if (!slug || !isNetworkReportGroupId(groupId)) throw new Error("Informe de red no disponible");
-      return captureNetworkSummaryPng(slug, groupId, origin, offset);
+      return renderViaInternal({ op: "network_summary_image", periodo: slug, grupo: groupId, offset });
     },
   };
 }

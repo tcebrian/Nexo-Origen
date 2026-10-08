@@ -3,24 +3,23 @@
   "framework": "nextjs",
   "functions": {
     "app/api/informes/mensual/[id]/route.ts": {
-      "memory": 1769,
       "maxDuration": 60
     },
     "app/api/generate-negative-review-image/route.ts": {
-      "memory": 1769,
       "maxDuration": 60
     },
     "app/api/notifications/whatsapp-alert-image/route.ts": {
-      "memory": 1769,
       "maxDuration": 60
     },
     "app/api/generate-network-summary-image/route.ts": {
-      "memory": 1769,
       "maxDuration": 60
     },
     "app/api/conversations/[conversationId]/reports/route.ts": {
-      "memory": 1769,
       "maxDuration": 120
+    },
+    "app/api/internal/render/route.ts": {
+      "memory": 1769,
+      "maxDuration": 60
     }
   }
 }

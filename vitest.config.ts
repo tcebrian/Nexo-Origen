@@ -13,6 +13,7 @@ export default defineConfig({
       "lib/whatsapp/**/*.test.ts",
       "lib/auth/**/*.test.ts",
       "lib/reports/network-summary/**/*.test.ts",
+      "lib/render/**/*.test.ts",
     ],
   },
 });

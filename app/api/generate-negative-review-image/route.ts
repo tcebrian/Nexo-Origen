@@ -1,3 +1,4 @@
+import { renderViaInternal } from "@/lib/render/internal-render-client";
 import { normalizeAlertPayload } from "@/lib/templates/negative-review-alert/parse-payload";
 import { SAMPLE_NEGATIVE_REVIEW_ALERT } from "@/lib/templates/negative-review-alert/sample-data";
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
@@ -23,14 +24,7 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => ({}))) as Partial<NegativeReviewAlertData>;
     const data = normalizeAlertPayload(body, SAMPLE_NEGATIVE_REVIEW_ALERT);
-    const origin = new URL(request.url).origin;
-
-    const { captureNegativeReviewAlertPng } = await import(
-      "@/lib/templates/negative-review-alert/capture-image"
-    );
-    const png = await captureNegativeReviewAlertPng(data, {
-      assetBaseUrl: origin,
-    });
+    const png = await renderViaInternal({ op: "negative_review_image", data });
 
     return new Response(new Uint8Array(png), {
       status: 200,

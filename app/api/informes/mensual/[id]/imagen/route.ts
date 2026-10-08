@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { loadMonthlyReport } from "@/lib/reports/monthly/data";
-import { generateMonthlyPng } from "@/lib/reports/monthly/image/capture";
+import { renderViaInternal } from "@/lib/render/internal-render-client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   try {
     const report = await loadMonthlyReport(restaurantId, offset, auth.session.scope);
     if (!report) return NextResponse.json({ error: "Restaurante no disponible" }, { status: 404 });
-    const png = await generateMonthlyPng(report);
+    const png = await renderViaInternal({ op: "monthly_image", report });
     const slug = report.restaurant.name.normalize("NFD").replace(/[̀-ͯ]/g, "")
       .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const filename = `Nexo_Origen_${slug}_${report.startKey.slice(0, 7)}.png`;
