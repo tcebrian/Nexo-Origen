@@ -9,6 +9,7 @@ const createManagedUser = vi.fn();
 const setManagedUserPassword = vi.fn();
 const changeOwnPassword = vi.fn();
 const getUser = vi.fn();
+const signOut = vi.fn();
 const getUserFormOptions = vi.fn();
 const listManagedUsers = vi.fn();
 const verifyOtp = vi.fn();
@@ -30,7 +31,7 @@ vi.mock("@/lib/auth/user-access.server", () => ({
   getUserFormOptions,
 }));
 vi.mock("@/lib/auth/user-creation.server", () => ({ createManagedUser, setManagedUserPassword, changeOwnPassword }));
-vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ auth: { verifyOtp, getUser } }) }));
+vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ auth: { verifyOtp, getUser, signOut } }) }));
 
 const usersRoute = await import("@/app/api/platform/users/route");
 const optionsRoute = await import("@/app/api/platform/users/options/route");
@@ -170,11 +171,41 @@ describe("POST /api/auth/change-password (cambio propio)", () => {
 
   it("con sesión cambia SU contraseña (el id sale de la sesión, no del cuerpo)", async () => {
     getUser.mockResolvedValue({ data: { user: { id: "me-1" } } });
+    signOut.mockResolvedValue({ error: null });
     const res = await ownReq({ password: "mi-clave-nueva-1", userId: "otro" });
     expect(res.status).toBe(200);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
-    expect(await res.json()).toEqual({ ok: true });
+    expect(await res.json()).toEqual({ ok: true, otherSessionsClosed: true });
     expect(changeOwnPassword).toHaveBeenCalledWith("me-1", "mi-clave-nueva-1");
+    // Cierra las demás sesiones y mantiene la de este dispositivo.
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(signOut).toHaveBeenCalledWith({ scope: "others" });
+  });
+
+  it("si el cambio falla NO se cierra ninguna sesión (sigues con tu contraseña de siempre)", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: "me-1" } } });
+    changeOwnPassword.mockRejectedValueOnce(new FakeUserAccessError(400, "La contraseña debe tener al menos 10 caracteres."));
+    expect((await ownReq({ password: "x" })).status).toBe(400);
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it("si no se pueden cerrar las otras sesiones, la contraseña ya cambió y se avisa (otherSessionsClosed=false)", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    getUser.mockResolvedValue({ data: { user: { id: "me-1" } } });
+    signOut.mockResolvedValue({ error: { message: "boom con mi-clave-nueva-1" } });
+    const res = await ownReq({ password: "mi-clave-nueva-1" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, otherSessionsClosed: false });
+    // El registro es genérico: ni la contraseña ni el mensaje del proveedor.
+    expect(JSON.stringify(spy.mock.calls)).not.toContain("mi-clave-nueva-1");
+    spy.mockRestore();
+  });
+
+  it("la respuesta nunca contiene la contraseña", async () => {
+    getUser.mockResolvedValue({ data: { user: { id: "me-1" } } });
+    signOut.mockResolvedValue({ error: null });
+    const res = await ownReq({ password: "mi-clave-nueva-1" });
+    expect(JSON.stringify(await res.json())).not.toContain("mi-clave-nueva-1");
   });
 
   it("contraseña no válida → 400; fallo inesperado → 500 genérico sin la contraseña en logs", async () => {
@@ -255,6 +286,10 @@ describe("pantalla de cambio de contraseña y recuperación", () => {
   it("el cambio va por el servidor (que escribe en Auth y levanta el flag), sin guardar nada en el navegador", () => {
     const form = read("app/auth/change-password/change-password-form.tsx");
     expect(form).toContain("/api/auth/change-password");
+    // Confirma en pantalla el cambio y el cierre de las demás sesiones.
+    expect(form).toContain("Contraseña actualizada correctamente");
+    expect(form).toContain("cerrado todas las demás sesiones");
+    expect(form).toContain("otherSessionsClosed");
     expect(form).not.toMatch(/localStorage|sessionStorage|console\./);
   });
 

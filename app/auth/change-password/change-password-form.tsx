@@ -12,6 +12,7 @@ export function ChangePasswordForm({ canCancel }: { canCancel: boolean }) {
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState<{ otherSessionsClosed: boolean } | null>(null);
 
   async function submit() {
     const check = validateNewPassword(password, confirmation);
@@ -29,13 +30,14 @@ export function ChangePasswordForm({ canCancel }: { canCancel: boolean }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       });
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      const data = (await response.json().catch(() => null)) as { error?: string; otherSessionsClosed?: boolean } | null;
       if (!response.ok) {
         setError(data?.error ?? "No se pudo guardar la contraseña.");
         return;
       }
-      // Navegación completa: el middleware vuelve a leer el perfil ya sin el cambio pendiente.
-      window.location.assign("/dashboard");
+      // Se confirma en pantalla; el botón navega con recarga completa para que el middleware
+      // vuelva a leer el perfil ya sin el cambio pendiente.
+      setDone({ otherSessionsClosed: data?.otherSessionsClosed === true });
     } catch {
       setError("No se pudo guardar la contraseña.");
     } finally {
@@ -44,6 +46,31 @@ export function ChangePasswordForm({ canCancel }: { canCancel: boolean }) {
       setConfirmation("");
       setSaving(false);
     }
+  }
+
+  if (done) {
+    return (
+      <div className="mt-6 space-y-4" role="status">
+        <p className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          Contraseña actualizada correctamente.
+        </p>
+        {done.otherSessionsClosed ? (
+          <p className="text-sm text-gray-300">
+            Hemos cerrado todas las demás sesiones de tu cuenta. Solo queda abierta la de este dispositivo.
+          </p>
+        ) : (
+          <p className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            La contraseña se cambió, pero no pudimos cerrar las demás sesiones. Vuelve a cambiarla para cerrarlas.
+          </p>
+        )}
+        <a
+          href="/dashboard"
+          className="block w-full rounded-xl border border-white/[0.14] bg-white/[0.08] py-3 text-center text-[15px] font-medium text-white transition hover:bg-white/[0.12]"
+        >
+          Continuar al panel
+        </a>
+      </div>
+    );
   }
 
   return (

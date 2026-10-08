@@ -26,7 +26,14 @@ export async function POST(request: Request) {
 
   try {
     await changeOwnPassword(user.id, body?.password);
-    return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+
+    // Seguridad: la contraseña nueva cierra TODAS las demás sesiones de esta cuenta (otros ordenadores,
+    // otros navegadores) y deja solo la de este dispositivo. Solo se hace si el cambio ya se guardó.
+    // Si fallara, la contraseña ya está cambiada y se avisa para que se vuelva a intentar.
+    const { error: signOutError } = await supabase.auth.signOut({ scope: "others" });
+    if (signOutError) console.error("[auth] sign out other sessions failed");
+
+    return NextResponse.json({ ok: true, otherSessionsClosed: !signOutError }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof UserAccessError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error("[auth] change password failed", error instanceof Error ? error.message : "unknown");
