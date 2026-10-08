@@ -710,7 +710,20 @@ type ContactDetail = {
   selection: { empresaId: number | null; todosRestaurantes: boolean; restaurantIds: number[] };
   access: { count: number; restaurants: { id: number; name: string; brand: string; city: string }[] };
   linkedUser: { id: string; nombre: string; rol: string; empresaNombre: string | null } | null;
+  whatsapp: WhatsAppState;
 };
+
+type WhatsAppState =
+  | { state: "pending"; welcomeSentAt: null; activatedAt: null }
+  | { state: "sent"; welcomeSentAt: string; activatedAt: null }
+  | { state: "active"; welcomeSentAt: string | null; activatedAt: string };
+
+function formatWhatsAppDate(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? ""
+    : date.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
 
 type LinkableUser = { id: string; nombre: string; rol: string; empresaNombre: string | null; linkedElsewhere: boolean };
 
@@ -893,6 +906,7 @@ function ContactPanel({ conversationId, onChanged }: { conversationId: string; o
   const [users, setUsers] = useState<LinkableUser[] | null>(null);
   const [userChoice, setUserChoice] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
+  const [activating, setActivating] = useState(false);
 
   const fill = useCallback((data: ContactDetail) => {
     setDetail(data);
@@ -946,6 +960,27 @@ function ContactPanel({ conversationId, onChanged }: { conversationId: string; o
     }
   }
 
+  /** Envío MANUAL de la plantilla de activación. Si falla no se reintenta solo: se vuelve a pulsar. */
+  async function sendActivation() {
+    setActivating(true);
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/conversations/${conversationId}/activation`, { method: "POST" });
+      const data = (await response.json().catch(() => null)) as { whatsapp?: WhatsAppState; error?: string; code?: string } | null;
+      if (!response.ok || !data?.whatsapp) {
+        setMessage({ kind: "error", text: data?.error ?? "No se pudo enviar la activación" });
+        return;
+      }
+      const whatsapp = data.whatsapp;
+      setDetail((current) => (current ? { ...current, whatsapp } : current));
+      onChanged();
+    } catch {
+      setMessage({ kind: "error", text: "No se pudo enviar la activación" });
+    } finally {
+      setActivating(false);
+    }
+  }
+
   async function link(usuarioId: string | null) {
     setLinkBusy(true);
     setMessage(null);
@@ -990,6 +1025,33 @@ function ContactPanel({ conversationId, onChanged }: { conversationId: string; o
           maxLength={100}
           className={`${contactFieldClass} w-full`}
         />
+      </div>
+
+      <div className="space-y-1.5 rounded-xl border border-white/[0.06] px-3 py-2.5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">WhatsApp</p>
+        {detail.whatsapp.state === "active" ? (
+          <p className="text-xs text-emerald-300">
+            Activo
+            <span className="text-gray-400"> · Activado: {formatWhatsAppDate(detail.whatsapp.activatedAt)}</span>
+          </p>
+        ) : detail.whatsapp.state === "sent" ? (
+          <p className="text-xs text-violet-200">
+            Activación enviada
+            <span className="text-gray-400"> · Enviada: {formatWhatsAppDate(detail.whatsapp.welcomeSentAt)}</span>
+          </p>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs text-amber-200">Pendiente de enviar activación</span>
+            <button
+              type="button"
+              onClick={() => void sendActivation()}
+              disabled={activating}
+              className="rounded-xl border border-violet-400/30 bg-violet-500/25 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-violet-500/35 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {activating ? "Enviando…" : "Enviar activación"}
+            </button>
+          </div>
+        )}
       </div>
 
       <ContactAccessFields

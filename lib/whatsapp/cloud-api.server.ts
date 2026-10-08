@@ -15,6 +15,7 @@ import "server-only";
  */
 
 import { WHATSAPP_TEXT_MAX_CHARS } from "@/lib/conversations/text-chunks";
+import { isWhatsAppTemplateName, type TemplateRequest } from "@/lib/conversations/whatsapp-templates";
 
 export { WHATSAPP_TEXT_MAX_CHARS };
 export const GRAPH_API_VERSION = "v26.0";
@@ -80,7 +81,7 @@ export function isWhatsAppSenderConfigured(accessToken = process.env.WHATSAPP_CL
   return typeof accessToken === "string" && accessToken.trim() !== "";
 }
 
-type MessagePayload = { type: "text" | "document" | "image" } & Record<string, unknown>;
+type MessagePayload = { type: "text" | "document" | "image" | "template" } & Record<string, unknown>;
 
 /** POST /{phone_number_id}/messages con la semántica sent / rejected / unconfirmed. */
 async function postMessage(
@@ -151,6 +152,48 @@ export async function sendTextMessage(
     input.phoneNumberId,
     input.to,
     { type: "text", text: { preview_url: false, body: input.text } },
+    deps
+  );
+}
+
+// Plantillas --------------------------------------------------------------------
+
+export type SendTemplateInput = {
+  phoneNumberId: string;
+  to: string;
+  /** Petición ya validada contra la lista cerrada (`buildTemplateRequest`). */
+  template: TemplateRequest;
+};
+
+/**
+ * Envía una plantilla aprobada. Es la única forma de escribir a alguien fuera de la ventana de
+ * 24 h. Recibe una petición construida por `buildTemplateRequest`: un nombre fuera de la lista
+ * cerrada nunca llega aquí.
+ */
+export async function sendTemplateMessage(input: SendTemplateInput, deps: SendDeps = {}): Promise<SendMessageResult> {
+  const { template } = input;
+  if (!isWhatsAppTemplateName(template.name)) throw new Error("sendTemplateMessage: plantilla no permitida");
+
+  const components: Record<string, unknown>[] = [];
+  if (template.bodyParams.length > 0) {
+    components.push({ type: "body", parameters: template.bodyParams.map((text) => ({ type: "text", text })) });
+  }
+  template.buttonPayloads.forEach((payload, index) => {
+    components.push({
+      type: "button",
+      sub_type: "quick_reply",
+      index: String(index),
+      parameters: [{ type: "payload", payload }],
+    });
+  });
+
+  return postMessage(
+    input.phoneNumberId,
+    input.to,
+    {
+      type: "template",
+      template: { name: template.name, language: { code: template.language }, ...(components.length ? { components } : {}) },
+    },
     deps
   );
 }

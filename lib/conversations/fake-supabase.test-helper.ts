@@ -10,7 +10,7 @@
 export type Row = Record<string, unknown>;
 export type Tables = Record<string, Row[]>;
 
-type Filter = { op: "eq" | "in" | "notnull"; column: string; value?: unknown };
+type Filter = { op: "eq" | "in" | "notnull" | "isnull"; column: string; value?: unknown };
 
 export type UniqueRule = {
   columns: string[];
@@ -61,6 +61,7 @@ export function createFakeDb(initial: Tables = {}): FakeDb {
     const state: { op: "select" | "update" | "insert" | "delete"; values?: Row; filters: Filter[] } = { op: "select", filters: [] };
     const matches = (row: Row) =>
       state.filters.every((f) => {
+        if (f.op === "isnull") return row[f.column] === null || row[f.column] === undefined;
         if (f.op === "notnull") return row[f.column] !== null && row[f.column] !== undefined;
         if (f.op === "eq") return String(row[f.column]) === String(f.value);
         return (f.value as unknown[]).some((v) => String(v) === String(row[f.column]));
@@ -126,6 +127,7 @@ export function createFakeDb(initial: Tables = {}): FakeDb {
       delete: () => ((state.op = "delete"), api),
       eq: (column: string, value: unknown) => (state.filters.push({ op: "eq", column, value }), api),
       in: (column: string, value: unknown[]) => (state.filters.push({ op: "in", column, value }), api),
+      is: (column: string) => (state.filters.push({ op: "isnull", column }), api),
       not: (column: string) => (state.filters.push({ op: "notnull", column }), api),
       or: () => api,
       order: () => api,

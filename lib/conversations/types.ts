@@ -72,6 +72,12 @@ export type InboundMessage = {
   /** Solo para `text`. El pie de un medio va en `media.caption`. */
   text?: string;
   media?: MessageMedia;
+  /**
+   * Respuesta a un botón (quick reply de una plantilla o botón interactivo). `id` es el payload
+   * que Nexo puso en el botón al enviarlo; `title` el texto visible. El mensaje se guarda como
+   * texto (`text` = título) y esto solo sirve para reconocer la acción.
+   */
+  interactive?: { id?: string; title?: string };
   /** Momento del evento según el proveedor, no el de recepción. */
   providerTimestamp: Date;
   /** Fragmento original del proveedor, opcional, para depuración/reproceso. */

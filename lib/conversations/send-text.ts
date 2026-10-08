@@ -206,6 +206,12 @@ export async function sendConversationOperation(
     text: string;
     /** Archivos en orden de envío (uno por mensaje de WhatsApp). */
     files?: SendFile[];
+    /**
+     * Plantilla de WhatsApp (un solo mensaje). `display` es lo que se guarda y se ve en la
+     * conversación (nunca datos del contacto); `send` ya viene validada contra la lista cerrada.
+     * Se ignora si hay `files`.
+     */
+    template?: { display: string; send: (context: SendContext) => Promise<SendMessageResult> };
   },
   deps: SendDeps
 ): Promise<SendOutcome> {
@@ -373,6 +379,11 @@ export async function sendConversationOperation(
       );
       if (!ok) break;
     }
+  } else if (input.template) {
+    const template = input.template;
+    await run(
+      deliver(0, { contentType: "text", text: template.display }, async () => ({ result: await template.send(context) }))
+    );
   } else {
     // Mensajes consecutivos y en orden: se detiene en el primero que no se confirme.
     const chunks = splitText(input.text);

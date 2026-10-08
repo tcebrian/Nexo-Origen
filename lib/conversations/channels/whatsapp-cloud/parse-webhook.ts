@@ -78,6 +78,34 @@ function parseMedia(type: MediaType, body: unknown): MessageMedia | null {
   return media;
 }
 
+/**
+ * Respuesta a un botón. Meta usa dos formas:
+ *  - `type: "button"` → quick reply de una PLANTILLA: `button.payload` y `button.text`.
+ *  - `type: "interactive"` → `button_reply` / `list_reply` con `id` y `title`.
+ */
+function parseButtonReply(type: string, raw: UnknownRecord): { id?: string; title?: string } | null {
+  let id: string | undefined;
+  let title: string | undefined;
+
+  if (type === "button" && isRecord(raw.button)) {
+    id = asNonEmptyString(raw.button.payload);
+    title = asNonEmptyString(raw.button.text);
+  } else if (type === "interactive" && isRecord(raw.interactive)) {
+    const reply = isRecord(raw.interactive.button_reply)
+      ? raw.interactive.button_reply
+      : isRecord(raw.interactive.list_reply)
+        ? raw.interactive.list_reply
+        : null;
+    if (reply) {
+      id = asNonEmptyString(reply.id);
+      title = asNonEmptyString(reply.title);
+    }
+  }
+
+  if (!id && !title) return null;
+  return { ...(id ? { id } : {}), ...(title ? { title } : {}) };
+}
+
 function parseMessage(
   raw: unknown,
   channelExternalId: string,
@@ -109,6 +137,13 @@ function parseMessage(
     if (typeof body === "string") {
       message.contentType = "text";
       message.text = body;
+    }
+  } else if (type === "button" || type === "interactive") {
+    const reply = parseButtonReply(type, raw);
+    if (reply) {
+      message.contentType = "text";
+      message.text = reply.title ?? reply.id;
+      message.interactive = reply;
     }
   } else if (isMediaType(type)) {
     const media = parseMedia(type, raw[type]);

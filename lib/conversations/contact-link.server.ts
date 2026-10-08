@@ -8,6 +8,7 @@ import { SUPABASE_TABLES } from "@/lib/supabase/tables";
 import { ConversationsDbError } from "@/lib/supabase/conversations.server";
 import { validateContactAccess, type ContactAccessCatalog, type ContactAccessValue } from "@/lib/conversations/contact-access";
 import { getContactAccessSelection, resolveContactRestaurantIds } from "@/lib/conversations/contact-scope.server";
+import { contactWhatsAppState, type ContactWhatsAppState } from "@/lib/conversations/contact-activation";
 import { resolveContactDisplayName } from "@/lib/conversations/read-model";
 
 /**
@@ -98,6 +99,8 @@ export type ContactDetail = {
   access: { count: number; restaurants: { id: number; name: string; brand: string; city: string }[] };
   /** Cuenta web opcional; solo informativa. */
   linkedUser: LinkedUser | null;
+  /** Estado de la activación por WhatsApp (solo informativo: no concede permisos). */
+  whatsapp: ContactWhatsAppState;
 };
 
 async function empresaNombre(empresaId: string | null): Promise<string | null> {
@@ -112,7 +115,7 @@ export async function getConversationContactDetail(conversationId: string): Prom
 
   const { data, error } = await requireAdminClient()
     .from(SUPABASE_TABLES.conv_contactos)
-    .select("telefono_e164,nombre,nombre_perfil,tipo,usuario_id")
+    .select("telefono_e164,nombre,nombre_perfil,tipo,usuario_id,welcome_sent_at,whatsapp_activated_at")
     .eq("id", contactoId)
     .maybeSingle();
   if (error) throw new ConversationsDbError("contact.get", error.code);
@@ -124,6 +127,8 @@ export async function getConversationContactDetail(conversationId: string): Prom
     nombre_perfil: string | null;
     tipo: string | null;
     usuario_id: string | null;
+    welcome_sent_at: string | null;
+    whatsapp_activated_at: string | null;
   };
 
   const [selection, restaurantIds, catalog, perfil] = await Promise.all([
@@ -154,6 +159,7 @@ export async function getConversationContactDetail(conversationId: string): Prom
     linkedUser: perfil
       ? { id: perfil.id, nombre: perfil.nombre ?? "", rol: perfil.rol, empresaNombre: await empresaNombre(perfil.empresaId) }
       : null,
+    whatsapp: contactWhatsAppState({ welcomeSentAt: contact.welcome_sent_at, activatedAt: contact.whatsapp_activated_at }),
   };
 }
 

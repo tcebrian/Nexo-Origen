@@ -98,6 +98,14 @@ export async function handleWebhookEvent(
     ingest: (message: InboundMessage) => Promise<IngestInboundResult>;
     /** Aplica un estado de entrega (sent/delivered/read/failed/deleted) a un mensaje saliente. */
     applyStatus: (update: MessageStatusUpdate) => Promise<ApplyStatusResult>;
+    /**
+     * Acción del mensaje (botón de plantilla u "OK"), ejecutada DESPUÉS de guardarlo, también en
+     * reentregas: es idempotente. Si lanza, el lote responde 500 y Meta lo reentrega.
+     */
+    handleAction?: (
+      message: InboundMessage,
+      stored: { contactId: string; conversationId: string; redelivery: boolean }
+    ) => Promise<unknown>;
     logger?: WebhookLogger;
   }
 ): Promise<WebhookHttpResult> {
@@ -133,6 +141,13 @@ export async function handleWebhookEvent(
     try {
       const result = await deps.ingest(message);
       counts[result.status] += 1;
+      if (deps.handleAction && (result.status === "stored" || result.status === "duplicate")) {
+        await deps.handleAction(message, {
+          contactId: result.contactId,
+          conversationId: result.conversationId,
+          redelivery: result.status === "duplicate",
+        });
+      }
     } catch (error) {
       counts.failed += 1;
       logger.error(
