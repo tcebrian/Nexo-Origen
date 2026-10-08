@@ -40,6 +40,9 @@ export const menuItems: MenuItem[] = [
 export const settingsHref = "/dashboard/ajustes";
 export const settingsSection: DashboardSection = "ajustes";
 
+/** "Ajustes" como elemento de menú (va dentro de "Más"; su permiso sigue siendo `canAccessSection("ajustes")`). */
+export const settingsMenuItem: MenuItem = { name: "Ajustes", icon: "settings", href: settingsHref, section: settingsSection };
+
 export function isMenuItemActive(pathname: string, href: string) {
   if (href === "/dashboard") return pathname === "/dashboard";
   return pathname === href || pathname.startsWith(`${href}/`);

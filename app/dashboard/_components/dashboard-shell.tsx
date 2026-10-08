@@ -4,18 +4,19 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { NEXO_ORIGEN_ICON_SRC, NexoOrigenWordmark } from "@/app/_components/nexo-brand";
 import { AllBrandsMark } from "./all-brands-mark";
 import { BrandMark } from "./brand-mark";
 import { useAuth } from "./auth-context";
 import { DashboardAmbient } from "./dashboard-ambient";
 import { DashboardControlsProvider, useDashboardControls } from "./dashboard-controls";
-import { menuItems, restaurantUserMenuItems, settingsHref, settingsSection, isMenuItemActive } from "./menu";
+import { buildNavigation, hasActiveItem } from "@/lib/dashboard/navigation";
+import { menuItems, restaurantUserMenuItems, settingsMenuItem, isMenuItemActive, type MenuItem } from "./menu";
 import { PageEnter } from "./motion/page-enter";
 import { usePrefersReducedMotion } from "./motion/use-prefers-reduced-motion";
 import { SidebarIcon } from "./sidebar-icons";
-import { LogoutButton } from "./logout-button";
+import { UserMenu } from "./user-menu";
 
 function SidebarPeriodButton() {
   const { openPanel } = useDashboardControls();
@@ -40,12 +41,118 @@ function SidebarPeriodButton() {
   );
 }
 
+const desktopLinkClass = (active: boolean) =>
+  `group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition duration-200 ${
+    active
+      ? "bg-gradient-to-r from-purple-600/80 to-violet-700/60 text-white shadow-[0_0_28px_rgba(124,58,237,0.32)]"
+      : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
+  }`;
+
+/** Enlace de navegación principal del escritorio (con el indicador animado de sección activa). */
+function DesktopNavLink({ item, active, reducedMotion }: { item: MenuItem; active: boolean; reducedMotion: boolean }) {
+  return (
+    <Link href={item.href} className={desktopLinkClass(active)} aria-current={active ? "page" : undefined}>
+      {active && !reducedMotion ? (
+        <motion.span
+          layoutId="dashboard-sidebar-active"
+          className="nexo-sidebar-active-indicator"
+          transition={{ type: "spring", stiffness: 380, damping: 32 }}
+        />
+      ) : active ? (
+        <span className="nexo-sidebar-active-indicator" />
+      ) : null}
+      <motion.span
+        className="relative z-[1] flex shrink-0"
+        whileHover={reducedMotion ? undefined : { scale: 1.08 }}
+        transition={{ duration: 0.2 }}
+      >
+        <SidebarIcon name={item.icon} className={`h-4 w-4 shrink-0 ${active ? "text-white" : "text-gray-500 group-hover:text-gray-300"}`} />
+      </motion.span>
+      <span className="relative z-[1]">{item.name}</span>
+    </Link>
+  );
+}
+
+/** "Más ▾": desplegable con las secciones secundarias. Se abre solo si la página activa está dentro. */
+function MoreMenu({ items, pathname, reducedMotion }: { items: MenuItem[]; pathname: string; reducedMotion: boolean }) {
+  const childActive = hasActiveItem(items, pathname, isMenuItemActive);
+  const [open, setOpen] = useState(childActive);
+  const panelId = useId();
+
+  // Al navegar a una opción de "Más" (p. ej. desde un enlace externo) el grupo se abre solo.
+  useEffect(() => {
+    if (childActive) setOpen(true);
+  }, [childActive]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-controls={panelId}
+        className={`group flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition duration-200 ${
+          childActive && !open ? "bg-white/[0.05] text-white" : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
+        }`}
+      >
+        <svg className="h-4 w-4 shrink-0 text-gray-500 group-hover:text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
+          <circle cx="5.5" cy="12" r="1.2" />
+          <circle cx="12" cy="12" r="1.2" />
+          <circle cx="18.5" cy="12" r="1.2" />
+        </svg>
+        <span className="flex-1 text-left">Más</span>
+        {childActive && !open ? <span className="h-1.5 w-1.5 rounded-full bg-violet-400" aria-hidden /> : null}
+        <svg
+          className={`h-3.5 w-3.5 shrink-0 text-gray-500 ${reducedMotion ? "" : "transition-transform duration-200"} ${open ? "rotate-180" : ""}`}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      <div
+        id={panelId}
+        className={`grid ${reducedMotion ? "" : "transition-[grid-template-rows] duration-200 ease-out"} ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+      >
+        <div className="overflow-hidden" inert={!open}>
+          <ul className="mt-1 space-y-0.5 border-l border-white/[0.08] pl-2 ml-5">
+            {items.map((item) => {
+              const active = isMenuItemActive(pathname, item.href);
+              return (
+                <li key={item.section}>
+                  <Link
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition ${
+                      active
+                        ? "bg-gradient-to-r from-purple-600/70 to-violet-700/50 text-white"
+                        : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
+                    }`}
+                  >
+                    <SidebarIcon name={item.icon} className={`h-4 w-4 shrink-0 ${active ? "text-white" : "text-gray-500"}`} />
+                    <span>{item.name}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const {
-    displayName,
-    roleLabel,
-    initials,
     empresaNombre,
     showGrupoHambarClientBadge,
     canAccessSection,
@@ -53,12 +160,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     primaryRestaurant,
     scope,
   } = useAuth();
-  const settingsActive = isMenuItemActive(pathname, settingsHref);
-  const navItems = (isRestaurantUser ? restaurantUserMenuItems : menuItems)
+  // Mismos filtros de siempre: permisos por rol y "un solo restaurante → sin lista de Restaurantes".
+  // Ajustes entra al mismo filtro (`canAccessSection("ajustes")`) y solo cambia de sitio: ahora va en "Más".
+  const allowedItems = [...(isRestaurantUser ? restaurantUserMenuItems : menuItems), settingsMenuItem]
     .filter((item) => canAccessSection(item.section))
-    // Un solo restaurante: la lista "Restaurantes" es redundante con Inicio.
     .filter((item) => !(primaryRestaurant && item.section === "restaurantes"));
-  const showSettings = canAccessSection(settingsSection);
+  const desktopNav = buildNavigation(allowedItems, "desktop");
+  const mobileNav = buildNavigation(allowedItems, "mobile");
   const restaurantHref = primaryRestaurant
     ? `/dashboard/restaurantes/${primaryRestaurant.slug}`
     : null;
@@ -66,12 +174,38 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const showEmpresaBadge = showGrupoHambarClientBadge || Boolean(singleBrand);
   const reducedMotion = usePrefersReducedMotion();
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
-  const primaryNavItems = navItems.slice(0, 4);
-  const overflowNavItems = navItems.slice(4);
+  const mobileMoreActive = hasActiveItem(mobileNav.more, pathname, isMenuItemActive);
 
   useEffect(() => {
     setMoreSheetOpen(false);
   }, [pathname]);
+
+  const empresaBadge = showEmpresaBadge ? (
+    <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
+      {singleBrand ? <BrandMark brand={singleBrand} size="xs" /> : <AllBrandsMark size="xs" alt={empresaNombre} />}
+      <div className="min-w-0">
+        <p className="truncate text-[12px] font-medium text-gray-200">{empresaNombre}</p>
+        <p className="truncate text-[10px] text-gray-500">Cliente activo</p>
+      </div>
+    </div>
+  ) : null;
+
+  const restaurantCard =
+    isRestaurantUser && primaryRestaurant && restaurantHref ? (
+      <Link
+        href={restaurantHref}
+        className="block rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 transition hover:border-violet-400/20 hover:bg-white/[0.05]"
+      >
+        <div className="flex items-center gap-3">
+          <BrandMark brand={primaryRestaurant.brand} size="sm" />
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-medium text-gray-100">{primaryRestaurant.name}</p>
+            <p className="truncate text-[11px] text-gray-500">{primaryRestaurant.location}</p>
+          </div>
+        </div>
+        <p className="mt-3 text-[11px] font-medium text-violet-300">Ver restaurante →</p>
+      </Link>
+    ) : null;
 
   return (
     <DashboardControlsProvider>
@@ -99,102 +233,57 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           />
         ) : null}
 
+        {/* Hoja "Más" (móvil): lo secundario hace scroll; el usuario queda fijo al pie, sin tapar opciones. */}
         <div
           style={{ transform: moreSheetOpen ? "translateY(0)" : "translateY(100%)" }}
-          className="fixed inset-x-0 bottom-0 z-40 max-h-[80vh] overflow-y-auto rounded-t-3xl border-t border-white/[0.08] bg-[#0a0812]/98 backdrop-blur-2xl transition-transform duration-200 lg:hidden"
+          aria-hidden={!moreSheetOpen}
+          inert={!moreSheetOpen}
+          className="fixed inset-x-0 bottom-0 z-40 flex max-h-[80vh] flex-col rounded-t-3xl border-t border-white/[0.08] bg-[#0a0812]/98 backdrop-blur-2xl transition-transform duration-200 lg:hidden"
         >
-          <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-white/15" />
+          <div className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/15" />
 
-          {overflowNavItems.length > 0 ? (
-            <nav className="space-y-1 px-4 pt-4">
-              {overflowNavItems.map((item) => {
-                const active = isMenuItemActive(pathname, item.href);
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition ${
-                      active
-                        ? "bg-gradient-to-r from-purple-600/80 to-violet-700/60 text-white"
-                        : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
-                    }`}
-                  >
-                    <SidebarIcon name={item.icon} className="h-4 w-4 shrink-0" />
-                    <span>{item.name}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          ) : null}
-
-          <div className="space-y-4 p-4">
-            {showEmpresaBadge ? (
-              <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
-                {singleBrand ? (
-                  <BrandMark brand={singleBrand} size="xs" />
-                ) : (
-                  <AllBrandsMark size="xs" alt={empresaNombre} />
-                )}
-                <div className="min-w-0">
-                  <p className="truncate text-[12px] font-medium text-gray-200">{empresaNombre}</p>
-                  <p className="truncate text-[10px] text-gray-500">Cliente activo</p>
-                </div>
-              </div>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
+            {mobileNav.more.length > 0 ? (
+              <nav className="space-y-1">
+                {mobileNav.more.map((item) => {
+                  const active = isMenuItemActive(pathname, item.href);
+                  return (
+                    <Link
+                      key={item.section}
+                      href={item.href}
+                      aria-current={active ? "page" : undefined}
+                      className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition ${
+                        active
+                          ? "bg-gradient-to-r from-purple-600/80 to-violet-700/60 text-white"
+                          : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
+                      }`}
+                    >
+                      <SidebarIcon name={item.icon} className="h-4 w-4 shrink-0" />
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
             ) : null}
 
+            {empresaBadge}
             <SidebarPeriodButton />
+            {restaurantCard}
+          </div>
 
-            {isRestaurantUser && primaryRestaurant && restaurantHref ? (
-              <Link
-                href={restaurantHref}
-                className="block rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 transition hover:border-violet-400/20 hover:bg-white/[0.05]"
-              >
-                <div className="flex items-center gap-3">
-                  <BrandMark brand={primaryRestaurant.brand} size="sm" />
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium text-gray-100">{primaryRestaurant.name}</p>
-                    <p className="truncate text-[11px] text-gray-500">{primaryRestaurant.location}</p>
-                  </div>
-                </div>
-                <p className="mt-3 text-[11px] font-medium text-violet-300">Ver restaurante →</p>
-              </Link>
-            ) : null}
-
-            <div className="flex items-center gap-3 border-t border-white/[0.08] pt-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-purple-300/40 bg-purple-500/10 text-xs font-semibold text-purple-100">
-                {initials}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{displayName}</p>
-                <p className="truncate text-xs text-gray-500">{roleLabel}</p>
-              </div>
-            </div>
-
-            {showSettings ? (
-              <Link
-                href={settingsHref}
-                className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition ${
-                  settingsActive
-                    ? "bg-white/[0.06] text-white"
-                    : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
-                }`}
-              >
-                <SidebarIcon name="settings" className="h-4 w-4" />
-                <span>Configuración</span>
-              </Link>
-            ) : null}
-
-            <LogoutButton />
+          <div className="shrink-0 border-t border-white/[0.08] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+            <UserMenu />
           </div>
         </div>
 
         <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-white/[0.08] bg-black/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl lg:hidden">
-          {primaryNavItems.map((item) => {
+          {mobileNav.main.map((item) => {
             const active = isMenuItemActive(pathname, item.href) && !moreSheetOpen;
             return (
               <Link
-                key={item.name}
+                key={item.section}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition ${
                   active ? "text-violet-300" : "text-gray-500"
                 }`}
@@ -207,8 +296,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => setMoreSheetOpen((v) => !v)}
+            aria-expanded={moreSheetOpen}
             className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition ${
-              moreSheetOpen ? "text-violet-300" : "text-gray-500"
+              moreSheetOpen || mobileMoreActive ? "text-violet-300" : "text-gray-500"
             }`}
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
@@ -221,132 +311,53 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="relative z-[1] flex h-[calc(100vh-49px)] lg:h-screen">
-          <aside className="hidden w-[250px] shrink-0 flex-col border-r border-white/[0.08] bg-black/35 backdrop-blur-2xl lg:flex">
-            <div className="px-6 pb-6 pt-7">
+          <aside className="hidden h-full min-h-0 w-[250px] shrink-0 flex-col border-r border-white/[0.08] bg-black/35 backdrop-blur-2xl lg:flex">
+            <div className="shrink-0 px-6 pb-4 pt-7">
               <NexoOrigenWordmark size="sm" align="center" variant="dashboard" className="mx-auto" />
+              {empresaBadge ? <div className="mt-4">{empresaBadge}</div> : null}
+            </div>
 
-              {showEmpresaBadge ? (
-                <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2">
-                  {singleBrand ? (
-                    <BrandMark brand={singleBrand} size="xs" />
-                  ) : (
-                    <AllBrandsMark size="xs" alt={empresaNombre} />
-                  )}
-                  <div className="min-w-0">
-                    <p className="truncate text-[12px] font-medium text-gray-200">{empresaNombre}</p>
-                    <p className="truncate text-[10px] text-gray-500">Cliente activo</p>
+            {/* Zona con scroll: la navegación y las tarjetas. El bloque de usuario NO se mueve. */}
+            <div className="nexo-sidebar-scroll min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 pb-4">
+              <nav className="space-y-1" aria-label="Navegación principal">
+                <SidebarPeriodButton />
+                {desktopNav.main.map((item) => (
+                  <DesktopNavLink key={item.section} item={item} active={isMenuItemActive(pathname, item.href)} reducedMotion={reducedMotion} />
+                ))}
+                <MoreMenu items={desktopNav.more} pathname={pathname} reducedMotion={reducedMotion} />
+              </nav>
+
+              {restaurantCard}
+
+              {!isRestaurantUser ? (
+                <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 shadow-2xl backdrop-blur-xl">
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="text-xl text-purple-300">✧</span>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium">NEXO IA</p>
+                      <span className="rounded-full border border-purple-400/30 bg-purple-500/15 px-2 py-0.5 text-[9px] text-purple-200">
+                        Próximamente
+                      </span>
+                    </div>
                   </div>
+                  <p className="mb-4 text-xs leading-relaxed text-gray-400">
+                    Pregúntale a nuestra IA sobre tu reputación. Disponible muy pronto.
+                  </p>
+                  <button
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                    aria-label="NEXO IA — disponible próximamente"
+                    className="block w-full cursor-not-allowed rounded-xl border border-purple-400/20 bg-purple-500/10 py-2.5 text-center text-xs text-purple-200/70 opacity-80"
+                  >
+                    Próximamente
+                  </button>
                 </div>
               ) : null}
             </div>
 
-            <nav className="flex-1 space-y-1 px-4">
-              <SidebarPeriodButton />
-              {navItems.map((item) => {
-                const active = isMenuItemActive(pathname, item.href);
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`group relative flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition duration-200 ${
-                      active
-                        ? "bg-gradient-to-r from-purple-600/80 to-violet-700/60 text-white shadow-[0_0_28px_rgba(124,58,237,0.32)]"
-                        : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
-                    }`}
-                  >
-                    {active && !reducedMotion ? (
-                      <motion.span
-                        layoutId="dashboard-sidebar-active"
-                        className="nexo-sidebar-active-indicator"
-                        transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                      />
-                    ) : active ? (
-                      <span className="nexo-sidebar-active-indicator" />
-                    ) : null}
-                    <motion.span
-                      className="relative z-[1] flex shrink-0"
-                      whileHover={reducedMotion ? undefined : { scale: 1.08 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <SidebarIcon
-                        name={item.icon}
-                        className={`h-4 w-4 shrink-0 ${active ? "text-white" : "text-gray-500 group-hover:text-gray-300"}`}
-                      />
-                    </motion.span>
-                    <span className="relative z-[1]">{item.name}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-
-            <div className="space-y-4 p-4">
-              {isRestaurantUser && primaryRestaurant && restaurantHref ? (
-                <Link
-                  href={restaurantHref}
-                  className="block rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 transition hover:border-violet-400/20 hover:bg-white/[0.05]"
-                >
-                  <div className="flex items-center gap-3">
-                    <BrandMark brand={primaryRestaurant.brand} size="sm" />
-                    <div className="min-w-0">
-                      <p className="truncate text-[13px] font-medium text-gray-100">{primaryRestaurant.name}</p>
-                      <p className="truncate text-[11px] text-gray-500">{primaryRestaurant.location}</p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-[11px] font-medium text-violet-300">Ver restaurante →</p>
-                </Link>
-              ) : null}
-
-              {!isRestaurantUser ? (
-              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 shadow-2xl backdrop-blur-xl">
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="text-xl text-purple-300">✧</span>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">NEXO IA</p>
-                    <span className="rounded-full border border-purple-400/30 bg-purple-500/15 px-2 py-0.5 text-[9px] text-purple-200">
-                      Próximamente
-                    </span>
-                  </div>
-                </div>
-                <p className="mb-4 text-xs leading-relaxed text-gray-400">
-                  Pregúntale a nuestra IA sobre tu reputación. Disponible muy pronto.
-                </p>
-                <button
-                  type="button"
-                  disabled
-                  aria-disabled="true"
-                  aria-label="NEXO IA — disponible próximamente"
-                  className="block w-full cursor-not-allowed rounded-xl border border-purple-400/20 bg-purple-500/10 py-2.5 text-center text-xs text-purple-200/70 opacity-80"
-                >
-                  Próximamente
-                </button>
-              </div>
-              ) : null}
-
-              <div className="flex items-center gap-3 border-t border-white/[0.08] pt-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-purple-300/40 bg-purple-500/10 text-xs font-semibold text-purple-100">
-                  {initials}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{displayName}</p>
-                  <p className="truncate text-xs text-gray-500">{roleLabel}</p>
-                </div>
-              </div>
-
-              <LogoutButton />
-
-              {showSettings ? (
-              <Link
-                href={settingsHref}
-                className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition ${
-                  settingsActive
-                    ? "bg-white/[0.06] text-white"
-                    : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
-                }`}
-              >
-                <SidebarIcon name="settings" className="h-4 w-4" />
-                <span>Configuración</span>
-              </Link>
-              ) : null}
+            <div className="shrink-0 border-t border-white/[0.08] p-3">
+              <UserMenu />
             </div>
           </aside>
 

@@ -14,6 +14,7 @@ export default defineConfig({
       "lib/auth/**/*.test.ts",
       "lib/reports/network-summary/**/*.test.ts",
       "lib/render/**/*.test.ts",
+      "lib/dashboard/**/*.test.ts",
     ],
   },
 });
