@@ -11,6 +11,6 @@ alter table public.conv_contactos
   add column if not exists whatsapp_activated_at timestamptz;
 
 comment on column public.conv_contactos.welcome_sent_at is
-  'Momento en que Meta aceptó la plantilla bienvenida_nexo enviada a mano desde la ficha. NULL = nunca enviada.';
+  'Momento en que Meta aceptó la plantilla bienvenido_nexo enviada a mano desde la ficha. NULL = nunca enviada.';
 comment on column public.conv_contactos.whatsapp_activated_at is
   'Momento en que el contacto activó el servicio por WhatsApp (botón Activar servicio u OK). NULL = pendiente. No concede permisos.';

@@ -97,7 +97,7 @@ describe("POST /api/conversations/[id]/activation", () => {
         type: "OAuthException",
         fbtraceId: "AbCdEf123",
         message: "(#132001) Template name does not exist in the translation",
-        details: "template name (bienvenida_nexo) does not exist in es",
+        details: "template name (bienvenido_nexo) does not exist in es",
       },
     });
     const res = await post();
@@ -105,7 +105,7 @@ describe("POST /api/conversations/[id]/activation", () => {
     expect(await res.json()).toEqual({
       error: "WhatsApp rechazó la plantilla (Meta 132001/2494073)",
       code: "rejected",
-      detail: "template name (bienvenida_nexo) does not exist in es",
+      detail: "template name (bienvenido_nexo) does not exist in es",
       provider: { code: 132001, subcode: 2494073, type: "OAuthException", httpStatus: 404 },
     });
 
@@ -113,7 +113,7 @@ describe("POST /api/conversations/[id]/activation", () => {
     expect(spy).toHaveBeenCalledTimes(1);
     const line = String(spy.mock.calls[0]![0]);
     expect(line).toContain(`conversationId=${CONVERSATION}`);
-    expect(line).toContain("template=bienvenida_nexo");
+    expect(line).toContain("template=bienvenido_nexo");
     expect(line).toContain("metaCode=132001");
     expect(line).toContain("metaSubcode=2494073");
     expect(line).toContain("metaType=OAuthException");

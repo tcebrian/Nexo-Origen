@@ -15,19 +15,19 @@ const { sendTemplateMessage } = await import("@/lib/whatsapp/cloud-api.server");
 
 describe("lista cerrada de plantillas", () => {
   it("solo las tres plantillas de Nexo", () => {
-    expect([...WHATSAPP_TEMPLATE_NAMES]).toEqual(["bienvenida_nexo", "informe_diario_nexo", "alertas_pendientes_nexo"]);
+    expect([...WHATSAPP_TEMPLATE_NAMES]).toEqual(["bienvenido_nexo", "informe_diario_nexo", "alertas_pendientes_nexo"]);
   });
 
   it("un nombre arbitrario se rechaza antes de llamar a Meta", () => {
-    for (const name of ["hello_world", "bienvenida_nexo ", "BIENVENIDA_NEXO", "", null, undefined, 3, "../x"]) {
+    for (const name of ["hello_world", "bienvenida_nexo", "bienvenido_nexo ", "BIENVENIDO_NEXO", "", null, undefined, 3, "../x"]) {
       expect(isWhatsAppTemplateName(name)).toBe(false);
       expect(() => buildTemplateRequest(name, ["Ana"])).toThrow(/no permitida/);
     }
   });
 
-  it("bienvenida_nexo: {{1}} = nombre y botón con payload estable", () => {
-    expect(buildTemplateRequest("bienvenida_nexo", ["  Víctor\n Soria "])).toEqual({
-      name: "bienvenida_nexo",
+  it("bienvenido_nexo: {{1}} = nombre y botón con payload estable", () => {
+    expect(buildTemplateRequest("bienvenido_nexo", ["  Víctor\n Soria "])).toEqual({
+      name: "bienvenido_nexo",
       language: "es",
       bodyParams: ["Víctor Soria"],
       buttonPayloads: [ACTION_BUTTONS.ACTIVATE_SERVICE.payload],
@@ -35,9 +35,9 @@ describe("lista cerrada de plantillas", () => {
   });
 
   it("número de variables incorrecto o vacío → error", () => {
-    expect(() => buildTemplateRequest("bienvenida_nexo", [])).toThrow();
-    expect(() => buildTemplateRequest("bienvenida_nexo", ["a", "b"])).toThrow();
-    expect(() => buildTemplateRequest("bienvenida_nexo", ["  "])).toThrow();
+    expect(() => buildTemplateRequest("bienvenido_nexo", [])).toThrow();
+    expect(() => buildTemplateRequest("bienvenido_nexo", ["a", "b"])).toThrow();
+    expect(() => buildTemplateRequest("bienvenido_nexo", ["  "])).toThrow();
     expect(sanitizeTemplateParam("a\t\tb      c")).toBe("a b c");
   });
 
@@ -53,7 +53,7 @@ describe("lista cerrada de plantillas", () => {
   });
 
   it("variables como en Meta: bienvenida 1, informe diario 2, alertas 2", () => {
-    expect(WHATSAPP_TEMPLATES.bienvenida_nexo.bodyParamCount).toBe(1);
+    expect(WHATSAPP_TEMPLATES.bienvenido_nexo.bodyParamCount).toBe(1);
     expect(WHATSAPP_TEMPLATES.informe_diario_nexo.bodyParamCount).toBe(2);
     expect(WHATSAPP_TEMPLATES.alertas_pendientes_nexo.bodyParamCount).toBe(2);
     expect(() => buildTemplateRequest("informe_diario_nexo", ["Ana"])).toThrow();
@@ -63,7 +63,7 @@ describe("lista cerrada de plantillas", () => {
 
 describe("sendTemplateMessage (Cloud API)", () => {
   const TOKEN = "EAAB-secret";
-  const run = async (template = buildTemplateRequest("bienvenida_nexo", ["Ana"])) => {
+  const run = async (template = buildTemplateRequest("bienvenido_nexo", ["Ana"])) => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ messages: [{ id: "wamid.T" }] }), { status: 200 }));
     const result = await sendTemplateMessage(
       { phoneNumberId: "1365004563368241", to: "+34600111222", template },
@@ -82,7 +82,7 @@ describe("sendTemplateMessage (Cloud API)", () => {
       to: "34600111222",
       type: "template",
       template: {
-        name: "bienvenida_nexo",
+        name: "bienvenido_nexo",
         language: { code: "es" },
         components: [
           { type: "body", parameters: [{ type: "text", text: "Ana" }] },
@@ -112,7 +112,7 @@ describe("sendTemplateMessage (Cloud API)", () => {
   it("rechazo 4xx → rejected con el error de Meta saneado (código y mensaje, sin token ni teléfono)", async () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ error: { code: 132001, message: "Template does not exist" } }), { status: 400 }));
     const result = await sendTemplateMessage(
-      { phoneNumberId: "1365004563368241", to: "+34600111222", template: buildTemplateRequest("bienvenida_nexo", ["Ana"]) },
+      { phoneNumberId: "1365004563368241", to: "+34600111222", template: buildTemplateRequest("bienvenido_nexo", ["Ana"]) },
       { accessToken: TOKEN, fetchImpl: fetchImpl as never }
     );
     expect(result).toEqual({

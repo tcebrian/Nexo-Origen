@@ -12,7 +12,7 @@ export const maxDuration = 60;
 
 /**
  * Botón manual "Enviar activación" de la ficha del contacto: envía la plantilla
- * `bienvenida_nexo` con el nombre del contacto como {{1}}. Solo super_admin.
+ * `bienvenido_nexo` con el nombre del contacto como {{1}}. Solo super_admin.
  * No lleva cuerpo: ni plantilla, ni teléfono, ni canal los elige el navegador.
  * Nunca se llama solo (ni al crear el contacto, ni por scheduler, ni con reintentos).
  */
@@ -47,7 +47,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ con
         // Meta rechazó la plantilla: se registra el motivo exacto (sin teléfono ni token) y se muestra al super_admin.
         const meta = outcome.providerError;
         console.error(
-          `[conversations] activation_rejected conversationId=${conversationId} template=bienvenida_nexo` +
+          `[conversations] activation_rejected conversationId=${conversationId} template=bienvenido_nexo` +
             ` metaCode=${meta?.code ?? "-"} metaSubcode=${meta?.subcode ?? "-"} metaType=${meta?.type ?? "-"}` +
             ` http=${meta?.httpStatus ?? "-"} fbtrace=${meta?.fbtraceId ?? "-"}`
         );

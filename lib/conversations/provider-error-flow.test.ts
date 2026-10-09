@@ -27,7 +27,7 @@ const META: ProviderError = {
   type: "OAuthException",
   fbtraceId: "AbCdEf123",
   message: "(#132001) Template name does not exist in the translation",
-  details: "template name (bienvenida_nexo) does not exist in es",
+  details: "template name (bienvenido_nexo) does not exist in es",
 };
 
 describe("el rechazo de Meta llega hasta el resultado del envío", () => {
@@ -81,7 +81,7 @@ describe("persistencia en conv_mensajes (solo código, subcódigo y tipo)", () =
     const row = db.tables.conv_mensajes![0]!;
     expect(row).toMatchObject({ status: "failed", provider_error_code: "132001", provider_error_subcode: "2494073", provider_error_type: "OAuthException" });
     const json = JSON.stringify(row);
-    for (const leaked of ["Template name", "bienvenida_nexo", "AbCdEf123", "404"]) expect(json).not.toContain(leaked);
+    for (const leaked of ["Template name", "bienvenido_nexo", "AbCdEf123", "404"]) expect(json).not.toContain(leaked);
     expect(row.raw_payload).toBeUndefined();
   });
 

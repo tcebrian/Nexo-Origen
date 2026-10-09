@@ -53,7 +53,7 @@ function setup(over: { contact?: Partial<ContactActivation> | null; template?: (
 }
 
 describe("Enviar activación (manual)", () => {
-  it("envía bienvenida_nexo con {{1}} = nombre y el botón Activar servicio, y guarda welcome_sent_at", async () => {
+  it("envía bienvenido_nexo con {{1}} = nombre y el botón Activar servicio, y guarda welcome_sent_at", async () => {
     const t = setup();
     const outcome = await t.run();
 
@@ -63,7 +63,7 @@ describe("Enviar activación (manual)", () => {
       phoneNumberId: "1365004563368241",
       to: "+34600111222",
       template: {
-        name: "bienvenida_nexo",
+        name: "bienvenido_nexo",
         language: "es",
         bodyParams: ["Víctor"],
         buttonPayloads: [ACTION_BUTTONS.ACTIVATE_SERVICE.payload],
@@ -81,7 +81,7 @@ describe("Enviar activación (manual)", () => {
     expect(t.rows[0]).toMatchObject({
       direction: "outbound",
       content_type: "text",
-      text: WHATSAPP_TEMPLATES.bienvenida_nexo.display,
+      text: WHATSAPP_TEMPLATES.bienvenido_nexo.display,
       external_id: "wamid.W1",
       status: "sent",
     });

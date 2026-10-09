@@ -21,7 +21,7 @@ export const ACTION_BUTTONS: Record<WhatsAppActionName, { payload: string; title
   VIEW_PENDING_ALERTS: { payload: "nexo:view_pending_alerts", title: "Ver alertas" },
 };
 
-export const WHATSAPP_TEMPLATE_NAMES = ["bienvenida_nexo", "informe_diario_nexo", "alertas_pendientes_nexo"] as const;
+export const WHATSAPP_TEMPLATE_NAMES = ["bienvenido_nexo", "informe_diario_nexo", "alertas_pendientes_nexo"] as const;
 export type WhatsAppTemplateName = (typeof WHATSAPP_TEMPLATE_NAMES)[number];
 
 export type WhatsAppTemplateDefinition = {
@@ -29,7 +29,7 @@ export type WhatsAppTemplateDefinition = {
   language: "es";
   /**
    * Nº de variables del cuerpo, igual al aprobado en Meta (que rechaza otro número):
-   * bienvenida_nexo {{1}} nombre · informe_diario_nexo {{1}} nombre, {{2}} fecha ·
+   * bienvenido_nexo {{1}} nombre · informe_diario_nexo {{1}} nombre, {{2}} fecha ·
    * alertas_pendientes_nexo {{1}} nombre, {{2}} nº de alertas.
    */
   bodyParamCount: number;
@@ -40,8 +40,8 @@ export type WhatsAppTemplateDefinition = {
 };
 
 export const WHATSAPP_TEMPLATES: Record<WhatsAppTemplateName, WhatsAppTemplateDefinition> = {
-  bienvenida_nexo: {
-    name: "bienvenida_nexo",
+  bienvenido_nexo: {
+    name: "bienvenido_nexo",
     language: "es",
     bodyParamCount: 1,
     buttons: ["ACTIVATE_SERVICE"],

@@ -7,7 +7,7 @@ const { sendTemplateMessage, sendTextMessage } = await import("@/lib/whatsapp/cl
 
 const TOKEN = "EAAB-super-secret-token-0123456789abcdef";
 const PHONE = "+34600111222";
-const template = buildTemplateRequest("bienvenida_nexo", ["Ana"]);
+const template = buildTemplateRequest("bienvenido_nexo", ["Ana"]);
 const send = (fetchImpl: unknown) =>
   sendTemplateMessage({ phoneNumberId: "1365004563368241", to: PHONE, template }, { accessToken: TOKEN, fetchImpl: fetchImpl as never });
 const reply = (status: number, body: unknown) => vi.fn(async () => new Response(typeof body === "string" ? body : JSON.stringify(body), { status }));
@@ -18,7 +18,7 @@ describe("rechazo de Meta: error 132001", () => {
       message: "(#132001) Template name does not exist in the translation",
       type: "OAuthException",
       code: 132001,
-      error_data: { messaging_product: "whatsapp", details: "template name (bienvenida_nexo) does not exist in es" },
+      error_data: { messaging_product: "whatsapp", details: "template name (bienvenido_nexo) does not exist in es" },
       fbtrace_id: "AbCdEf123_gh-IJ",
     },
   };
@@ -34,7 +34,7 @@ describe("rechazo de Meta: error 132001", () => {
         type: "OAuthException",
         fbtraceId: "AbCdEf123_gh-IJ",
         message: "(#132001) Template name does not exist in the translation",
-        details: "template name (bienvenida_nexo) does not exist in es",
+        details: "template name (bienvenido_nexo) does not exist in es",
       },
     });
   });
@@ -43,7 +43,7 @@ describe("rechazo de Meta: error 132001", () => {
     const result = await send(reply(404, body));
     expect(result.status === "rejected" && describeTemplateRejection(result.error)).toEqual({
       message: "WhatsApp rechazó la plantilla (Meta 132001)",
-      detail: "template name (bienvenida_nexo) does not exist in es",
+      detail: "template name (bienvenido_nexo) does not exist in es",
     });
   });
 });

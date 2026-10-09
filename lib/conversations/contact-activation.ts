@@ -11,7 +11,7 @@ import type { ProviderError, RejectionReason, SendMessageResult, SendTemplateInp
 
 /**
  * Activación MANUAL de un contacto de WhatsApp: el super_admin pulsa "Enviar activación" en
- * su ficha y se envía la plantilla `bienvenida_nexo`. Nada la envía solo: crear un contacto no
+ * su ficha y se envía la plantilla `bienvenido_nexo`. Nada la envía solo: crear un contacto no
  * manda ninguna plantilla, ni hay scheduler ni reintentos automáticos.
  *
  * Estado del contacto (dos fechas, ver `contactWhatsAppState`):
@@ -76,7 +76,7 @@ export async function sendContactActivation(input: { conversationId: string }, d
   if (contact.activatedAt) return { status: "already_active" };
   if (contact.welcomeSentAt) return { status: "already_sent" };
 
-  const template = buildTemplateRequest("bienvenida_nexo", [contact.name?.trim() || WELCOME_NAME_FALLBACK]);
+  const template = buildTemplateRequest("bienvenido_nexo", [contact.name?.trim() || WELCOME_NAME_FALLBACK]);
 
   const outcome = await sendConversationOperation(
     {
@@ -85,7 +85,7 @@ export async function sendContactActivation(input: { conversationId: string }, d
       requestId: deriveStableRequestId(`welcome:${contact.id}`),
       text: "",
       template: {
-        display: WHATSAPP_TEMPLATES.bienvenida_nexo.display,
+        display: WHATSAPP_TEMPLATES.bienvenido_nexo.display,
         send: (context: SendContext) =>
           deps.sendTemplate({ phoneNumberId: context.canal.externalAccountId, to: context.contactPhone, template }),
       },
