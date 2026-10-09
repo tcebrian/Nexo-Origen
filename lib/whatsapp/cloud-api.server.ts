@@ -16,6 +16,9 @@ import "server-only";
 
 import { WHATSAPP_TEXT_MAX_CHARS } from "@/lib/conversations/text-chunks";
 import { isWhatsAppTemplateName, type TemplateRequest } from "@/lib/conversations/whatsapp-templates";
+import { parseProviderError, type ProviderError } from "@/lib/whatsapp/provider-error";
+
+export type { ProviderError };
 
 export { WHATSAPP_TEXT_MAX_CHARS };
 export const GRAPH_API_VERSION = "v26.0";
@@ -28,7 +31,7 @@ export type RejectionReason = "window_closed" | "invalid_recipient" | "auth" | "
 
 export type SendMessageResult =
   | { status: "sent"; wamid: string }
-  | { status: "rejected"; reason: RejectionReason }
+  | { status: "rejected"; reason: RejectionReason; /** Motivo exacto de Meta, saneado (sin token ni teléfono). */ error?: ProviderError }
   | { status: "unconfirmed" }
   | { status: "misconfigured" };
 
@@ -129,7 +132,12 @@ async function postMessage(
 
     if (response.status >= 400 && response.status < 500) {
       const metaCode = (body as { error?: { code?: unknown } } | null)?.error?.code;
-      return { status: "rejected", reason: classifyRejection(response.status, metaCode) };
+      return {
+        status: "rejected",
+        reason: classifyRejection(response.status, metaCode),
+        // Solo código, subcódigo, tipo, traza y mensaje saneado: nunca el cuerpo completo, el token ni el teléfono.
+        error: parseProviderError(response.status, body, [to, accessToken]),
+      };
     }
 
     return { status: "unconfirmed" };

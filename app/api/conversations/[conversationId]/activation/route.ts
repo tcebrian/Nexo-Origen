@@ -4,6 +4,7 @@ import { authorizeConversationsAccess } from "@/lib/conversations/access";
 import { sendManualActivation } from "@/lib/conversations/contact-activation.server";
 import { isValidConversationId, mapMessageRow } from "@/lib/conversations/read-model";
 import { errorReply } from "@/lib/conversations/send-reply";
+import { describeTemplateRejection } from "@/lib/whatsapp/provider-error";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +43,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ con
         return NextResponse.json({ error: "La activación ya se envió", code: "already_sent" }, { status: 409 });
       case "already_active":
         return NextResponse.json({ error: "El contacto ya está activo", code: "already_active" }, { status: 409 });
+      case "rejected": {
+        // Meta rechazó la plantilla: se registra el motivo exacto (sin teléfono ni token) y se muestra al super_admin.
+        const meta = outcome.providerError;
+        console.error(
+          `[conversations] activation_rejected conversationId=${conversationId} template=bienvenida_nexo` +
+            ` metaCode=${meta?.code ?? "-"} metaSubcode=${meta?.subcode ?? "-"} metaType=${meta?.type ?? "-"}` +
+            ` http=${meta?.httpStatus ?? "-"} fbtrace=${meta?.fbtraceId ?? "-"}`
+        );
+        const { message, detail } = describeTemplateRejection(meta);
+        return NextResponse.json(
+          {
+            error: message,
+            code: "rejected",
+            ...(detail ? { detail } : {}),
+            ...(meta ? { provider: { code: meta.code ?? null, subcode: meta.subcode ?? null, type: meta.type ?? null, httpStatus: meta.httpStatus } } : {}),
+          },
+          { status: 502 }
+        );
+      }
       default: {
         const reply = errorReply(outcome);
         return NextResponse.json({ error: reply.error, code: reply.code }, { status: reply.status });

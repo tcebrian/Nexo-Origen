@@ -109,13 +109,18 @@ describe("sendTemplateMessage (Cloud API)", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("rechazo 4xx → rejected sin exponer la respuesta de Meta", async () => {
+  it("rechazo 4xx → rejected con el error de Meta saneado (código y mensaje, sin token ni teléfono)", async () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ error: { code: 132001, message: "Template does not exist" } }), { status: 400 }));
     const result = await sendTemplateMessage(
       { phoneNumberId: "1365004563368241", to: "+34600111222", template: buildTemplateRequest("bienvenida_nexo", ["Ana"]) },
       { accessToken: TOKEN, fetchImpl: fetchImpl as never }
     );
-    expect(result).toEqual({ status: "rejected", reason: "other" });
+    expect(result).toEqual({
+      status: "rejected",
+      reason: "other",
+      error: { httpStatus: 400, code: 132001, message: "Template does not exist" },
+    });
+    expect(JSON.stringify(result)).not.toContain(TOKEN);
   });
 });
 

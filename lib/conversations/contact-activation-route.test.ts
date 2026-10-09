@@ -84,6 +84,53 @@ describe("POST /api/conversations/[id]/activation", () => {
     expect((await post()).status).toBe(502);
   });
 
+  it("si Meta rechaza la plantilla, el super_admin ve el código y el motivo saneado", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    sendManualActivation.mockResolvedValueOnce({
+      status: "rejected",
+      reason: "other",
+      sent: [],
+      providerError: {
+        httpStatus: 404,
+        code: 132001,
+        subcode: 2494073,
+        type: "OAuthException",
+        fbtraceId: "AbCdEf123",
+        message: "(#132001) Template name does not exist in the translation",
+        details: "template name (bienvenida_nexo) does not exist in es",
+      },
+    });
+    const res = await post();
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({
+      error: "WhatsApp rechazó la plantilla (Meta 132001/2494073)",
+      code: "rejected",
+      detail: "template name (bienvenida_nexo) does not exist in es",
+      provider: { code: 132001, subcode: 2494073, type: "OAuthException", httpStatus: 404 },
+    });
+
+    // Una línea estructurada en el servidor, sin teléfono ni token.
+    expect(spy).toHaveBeenCalledTimes(1);
+    const line = String(spy.mock.calls[0]![0]);
+    expect(line).toContain(`conversationId=${CONVERSATION}`);
+    expect(line).toContain("template=bienvenida_nexo");
+    expect(line).toContain("metaCode=132001");
+    expect(line).toContain("metaSubcode=2494073");
+    expect(line).toContain("metaType=OAuthException");
+    expect(line).not.toMatch(/\+?\d{8,}|token|Bearer/i);
+    spy.mockRestore();
+  });
+
+  it("rechazo sin información de Meta: mensaje claro y la línea del servidor lo indica", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    sendManualActivation.mockResolvedValueOnce({ status: "rejected", reason: "other", sent: [] });
+    const res = await post();
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({ error: "WhatsApp rechazó la plantilla", code: "rejected" });
+    expect(String(spy.mock.calls[0]![0])).toContain("metaCode=-");
+    spy.mockRestore();
+  });
+
   it("un fallo inesperado es 500 genérico y no registra nada sensible", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     sendManualActivation.mockRejectedValue(new Error("boom"));

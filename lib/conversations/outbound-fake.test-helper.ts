@@ -33,6 +33,7 @@ export function createFakeOutboundRepo(options: {
   const context = options.context === undefined ? makeContext() : options.context;
   const rows: StoredRow[] = [];
   const touches: { preview: string; at: Date }[] = [];
+  const failures: { messageId: string; providerError: unknown }[] = [];
   let markSentFailures = options.markSentFailures ?? 0;
   let nextId = 1;
 
@@ -78,8 +79,9 @@ export function createFakeOutboundRepo(options: {
       row.provider_timestamp = sentAt.toISOString();
       return { ...row };
     },
-    async markFailed(messageId) {
+    async markFailed(messageId, providerError) {
       rows.find((r) => r.id === messageId)!.status = "failed";
+      if (providerError) failures.push({ messageId, providerError });
     },
     async touchConversation({ preview, at }) {
       touches.push({ preview, at });
@@ -87,5 +89,5 @@ export function createFakeOutboundRepo(options: {
     },
   };
 
-  return { repo, rows, touches };
+  return { repo, rows, touches, failures };
 }

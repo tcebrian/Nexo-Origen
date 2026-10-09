@@ -7,7 +7,7 @@ import {
   type SendContext,
 } from "@/lib/conversations/send-text";
 import { WHATSAPP_TEMPLATES, buildTemplateRequest } from "@/lib/conversations/whatsapp-templates";
-import type { RejectionReason, SendMessageResult, SendTemplateInput } from "@/lib/whatsapp/cloud-api.server";
+import type { ProviderError, RejectionReason, SendMessageResult, SendTemplateInput } from "@/lib/whatsapp/cloud-api.server";
 
 /**
  * Activación MANUAL de un contacto de WhatsApp: el super_admin pulsa "Enviar activación" en
@@ -58,7 +58,7 @@ export type ActivationOutcome =
   | { status: "sent"; whatsapp: ContactWhatsAppState; messages: OutboundRecord[] }
   | { status: "contact_not_found" }
   | { status: "already_sent" | "already_active" }
-  | { status: SendFailureStatus; reason?: RejectionReason; sent: OutboundRecord[] };
+  | { status: SendFailureStatus; reason?: RejectionReason; providerError?: ProviderError; sent: OutboundRecord[] };
 
 export type ActivationDeps = {
   activations: ContactActivationRepository;

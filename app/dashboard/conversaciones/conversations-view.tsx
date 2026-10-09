@@ -901,7 +901,7 @@ function ContactPanel({ conversationId, onChanged }: { conversationId: string; o
   const [todos, setTodos] = useState(false);
   const [restaurantIds, setRestaurantIds] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string; detail?: string } | null>(null);
   const [showRestaurants, setShowRestaurants] = useState(false);
   const [users, setUsers] = useState<LinkableUser[] | null>(null);
   const [userChoice, setUserChoice] = useState("");
@@ -966,9 +966,12 @@ function ContactPanel({ conversationId, onChanged }: { conversationId: string; o
     setMessage(null);
     try {
       const response = await fetch(`/api/conversations/${conversationId}/activation`, { method: "POST" });
-      const data = (await response.json().catch(() => null)) as { whatsapp?: WhatsAppState; error?: string; code?: string } | null;
+      const data = (await response.json().catch(() => null)) as
+        | { whatsapp?: WhatsAppState; error?: string; code?: string; detail?: string }
+        | null;
       if (!response.ok || !data?.whatsapp) {
-        setMessage({ kind: "error", text: data?.error ?? "No se pudo enviar la activación" });
+        // Si Meta rechaza la plantilla, `error` trae el código ("… (Meta 132001)") y `detail` el motivo saneado.
+        setMessage({ kind: "error", text: data?.error ?? "No se pudo enviar la activación", detail: data?.detail });
         return;
       }
       const whatsapp = data.whatsapp;
@@ -1098,9 +1101,10 @@ function ContactPanel({ conversationId, onChanged }: { conversationId: string; o
       ) : null}
 
       {message ? (
-        <p role="status" className={`text-xs ${message.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>
-          {message.text}
-        </p>
+        <div role="status" className={`text-xs ${message.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>
+          <p>{message.text}</p>
+          {message.detail ? <p className="mt-1 break-words text-[11px] text-rose-300/80">{message.detail}</p> : null}
+        </div>
       ) : null}
 
       <div className="space-y-1.5 border-t border-white/[0.06] pt-3">

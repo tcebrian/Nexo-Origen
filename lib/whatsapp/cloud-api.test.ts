@@ -52,11 +52,11 @@ describe("sendTextMessage", () => {
   it("4xx → rejected con motivo seguro; fuera de ventana de 24 h se distingue", async () => {
     const closed = vi.fn(async () => jsonResponse(400, { error: { code: 131047, message: "secreto" } }));
     const other = vi.fn(async () => jsonResponse(400, { error: { code: 1, message: "secreto" } }));
-    expect(await sendTextMessage(input, { accessToken: TOKEN, fetchImpl: closed as never })).toEqual({
+    expect(await sendTextMessage(input, { accessToken: TOKEN, fetchImpl: closed as never })).toMatchObject({
       status: "rejected",
       reason: "window_closed",
     });
-    expect(await sendTextMessage(input, { accessToken: TOKEN, fetchImpl: other as never })).toEqual({
+    expect(await sendTextMessage(input, { accessToken: TOKEN, fetchImpl: other as never })).toMatchObject({
       status: "rejected",
       reason: "other",
     });
@@ -182,7 +182,7 @@ describe("sendDocumentMessage", () => {
   it("4xx → rejected, 5xx → unconfirmed; rechaza media_id con caracteres raros", async () => {
     const r4 = vi.fn(async () => jsonResponse(400, { error: { code: 131047 } }));
     const r5 = vi.fn(async () => jsonResponse(500, {}));
-    expect(await sendDocumentMessage(base, { accessToken: TOKEN, fetchImpl: r4 as never })).toEqual({
+    expect(await sendDocumentMessage(base, { accessToken: TOKEN, fetchImpl: r4 as never })).toMatchObject({
       status: "rejected",
       reason: "window_closed",
     });
@@ -226,7 +226,7 @@ describe("sendImageMessage", () => {
 
     const r4 = vi.fn(async () => jsonResponse(400, { error: { code: 1 } }));
     const r5 = vi.fn(async () => jsonResponse(502, {}));
-    expect(await sendImageMessage(base, { accessToken: TOKEN, fetchImpl: r4 as never })).toEqual({
+    expect(await sendImageMessage(base, { accessToken: TOKEN, fetchImpl: r4 as never })).toMatchObject({
       status: "rejected",
       reason: "other",
     });

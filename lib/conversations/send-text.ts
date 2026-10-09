@@ -7,6 +7,7 @@ import {
   textLength,
 } from "@/lib/conversations/text-chunks";
 import type {
+  ProviderError,
   RejectionReason,
   SendDocumentInput,
   SendImageInput,
@@ -102,7 +103,8 @@ export interface OutboundRepository {
     /** Metadatos finales del archivo (con `provider_media_id`). */
     media?: OutboundMedia;
   }): Promise<OutboundRecord>;
-  markFailed(messageId: string): Promise<void>;
+  /** `error`: motivo del rechazo de Meta (código, subcódigo y tipo) para diagnosticar; opcional. */
+  markFailed(messageId: string, error?: ProviderError): Promise<void>;
   touchConversation(input: {
     conversationId: string;
     canalId: string;
@@ -161,6 +163,8 @@ export type SendOutcome =
   | {
       status: SendFailureStatus;
       reason?: RejectionReason;
+      /** Si Meta rechazó el envío: su error saneado (para diagnosticar). */
+      providerError?: ProviderError;
       /** Mensajes de la operación que SÍ quedaron enviados antes del fallo. */
       sent: OutboundRecord[];
     };
@@ -174,7 +178,7 @@ type StepResult = {
 };
 type Step =
   | { kind: "done"; message: OutboundRecord; deduplicated: boolean }
-  | { kind: "stop"; status: SendFailureStatus; reason?: RejectionReason };
+  | { kind: "stop"; status: SendFailureStatus; reason?: RejectionReason; providerError?: ProviderError };
 
 function sameContent(record: OutboundRecord, content: OutboundContent): boolean {
   if (record.content_type !== content.contentType) return false;
@@ -218,9 +222,10 @@ export async function sendConversationOperation(
   const { repository, logger = console } = deps;
   const now = deps.now ?? (() => new Date());
   const sent: OutboundRecord[] = [];
-  const fail = (status: SendFailureStatus, reason?: RejectionReason): SendOutcome => ({
+  const fail = (status: SendFailureStatus, reason?: RejectionReason, providerError?: ProviderError): SendOutcome => ({
     status,
     ...(reason ? { reason } : {}),
+    ...(providerError ? { providerError } : {}),
     sent,
   });
 
@@ -277,8 +282,8 @@ export async function sendConversationOperation(
         await repository.markFailed(message.id);
         return { kind: "stop", status: "generation_failed" };
       case "rejected":
-        await repository.markFailed(message.id);
-        return { kind: "stop", status: "rejected", reason: result.reason };
+        await repository.markFailed(message.id, result.error);
+        return { kind: "stop", status: "rejected", reason: result.reason, providerError: result.error };
       case "misconfigured":
         await repository.markFailed(message.id);
         return { kind: "stop", status: "misconfigured" };
@@ -403,7 +408,7 @@ export async function sendConversationOperation(
   }
 
   const stop = steps.find((step): step is Extract<Step, { kind: "stop" }> => step.kind === "stop");
-  if (stop) return fail(stop.status, stop.reason);
+  if (stop) return fail(stop.status, stop.reason, stop.providerError);
 
   return {
     status: "sent",

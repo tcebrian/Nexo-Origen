@@ -7,6 +7,7 @@ import {
   touchConversationLastMessage,
 } from "@/lib/supabase/conversations.server";
 import { isUniqueViolation } from "@/lib/supabase/conversations-mappers";
+import type { ProviderError } from "@/lib/whatsapp/provider-error";
 import type {
   ClaimResult,
   OutboundContent,
@@ -148,6 +149,10 @@ async function markSent(input: {
     .update({
       status: "sent",
       external_id: input.wamid,
+      // Si este mensaje había sido rechazado antes y ahora sale bien, el motivo antiguo ya no aplica.
+      provider_error_code: null,
+      provider_error_subcode: null,
+      provider_error_type: null,
       ...(input.media ? { media: input.media } : {}),
       provider_timestamp: input.sentAt.toISOString(),
       updated_at: new Date().toISOString(),
@@ -162,10 +167,21 @@ async function markSent(input: {
   return data as OutboundRecord;
 }
 
-async function markFailed(messageId: string): Promise<void> {
+async function markFailed(messageId: string, providerError?: ProviderError): Promise<void> {
   const { error } = await requireAdminClient()
     .from(SUPABASE_TABLES.conv_mensajes)
-    .update({ status: "failed", updated_at: new Date().toISOString() })
+    .update({
+      status: "failed",
+      updated_at: new Date().toISOString(),
+      // Solo tres datos cortos del error de Meta; nunca su cuerpo, el teléfono ni el token.
+      ...(providerError
+        ? {
+            provider_error_code: providerError.code !== undefined ? String(providerError.code) : null,
+            provider_error_subcode: providerError.subcode !== undefined ? String(providerError.subcode) : null,
+            provider_error_type: providerError.type ?? null,
+          }
+        : {}),
+    })
     .eq("id", messageId)
     .eq("status", "pending");
 
