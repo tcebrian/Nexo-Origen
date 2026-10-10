@@ -84,10 +84,26 @@ describe("buildConversationList", () => {
       conversationRow({ id: "a", estado: "closed", ultimo_mensaje_preview: "  hola " }),
     ]);
     expect(Object.keys(item!).sort()).toEqual(
-      ["access", "displayName", "id", "lastMessageAt", "lastMessagePreview", "phone", "profileName", "status"].sort()
+      ["access", "displayName", "id", "lastMessageAt", "lastMessagePreview", "phone", "profileName", "status", "whatsapp"].sort()
     );
     expect(item!.status).toBe("closed");
     expect(item!.lastMessagePreview).toBe("hola");
+  });
+});
+
+describe("estado de WhatsApp en la lista", () => {
+  const stateOf = (contact: Record<string, unknown>) =>
+    buildConversationList([
+      conversationRow({ id: "a", conv_contactos: { telefono_e164: "+34600111222", nombre: "Ana", nombre_perfil: null, ...contact } }),
+    ])[0]!.whatsapp;
+
+  it("pendiente, activación enviada o activo según las dos fechas", () => {
+    expect(stateOf({})).toBe("pending");
+    expect(stateOf({ welcome_sent_at: null, whatsapp_activated_at: null })).toBe("pending");
+    expect(stateOf({ welcome_sent_at: "2026-10-08T09:00:00Z" })).toBe("sent");
+    expect(stateOf({ welcome_sent_at: "2026-10-08T09:00:00Z", whatsapp_activated_at: "2026-10-08T09:05:00Z" })).toBe("active");
+    // Activo aunque la plantilla nunca se enviara desde Nexo.
+    expect(stateOf({ whatsapp_activated_at: "2026-10-08T09:05:00Z" })).toBe("active");
   });
 });
 

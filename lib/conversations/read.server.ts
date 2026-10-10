@@ -26,7 +26,7 @@ export const CONVERSATIONS_PAGE_SIZE = 200;
 export const MESSAGES_PAGE_SIZE = 500;
 
 const CONVERSATION_SELECT =
-  "id,estado,ultimo_mensaje_at,ultimo_mensaje_preview,conv_contactos(id,telefono_e164,nombre,nombre_perfil,tipo)";
+  "id,estado,ultimo_mensaje_at,ultimo_mensaje_preview,conv_contactos(id,telefono_e164,nombre,nombre_perfil,tipo,welcome_sent_at,whatsapp_activated_at)";
 const MESSAGE_SELECT =
   "id,direction,sender_type,content_type,text,media,status,provider_timestamp,received_at";
 

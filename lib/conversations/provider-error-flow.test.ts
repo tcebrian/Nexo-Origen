@@ -120,9 +120,9 @@ describe("la migración y la interfaz", () => {
   });
 
   it("la ficha muestra el mensaje con el código y el detalle saneado debajo", () => {
-    const view = read("app/dashboard/conversaciones/conversations-view.tsx");
+    const view = read("app/dashboard/conversaciones/_components/contact-info-panel.tsx");
     expect(view).toContain("data?.detail");
-    expect(view).toContain("message.detail");
+    expect(view).toContain("activationError.detail");
     // El mensaje con "(Meta 132001)" lo construye el servidor y la ficha lo pinta tal cual.
     expect(view).toContain("data?.error");
   });

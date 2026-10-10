@@ -19,6 +19,9 @@ export type ContactReadRow = {
   id?: string;
   /** Tipo descriptivo (dirección, operaciones…). */
   tipo?: string | null;
+  /** Fechas de la activación por WhatsApp (solo para derivar el estado visible). */
+  welcome_sent_at?: string | null;
+  whatsapp_activated_at?: string | null;
 };
 
 export type ConversationReadRow = {
@@ -61,6 +64,8 @@ export type ConversationListItem = {
   /** Nombre de perfil de WhatsApp, solo si aporta algo distinto al nombre mostrado. */
   profileName: string | null;
   phone: string;
+  /** Estado de la activación por WhatsApp: activo, activación enviada o pendiente. */
+  whatsapp: "pending" | "sent" | "active";
   status: ConversationStatus;
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
@@ -121,6 +126,7 @@ export function mapConversationRow(row: ConversationReadRow): ConversationListIt
     displayName,
     profileName: profileName && profileName !== displayName ? profileName : null,
     phone: contact.telefono_e164,
+    whatsapp: contact.whatsapp_activated_at ? "active" : contact.welcome_sent_at ? "sent" : "pending",
     status: row.estado === "closed" ? "closed" : "open",
     lastMessageAt: row.ultimo_mensaje_at,
     lastMessagePreview: clean(row.ultimo_mensaje_preview),

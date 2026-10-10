@@ -66,9 +66,11 @@ describe("distintivo de acceso en la bandeja", () => {
   it("la interfaz distingue autorizado y 'Sin acceso a datos', y no muestra roles web en la bandeja", () => {
     const view = readFileSync(path.join(process.cwd(), "app/dashboard/conversaciones/conversations-view.tsx"), "utf-8");
     expect(view).toContain('item.access.state === "granted"');
-    expect(view).toContain("Autorizado ·");
+    // Tipo y nº de restaurantes en la tarjeta; sin acceso se dice claramente.
+    expect(view).toContain("pluralRestaurants(item.access.restaurantCount)");
     expect(view).toContain("Sin acceso a datos");
-    expect(view).toContain("+ Nuevo contacto");
+    expect(view).toContain("Nuevo contacto");
+    expect(view).toContain("<WhatsAppStatusBadge");
     const row = view.slice(view.indexOf("function ConversationRow"), view.indexOf("function MessageBubble"));
     expect(row).not.toMatch(/restaurante_user|empresa_admin|WEB_ACCOUNT_LABELS/);
   });

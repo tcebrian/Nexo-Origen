@@ -142,20 +142,24 @@ describe("POST /api/conversations/[id]/activation", () => {
 });
 
 describe("interfaz de la ficha", () => {
-  const view = readFileSync(path.join(process.cwd(), "app/dashboard/conversaciones/conversations-view.tsx"), "utf-8");
+  const panel = readFileSync(path.join(process.cwd(), "app/dashboard/conversaciones/_components/contact-info-panel.tsx"), "utf-8");
+  const view = panel;
 
   it("muestra los tres estados y el botón solo cuando está pendiente", () => {
-    for (const text of ["Pendiente de enviar activación", "Activación enviada", "Enviada:", "Activado:", "Enviar activación"]) {
+    for (const text of ["Todavía no se ha enviado la activación", "Activación enviada", "Enviada el", "Servicio activo", "Activado el", "Enviar activación"]) {
       expect(view).toContain(text);
     }
-    const pending = view.slice(view.indexOf('Pendiente de enviar activación') - 400, view.indexOf('Pendiente de enviar activación') + 700);
-    expect(pending).toContain("Enviar activación");
+    // El botón principal solo existe con el contacto pendiente; con la activación enviada hay uno secundario.
+    expect(view).toContain('whatsapp.state === "pending" ?');
+    const pendingButton = view.slice(view.indexOf('whatsapp.state === "pending" ?'));
+    expect(pendingButton.indexOf("Enviar activación")).toBeGreaterThan(-1);
+    expect(pendingButton.indexOf("Reenviar activación")).toBeGreaterThan(pendingButton.indexOf("Enviar activación"));
     expect(view).toContain("/activation");
   });
 
   it("crear un contacto no envía ninguna plantilla ni activación", () => {
-    const form = view.slice(view.indexOf("function NewContactForm"));
-    expect(form).not.toMatch(/activation|plantilla|template/i);
+    const form = readFileSync(path.join(process.cwd(), "app/dashboard/conversaciones/_components/new-contact-drawer.tsx"), "utf-8");
+    expect(form).not.toMatch(/\/activation|plantilla|template/i);
   });
 });
 

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
@@ -135,14 +135,17 @@ describe("POST /api/conversations/contacts", () => {
 });
 
 describe("la interfaz del contacto", () => {
-  const view = readFileSync(path.join(process.cwd(), "app/dashboard/conversaciones/conversations-view.tsx"), "utf-8");
-  const form = view.slice(view.indexOf("function NewContactForm"), view.indexOf("export function ConversationsView"));
+  const root = path.join(process.cwd(), "app/dashboard/conversaciones");
+  const components = readdirSync(path.join(root, "_components")).map((file) => readFileSync(path.join(root, "_components", file), "utf-8"));
+  const view = [readFileSync(path.join(root, "conversations-view.tsx"), "utf-8"), ...components].join("\n");
+  // El alta de contactos vive en su propio drawer.
+  const form = readFileSync(path.join(root, "_components/new-contact-drawer.tsx"), "utf-8");
 
   it("pide nombre, teléfono, tipo, empresa y restaurantes, con 'todos los restaurantes de la empresa'", () => {
-    for (const text of ["Nombre", "Teléfono", "Tipo de contacto", "Empresa", "Todos los restaurantes de la empresa", "restaurantes seleccionados"]) {
+    for (const text of ["Nombre", "Teléfono", "Tipo de contacto", "Empresa", "Todos los restaurantes", "Restaurantes concretos", "seleccionados"]) {
       expect(view, text).toContain(text);
     }
-    expect(form).toContain("ContactAccessFields");
+    expect(form).toContain("AccessPicker");
   });
 
   it("no exige cuenta web: el alta no tiene selector de usuario ni envía usuarioId", () => {

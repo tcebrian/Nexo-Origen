@@ -11,6 +11,13 @@ import {
   textLength,
 } from "@/lib/conversations/text-chunks";
 import type { ReportFormat, ReportOptions, ReportTypeId } from "@/lib/conversations/report-catalog";
+import { ContactInfoPanel } from "./_components/contact-info-panel";
+import { Drawer } from "./_components/drawer";
+import { NewContactDrawer } from "./_components/new-contact-drawer";
+import { PermissionsDrawer } from "./_components/permissions-drawer";
+import { brandsOf, formatPhone, initialsOf, pluralRestaurants } from "./_components/shared";
+import { useContactDetail } from "./_components/use-contact-detail";
+import { WhatsAppStatusBadge, type WhatsAppBadgeState } from "./_components/whatsapp-status-badge";
 import {
   filterConversations,
   type ConversationListItem,
@@ -68,11 +75,6 @@ function formatDayLabel(value: string): string {
   return date ? dayLongFormat.format(date) : "";
 }
 
-function initialOf(name: string): string {
-  const first = Array.from(name.replace(/^\+/, "").trim())[0];
-  return first ? first.toUpperCase() : "?";
-}
-
 const STATUS_LABEL = { open: "Abierta", closed: "Cerrada" } as const;
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -100,14 +102,20 @@ function useSoftPolling(task: () => void, ms: number, enabled: boolean) {
 function Avatar({ name, size = "md" }: { name: string; size?: "md" | "lg" }) {
   return (
     <span
-      className={`flex shrink-0 items-center justify-center rounded-full border border-violet-400/20 bg-violet-500/15 font-semibold text-violet-200 ${
-        size === "lg" ? "h-10 w-10 text-sm" : "h-11 w-11 text-sm"
+      className={`flex shrink-0 items-center justify-center rounded-full border border-violet-400/25 bg-gradient-to-br from-violet-500/25 to-violet-700/15 font-semibold text-violet-100 ${
+        size === "lg" ? "h-12 w-12 text-[15px]" : "h-10 w-10 text-[13px]"
       }`}
       aria-hidden
     >
-      {initialOf(name)}
+      {initialsOf(name)}
     </span>
   );
+}
+
+/** Hace menos de 24 h que hubo actividad en la conversación. */
+function isRecentActivity(value: string | null): boolean {
+  const date = parseDate(value);
+  return date !== null && Date.now() - date.getTime() < 24 * 60 * 60 * 1000;
 }
 
 function ConversationRow({
@@ -119,42 +127,49 @@ function ConversationRow({
   active: boolean;
   onSelect: () => void;
 }) {
+  const role = item.access.state === "granted" ? contactTypeLabel(item.access.tipo) : null;
+  const recent = isRecentActivity(item.lastMessageAt);
+
   return (
-    <li>
+    <li className="px-2 py-0.5">
       <button
         type="button"
         onClick={onSelect}
         aria-current={active ? "true" : undefined}
-        className={`flex w-full items-center gap-3 border-b border-white/[0.05] px-4 py-3 text-left transition ${
-          active ? "bg-violet-500/[0.12]" : "hover:bg-white/[0.04]"
+        title={item.lastMessagePreview ?? "Sin mensajes"}
+        className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 ${
+          active
+            ? "border-violet-400/35 bg-violet-500/[0.14] shadow-[0_0_24px_rgba(124,58,237,0.12)]"
+            : "border-transparent hover:border-white/[0.06] hover:bg-white/[0.04]"
         }`}
       >
         <Avatar name={item.displayName} />
         <span className="min-w-0 flex-1">
-          <span className="flex items-baseline justify-between gap-2">
+          <span className="flex items-center justify-between gap-2">
             <span className="truncate text-[13px] font-medium text-white">{item.displayName}</span>
-            <span className="shrink-0 text-[10px] text-gray-500">
+            <span className="flex shrink-0 items-center gap-1.5 text-[10px] text-gray-500">
+              {recent ? <span className="h-1.5 w-1.5 rounded-full bg-violet-400" title="Actividad reciente" aria-label="Actividad reciente" /> : null}
               {formatListTime(item.lastMessageAt)}
             </span>
           </span>
-          <span className="mt-0.5 flex items-center justify-between gap-2">
-            <span className="truncate text-xs text-gray-400">
-              {item.lastMessagePreview ?? "Sin mensajes"}
-            </span>
+          <span className="mt-0.5 block truncate text-xs text-gray-400">
+            {item.access.state === "granted" ? (
+              <>
+                {role ? `${role} · ` : ""}
+                {pluralRestaurants(item.access.restaurantCount)}
+              </>
+            ) : (
+              <span className="text-gray-600">Sin acceso a datos</span>
+            )}
+          </span>
+          <span className="mt-1 flex items-center justify-between gap-2">
+            <WhatsAppStatusBadge state={item.whatsapp} variant="inline" />
             {item.status === "closed" ? (
               <span className="shrink-0 rounded-full border border-white/[0.08] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.08em] text-gray-500">
                 Cerrada
               </span>
             ) : null}
           </span>
-          {item.access.state === "granted" ? (
-            <span className="mt-1 inline-block rounded-full border border-violet-400/20 bg-violet-500/10 px-2 py-0.5 text-[10px] text-violet-200">
-              Autorizado · {contactTypeLabel(item.access.tipo) ? `${contactTypeLabel(item.access.tipo)} · ` : ""}
-              {item.access.restaurantCount} restaurantes
-            </span>
-          ) : (
-            <span className="mt-1 inline-block text-[10px] text-gray-600">Sin acceso a datos</span>
-          )}
         </span>
       </button>
     </li>
@@ -694,657 +709,6 @@ function Composer({
   );
 }
 
-type ContactOptions = {
-  types: { id: string; label: string }[];
-  options: {
-    empresas: { id: number; nombre: string }[];
-    restaurants: { id: number; name: string; city: string; brand: string; empresaId: number | null }[];
-  };
-};
-
-type ContactDetail = {
-  displayName: string;
-  phone: string;
-  nombre: string | null;
-  tipo: string | null;
-  selection: { empresaId: number | null; todosRestaurantes: boolean; restaurantIds: number[] };
-  access: { count: number; restaurants: { id: number; name: string; brand: string; city: string }[] };
-  linkedUser: { id: string; nombre: string; rol: string; empresaNombre: string | null } | null;
-  whatsapp: WhatsAppState;
-};
-
-type WhatsAppState =
-  | { state: "pending"; welcomeSentAt: null; activatedAt: null }
-  | { state: "sent"; welcomeSentAt: string; activatedAt: null }
-  | { state: "active"; welcomeSentAt: string | null; activatedAt: string };
-
-function formatWhatsAppDate(iso: string): string {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : date.toLocaleString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
-type LinkableUser = { id: string; nombre: string; rol: string; empresaNombre: string | null; linkedElsewhere: boolean };
-
-/** Rol de la CUENTA WEB (no el tipo del contacto): nombres neutros, sin llamar "Supervisor" a una cuenta de restaurante. */
-const WEB_ACCOUNT_LABELS: Record<string, string> = {
-  super_admin: "Super administrador",
-  empresa_admin: "Administrador de empresa",
-  marca_admin: "Administrador de marca",
-  restaurante_user: "Cuenta de restaurante",
-};
-
-const contactFieldClass =
-  "rounded-xl border border-white/[0.08] bg-[#0d0a14] px-3 py-2 text-[13px] text-white placeholder:text-gray-600 focus:border-violet-400/40 focus:outline-none";
-const contactLabelClass = "mb-1 block text-[11px] font-medium text-gray-400";
-
-/**
- * Tipo, empresa y restaurantes de un contacto. Los permisos salen SOLO de la empresa y
- * de los restaurantes marcados (o de "todos"): el tipo es descriptivo y no decide nada.
- * Lo comparten el alta y la edición para que se comporten igual.
- */
-function ContactAccessFields({
-  config,
-  tipo,
-  onTipo,
-  empresaId,
-  onEmpresa,
-  todos,
-  onTodos,
-  restaurantIds,
-  onRestaurants,
-}: {
-  config: ContactOptions;
-  tipo: string;
-  onTipo: (value: string) => void;
-  empresaId: string;
-  onEmpresa: (value: string) => void;
-  todos: boolean;
-  onTodos: (value: boolean) => void;
-  restaurantIds: Set<number>;
-  onRestaurants: (value: Set<number>) => void;
-}) {
-  const [query, setQuery] = useState("");
-
-  const brands = useMemo(() => {
-    const normalize = (value: string) => value.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
-    const groups = new Map<string, ContactOptions["options"]["restaurants"]>();
-    for (const restaurant of config.options.restaurants) {
-      if (restaurant.empresaId !== Number(empresaId)) continue;
-      if (query.trim() !== "" && !normalize(`${restaurant.name} ${restaurant.city} ${restaurant.brand}`).includes(normalize(query))) continue;
-      const brand = restaurant.brand || "Sin marca";
-      groups.set(brand, [...(groups.get(brand) ?? []), restaurant]);
-    }
-    return [...groups];
-  }, [config, empresaId, query]);
-
-  const total = config.options.restaurants.filter((restaurant) => restaurant.empresaId === Number(empresaId)).length;
-
-  return (
-    <div className="space-y-2">
-      <div>
-        <label htmlFor="contact-type" className={contactLabelClass}>
-          Tipo de contacto
-        </label>
-        <select id="contact-type" value={tipo} onChange={(event) => onTipo(event.target.value)} className={`${contactFieldClass} w-full`}>
-          <option value="">Sin tipo</option>
-          {config.types.map((type) => (
-            <option key={type.id} value={type.id}>
-              {type.label}
-            </option>
-          ))}
-        </select>
-        <p className="mt-1 text-[11px] text-gray-600">Solo descriptivo: no decide qué restaurantes ve.</p>
-      </div>
-
-      <div>
-        <label htmlFor="contact-company" className={contactLabelClass}>
-          Empresa
-        </label>
-        <select
-          id="contact-company"
-          value={empresaId}
-          onChange={(event) => {
-            onEmpresa(event.target.value);
-            // Los restaurantes son de una empresa: al cambiarla se reinicia la selección.
-            onRestaurants(new Set());
-            onTodos(false);
-          }}
-          className={`${contactFieldClass} w-full`}
-        >
-          <option value="">Sin empresa (sin acceso a datos)</option>
-          {config.options.empresas.map((empresa) => (
-            <option key={empresa.id} value={empresa.id}>
-              {empresa.nombre}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {empresaId !== "" ? (
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-[13px] text-gray-200">
-            <input type="checkbox" className="accent-violet-500" checked={todos} onChange={(event) => onTodos(event.target.checked)} />
-            Todos los restaurantes de la empresa
-          </label>
-          {todos ? (
-            <p className="text-[11px] text-gray-500">
-              Ve los {total} restaurantes actuales y los que se añadan en el futuro.
-            </p>
-          ) : (
-            <>
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar restaurante…"
-                aria-label="Buscar restaurante"
-                className={`${contactFieldClass} w-full`}
-              />
-              <div className="max-h-56 space-y-3 overflow-y-auto rounded-xl border border-white/[0.06] p-3">
-                {brands.length === 0 ? <p className="text-xs text-gray-500">Sin resultados.</p> : null}
-                {brands.map(([brand, items]) => (
-                  <div key={brand}>
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-500">{brand}</p>
-                    <div className="grid gap-1">
-                      {items.map((item) => (
-                        <label key={item.id} className="flex items-center gap-2 text-[13px] text-gray-200">
-                          <input
-                            type="checkbox"
-                            className="accent-violet-500"
-                            checked={restaurantIds.has(item.id)}
-                            onChange={() => {
-                              const next = new Set(restaurantIds);
-                              if (next.has(item.id)) next.delete(item.id);
-                              else next.add(item.id);
-                              onRestaurants(next);
-                            }}
-                          />
-                          {item.name}
-                          {item.city ? <span className="text-[11px] text-gray-600">{item.city}</span> : null}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-gray-400">{restaurantIds.size} restaurantes seleccionados</p>
-            </>
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-/** Lo que se envía al guardar: solo tipo, empresa y restaurantes. */
-function accessBody(tipo: string, empresaId: string, todos: boolean, restaurantIds: Set<number>) {
-  return {
-    tipo: tipo === "" ? null : tipo,
-    empresaId: empresaId === "" ? null : Number(empresaId),
-    todosRestaurantes: todos,
-    restaurantIds: [...restaurantIds],
-  };
-}
-
-/**
- * Ficha del contacto: nombre, tipo, empresa y restaurantes (editables) y, aparte, la
- * cuenta web opcional. Los permisos no se copian de ninguna cuenta: se guardan aquí.
- */
-function ContactPanel({ conversationId, onChanged }: { conversationId: string; onChanged: () => void }) {
-  const [detail, setDetail] = useState<ContactDetail | null>(null);
-  const [config, setConfig] = useState<ContactOptions | null>(null);
-  const [nombre, setNombre] = useState("");
-  const [tipo, setTipo] = useState("");
-  const [empresaId, setEmpresaId] = useState("");
-  const [todos, setTodos] = useState(false);
-  const [restaurantIds, setRestaurantIds] = useState<Set<number>>(new Set());
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string; detail?: string } | null>(null);
-  const [showRestaurants, setShowRestaurants] = useState(false);
-  const [users, setUsers] = useState<LinkableUser[] | null>(null);
-  const [userChoice, setUserChoice] = useState("");
-  const [linkBusy, setLinkBusy] = useState(false);
-  const [activating, setActivating] = useState(false);
-
-  const fill = useCallback((data: ContactDetail) => {
-    setDetail(data);
-    setNombre(data.nombre ?? "");
-    setTipo(data.tipo ?? "");
-    setEmpresaId(data.selection.empresaId === null ? "" : String(data.selection.empresaId));
-    setTodos(data.selection.todosRestaurantes);
-    setRestaurantIds(new Set(data.selection.restaurantIds));
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      fetchJson<ContactDetail>(`/api/conversations/${conversationId}/contact`),
-      fetchJson<ContactOptions>("/api/conversations/contacts"),
-    ])
-      .then(([data, options]) => {
-        if (cancelled) return;
-        fill(data);
-        setConfig(options);
-      })
-      .catch(() => {
-        if (!cancelled) setMessage({ kind: "error", text: "No se pudo cargar el contacto." });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [conversationId, fill]);
-
-  async function save() {
-    setSaving(true);
-    setMessage(null);
-    try {
-      const response = await fetch(`/api/conversations/${conversationId}/contact`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, ...accessBody(tipo, empresaId, todos, restaurantIds) }),
-      });
-      const data = (await response.json().catch(() => null)) as (ContactDetail & { error?: string }) | null;
-      if (!response.ok || !data) {
-        setMessage({ kind: "error", text: data?.error ?? "No se pudo guardar el contacto" });
-        return;
-      }
-      fill(data);
-      setMessage({ kind: "ok", text: `Guardado. Ahora puede consultar ${data.access.count} restaurantes.` });
-      onChanged();
-    } catch {
-      setMessage({ kind: "error", text: "No se pudo guardar el contacto" });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  /** Envío MANUAL de la plantilla de activación. Si falla no se reintenta solo: se vuelve a pulsar. */
-  async function sendActivation() {
-    setActivating(true);
-    setMessage(null);
-    try {
-      const response = await fetch(`/api/conversations/${conversationId}/activation`, { method: "POST" });
-      const data = (await response.json().catch(() => null)) as
-        | { whatsapp?: WhatsAppState; error?: string; code?: string; detail?: string }
-        | null;
-      if (!response.ok || !data?.whatsapp) {
-        // Si Meta rechaza la plantilla, `error` trae el código ("… (Meta 132001)") y `detail` el motivo saneado.
-        setMessage({ kind: "error", text: data?.error ?? "No se pudo enviar la activación", detail: data?.detail });
-        return;
-      }
-      const whatsapp = data.whatsapp;
-      setDetail((current) => (current ? { ...current, whatsapp } : current));
-      onChanged();
-    } catch {
-      setMessage({ kind: "error", text: "No se pudo enviar la activación" });
-    } finally {
-      setActivating(false);
-    }
-  }
-
-  async function link(usuarioId: string | null) {
-    setLinkBusy(true);
-    setMessage(null);
-    try {
-      const response = await fetch(`/api/conversations/${conversationId}/contact`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usuarioId }),
-      });
-      const data = (await response.json().catch(() => null)) as (ContactDetail & { error?: string }) | null;
-      if (!response.ok || !data) {
-        setMessage({ kind: "error", text: data?.error ?? "No se pudo guardar el vínculo" });
-        return;
-      }
-      // Solo cambia el vínculo informativo; lo que el usuario esté editando en el formulario se conserva.
-      setDetail(data);
-      setUserChoice("");
-    } catch {
-      setMessage({ kind: "error", text: "No se pudo guardar el vínculo" });
-    } finally {
-      setLinkBusy(false);
-    }
-  }
-
-  if (!detail || !config) {
-    return <div className="border-b border-white/[0.07] px-4 py-3 text-xs text-gray-500">{message?.text ?? "Cargando…"}</div>;
-  }
-
-  return (
-    <div className="max-h-[55vh] space-y-3 overflow-y-auto border-b border-white/[0.07] bg-white/[0.02] px-4 py-3 text-[13px]">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">Contacto y permisos</p>
-
-      <div>
-        <label htmlFor="contact-name" className={contactLabelClass}>
-          Nombre
-        </label>
-        <input
-          id="contact-name"
-          value={nombre}
-          onChange={(event) => setNombre(event.target.value)}
-          placeholder="Nombre del contacto"
-          maxLength={100}
-          className={`${contactFieldClass} w-full`}
-        />
-      </div>
-
-      <div className="space-y-1.5 rounded-xl border border-white/[0.06] px-3 py-2.5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">WhatsApp</p>
-        {detail.whatsapp.state === "active" ? (
-          <p className="text-xs text-emerald-300">
-            Activo
-            <span className="text-gray-400"> · Activado: {formatWhatsAppDate(detail.whatsapp.activatedAt)}</span>
-          </p>
-        ) : detail.whatsapp.state === "sent" ? (
-          <p className="text-xs text-violet-200">
-            Activación enviada
-            <span className="text-gray-400"> · Enviada: {formatWhatsAppDate(detail.whatsapp.welcomeSentAt)}</span>
-          </p>
-        ) : (
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs text-amber-200">Pendiente de enviar activación</span>
-            <button
-              type="button"
-              onClick={() => void sendActivation()}
-              disabled={activating}
-              className="rounded-xl border border-violet-400/30 bg-violet-500/25 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-violet-500/35 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {activating ? "Enviando…" : "Enviar activación"}
-            </button>
-          </div>
-        )}
-      </div>
-
-      <ContactAccessFields
-        config={config}
-        tipo={tipo}
-        onTipo={setTipo}
-        empresaId={empresaId}
-        onEmpresa={setEmpresaId}
-        todos={todos}
-        onTodos={setTodos}
-        restaurantIds={restaurantIds}
-        onRestaurants={setRestaurantIds}
-      />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => void save()}
-          disabled={saving}
-          className="rounded-xl border border-violet-400/30 bg-violet-500/25 px-4 py-2 text-[13px] font-medium text-white transition hover:bg-violet-500/35 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {saving ? "Guardando…" : "Guardar cambios"}
-        </button>
-        <span className="text-xs text-gray-400">
-          Puede consultar hoy: <span className="font-medium text-gray-200">{detail.access.count} restaurantes</span>
-        </span>
-        {detail.access.count > 0 ? (
-          <button type="button" onClick={() => setShowRestaurants((open) => !open)} className="text-xs text-violet-300 hover:text-violet-200">
-            {showRestaurants ? "Ocultar restaurantes" : "Ver restaurantes"}
-          </button>
-        ) : (
-          <span className="text-xs text-amber-200">Sin acceso a datos</span>
-        )}
-      </div>
-
-      {showRestaurants ? (
-        <ul className="max-h-40 space-y-0.5 overflow-y-auto rounded-xl border border-white/[0.06] p-2 text-xs text-gray-300">
-          {detail.access.restaurants.map((restaurant) => (
-            <li key={restaurant.id}>
-              {restaurant.name} <span className="text-gray-600">{restaurant.brand}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      {message ? (
-        <div role="status" className={`text-xs ${message.kind === "ok" ? "text-emerald-300" : "text-rose-300"}`}>
-          <p>{message.text}</p>
-          {message.detail ? <p className="mt-1 break-words text-[11px] text-rose-300/80">{message.detail}</p> : null}
-        </div>
-      ) : null}
-
-      <div className="space-y-1.5 border-t border-white/[0.06] pt-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">Cuenta web (opcional)</p>
-        {detail.linkedUser ? (
-          <div className="flex flex-wrap items-center gap-3 text-xs">
-            <span className="text-gray-300">
-              {detail.linkedUser.nombre} · {WEB_ACCOUNT_LABELS[detail.linkedUser.rol] ?? detail.linkedUser.rol}
-              {detail.linkedUser.empresaNombre ? ` · ${detail.linkedUser.empresaNombre}` : ""}
-            </span>
-            <button type="button" disabled={linkBusy} onClick={() => void link(null)} className="text-gray-400 hover:text-rose-300">
-              Desvincular
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={userChoice}
-              onChange={(event) => setUserChoice(event.target.value)}
-              onFocus={() => {
-                if (!users) {
-                  fetchJson<{ users: LinkableUser[] }>(`/api/conversations/${conversationId}/linkable-users`)
-                    .then((data) => setUsers(data.users))
-                    .catch(() => setMessage({ kind: "error", text: "No se pudieron cargar las cuentas." }));
-                }
-              }}
-              aria-label="Cuenta web vinculada"
-              className={`${contactFieldClass} min-w-[200px]`}
-            >
-              <option value="">Ninguna</option>
-              {(users ?? []).map((user) => (
-                <option key={user.id} value={user.id} disabled={user.linkedElsewhere}>
-                  {user.nombre} · {WEB_ACCOUNT_LABELS[user.rol] ?? user.rol}
-                  {user.linkedElsewhere ? " (ya vinculada a otro teléfono)" : ""}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              disabled={linkBusy || userChoice === ""}
-              onClick={() => void link(userChoice)}
-              className="text-xs text-violet-300 hover:text-violet-200 disabled:opacity-40"
-            >
-              Vincular
-            </button>
-          </div>
-        )}
-        <p className="text-[11px] text-gray-600">
-          Solo informativo: vincular una cuenta no cambia los restaurantes de este contacto.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-type NewContactResult = { existing: boolean; conversationId: string | null };
-
-/** Alta manual de un contacto de WhatsApp con sus permisos. No hace falta cuenta web. */
-function NewContactForm({
-  onClose,
-  onCreated,
-}: {
-  onClose: () => void;
-  /** Se llama tras crear o reutilizar el contacto; abre su conversación si existe. */
-  onCreated: (conversationId: string | null) => void;
-}) {
-  const [config, setConfig] = useState<ContactOptions | null>(null);
-  const [nombre, setNombre] = useState("");
-  const [prefijo, setPrefijo] = useState("+34");
-  const [telefono, setTelefono] = useState("");
-  const [tipo, setTipo] = useState("");
-  const [empresaId, setEmpresaId] = useState("");
-  const [todos, setTodos] = useState(false);
-  const [restaurantIds, setRestaurantIds] = useState<Set<number>>(new Set());
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<NewContactResult | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchJson<ContactOptions>("/api/conversations/contacts")
-      .then((data) => {
-        if (!cancelled) setConfig(data);
-      })
-      .catch(() => {
-        if (!cancelled) setError("No se pudieron cargar las empresas y restaurantes.");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  async function submit() {
-    setBusy(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/conversations/contacts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre,
-          countryCallingCode: prefijo,
-          nationalNumber: telefono,
-          ...accessBody(tipo, empresaId, todos, restaurantIds),
-        }),
-      });
-      const data = (await response.json().catch(() => null)) as (NewContactResult & { error?: string }) | null;
-      if (!response.ok || !data) {
-        setError(data?.error ?? "No se pudo crear el contacto");
-        return;
-      }
-      if (data.existing) {
-        setResult(data);
-      } else {
-        onCreated(data.conversationId);
-        onClose();
-      }
-    } catch {
-      setError("No se pudo crear el contacto");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="max-h-[60vh] space-y-2 overflow-y-auto border-b border-white/[0.07] bg-white/[0.02] p-3">
-      <div className="flex items-center justify-between">
-        <p className="text-[13px] font-medium text-white">Nuevo contacto</p>
-        <button type="button" onClick={onClose} className="text-xs text-gray-400 hover:text-white">
-          Cerrar
-        </button>
-      </div>
-
-      {result ? (
-        <div className="space-y-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] p-3">
-          <p className="text-[13px] font-medium text-amber-200">Este número ya existe.</p>
-          <p className="text-xs text-gray-400">
-            No se ha cambiado nada. Ábrelo para editar su nombre, su tipo y sus restaurantes.
-          </p>
-          <div className="flex gap-3">
-            {result.conversationId ? (
-              <button
-                type="button"
-                onClick={() => {
-                  onCreated(result.conversationId);
-                  onClose();
-                }}
-                className="rounded-xl border border-violet-400/30 bg-violet-500/25 px-3.5 py-2 text-[13px] font-medium text-white transition hover:bg-violet-500/35"
-              >
-                Abrir contacto
-              </button>
-            ) : null}
-            <button type="button" onClick={onClose} className="text-xs text-gray-400 hover:text-white">
-              Cerrar
-            </button>
-          </div>
-        </div>
-      ) : !config ? (
-        <p className="text-xs text-gray-500">{error ?? "Cargando…"}</p>
-      ) : (
-        <form
-          className="space-y-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submit();
-          }}
-        >
-          <div>
-            <label htmlFor="new-contact-name" className={contactLabelClass}>
-              Nombre
-            </label>
-            <input
-              id="new-contact-name"
-              value={nombre}
-              onChange={(event) => setNombre(event.target.value)}
-              placeholder="Nombre del contacto"
-              maxLength={100}
-              className={`${contactFieldClass} w-full`}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="new-contact-phone" className={contactLabelClass}>
-              Teléfono
-            </label>
-            <div className="flex gap-2">
-              <input
-                value={prefijo}
-                onChange={(event) => setPrefijo(event.target.value)}
-                placeholder="+34"
-                aria-label="Prefijo del país"
-                inputMode="tel"
-                autoComplete="off"
-                className={`${contactFieldClass} w-[76px] shrink-0 text-center`}
-              />
-              <input
-                id="new-contact-phone"
-                value={telefono}
-                onChange={(event) => setTelefono(event.target.value)}
-                placeholder="651 346 517"
-                inputMode="tel"
-                autoComplete="off"
-                className={`${contactFieldClass} min-w-0 flex-1`}
-              />
-            </div>
-          </div>
-
-          <ContactAccessFields
-            config={config}
-            tipo={tipo}
-            onTipo={setTipo}
-            empresaId={empresaId}
-            onEmpresa={setEmpresaId}
-            todos={todos}
-            onTodos={setTodos}
-            restaurantIds={restaurantIds}
-            onRestaurants={setRestaurantIds}
-          />
-
-          <p className="text-[11px] text-gray-500">
-            Sin empresa ni restaurantes, el contacto podrá escribir pero no tendrá acceso a datos. No hace falta cuenta web.
-          </p>
-          {error ? (
-            <p role="alert" className="text-xs text-rose-300">
-              {error}
-            </p>
-          ) : null}
-          <button
-            type="submit"
-            disabled={busy || telefono.trim() === ""}
-            className="w-full rounded-xl border border-violet-400/30 bg-violet-500/25 px-3.5 py-2 text-[13px] font-medium text-white transition hover:bg-violet-500/35 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {busy ? "Creando…" : "Crear contacto"}
-          </button>
-        </form>
-      )}
-    </div>
-  );
-}
-
 export function ConversationsView() {
   const [conversations, setConversations] = useState<ConversationListItem[] | null>(null);
   const [listError, setListError] = useState(false);
@@ -1353,8 +717,11 @@ export function ConversationsView() {
   const [messages, setMessages] = useState<ConversationMessage[] | null>(null);
   const [messagesError, setMessagesError] = useState(false);
   const selectedRef = useRef<string | null>(null);
-  const [accessOpenFor, setAccessOpenFor] = useState<string | null>(null);
   const [newContactOpen, setNewContactOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
+
+  const contact = useContactDetail(selectedId);
 
   const loadList = useCallback(async () => {
     try {
@@ -1398,6 +765,8 @@ export function ConversationsView() {
     setSelectedId(id);
     setMessages(null);
     setMessagesError(false);
+    setInfoOpen(false);
+    setPermissionsOpen(false);
     void loadMessages(id);
   }
 
@@ -1405,6 +774,8 @@ export function ConversationsView() {
     selectedRef.current = null;
     setSelectedId(null);
     setMessages(null);
+    setInfoOpen(false);
+    setPermissionsOpen(false);
   }
 
   const visible = useMemo(
@@ -1412,6 +783,30 @@ export function ConversationsView() {
     [conversations, query]
   );
   const selected = conversations?.find((item) => item.id === selectedId) ?? null;
+
+  // Estado de WhatsApp mostrado: el de la ficha cuando ya cargó (más reciente), si no el de la lista.
+  const whatsappState: WhatsAppBadgeState | null = selected
+    ? contact.activationError
+      ? "error"
+      : (contact.detail?.whatsapp.state ?? selected.whatsapp)
+    : null;
+  const role = contactTypeLabel(contact.detail?.tipo ?? (selected?.access.state === "granted" ? selected.access.tipo : null));
+  const brands = contact.detail ? brandsOf(contact.detail.access.restaurants) : [];
+  const assigned = contact.detail ? contact.detail.access.count : selected?.access.state === "granted" ? selected.access.restaurantCount : 0;
+
+  const infoPanel =
+    selected && selectedId ? (
+      <ContactInfoPanel
+        conversationId={selectedId}
+        detail={contact.detail}
+        config={contact.config}
+        activationError={contact.activationError}
+        onDetailChange={contact.setDetail}
+        onActivationError={contact.setActivationError}
+        onChanged={() => void loadList()}
+        onEditPermissions={() => setPermissionsOpen(true)}
+      />
+    ) : null;
 
   return (
     <div className="space-y-4">
@@ -1423,40 +818,52 @@ export function ConversationsView() {
       </header>
 
       <div className="flex h-[calc(100vh-14rem)] min-h-[460px] overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.025] lg:h-[calc(100vh-11rem)]">
-        {/* Lista */}
+        {/* Lista de contactos */}
         <aside
-          className={`${selected ? "hidden md:flex" : "flex"} w-full shrink-0 flex-col border-r border-white/[0.07] md:w-[340px]`}
+          className={`${selected ? "hidden md:flex" : "flex"} w-full shrink-0 flex-col border-r border-white/[0.07] md:w-[320px]`}
         >
-          <div className="border-b border-white/[0.07] p-3">
-            <button
-              type="button"
-              onClick={() => setNewContactOpen((open) => !open)}
-              aria-expanded={newContactOpen}
-              className="mb-2 w-full rounded-xl border border-violet-400/25 bg-violet-500/10 px-3.5 py-2 text-[13px] font-medium text-violet-200 transition hover:bg-violet-500/20"
-            >
-              + Nuevo contacto
-            </button>
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por nombre o teléfono"
-              aria-label="Buscar conversaciones"
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3.5 py-2 text-[13px] text-white placeholder:text-gray-600 focus:border-violet-400/40 focus:outline-none"
-            />
+          <div className="space-y-3 border-b border-white/[0.07] p-3">
+            <div className="flex items-center justify-between gap-2 px-1">
+              <h2 className="text-[13px] font-semibold text-white">
+                Contactos
+                {conversations ? <span className="ml-2 text-xs font-normal text-gray-500">{conversations.length}</span> : null}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setNewContactOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-violet-400/25 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-100 transition hover:bg-violet-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50"
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Nuevo contacto
+              </button>
+            </div>
+            <div className="relative">
+              <svg
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                aria-hidden
+              >
+                <circle cx="11" cy="11" r="6.5" />
+                <path d="m16 16 4 4" />
+              </svg>
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Buscar por nombre o teléfono"
+                aria-label="Buscar conversaciones"
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] py-2 pl-9 pr-3 text-[13px] text-white placeholder:text-gray-600 transition focus:border-violet-400/50 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+              />
+            </div>
           </div>
 
-          {newContactOpen ? (
-            <NewContactForm
-              onClose={() => setNewContactOpen(false)}
-              onCreated={(conversationId) => {
-                void loadList();
-                if (conversationId) select(conversationId);
-              }}
-            />
-          ) : null}
-
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="nexo-sidebar-scroll min-h-0 flex-1 overflow-y-auto py-1.5">
             {conversations === null ? (
               <p className="px-4 py-6 text-center text-xs text-gray-500">
                 {listError ? "No se pudieron cargar las conversaciones." : "Cargando…"}
@@ -1482,16 +889,16 @@ export function ConversationsView() {
           </div>
         </aside>
 
-        {/* Chat */}
+        {/* Conversación */}
         <section className={`${selected ? "flex" : "hidden md:flex"} min-w-0 flex-1 flex-col`}>
           {selected ? (
             <>
-              <div className="flex items-center gap-3 border-b border-white/[0.07] px-4 py-3">
+              <div className="flex items-start gap-3 border-b border-white/[0.07] px-4 py-3.5 sm:px-5">
                 <button
                   type="button"
                   onClick={back}
                   aria-label="Volver a la lista"
-                  className="rounded-lg p-1.5 text-gray-400 transition hover:bg-white/[0.06] hover:text-white md:hidden"
+                  className="mt-1.5 rounded-lg p-1.5 text-gray-400 transition hover:bg-white/[0.06] hover:text-white md:hidden"
                 >
                   <svg
                     className="h-5 w-5"
@@ -1508,31 +915,34 @@ export function ConversationsView() {
                 </button>
                 <Avatar name={selected.displayName} size="lg" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-white">{selected.displayName}</p>
-                  <p className="truncate text-xs text-gray-500">{selected.phone}</p>
+                  <h2 className="truncate text-[15px] font-semibold text-white">{selected.displayName}</h2>
+                  <p className="mt-0.5 truncate text-xs text-gray-400">
+                    {role ? <span>{role}</span> : null}
+                    {role ? <span className="mx-1.5 text-gray-600">·</span> : null}
+                    <span>{formatPhone(selected.phone)}</span>
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {whatsappState ? <WhatsAppStatusBadge state={whatsappState} /> : null}
+                    {selected.status === "closed" ? (
+                      <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-gray-400">
+                        {STATUS_LABEL.closed}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 truncate text-[11px] text-gray-500">
+                    {assigned > 0
+                      ? `${pluralRestaurants(assigned)} ${assigned === 1 ? "asignado" : "asignados"}${brands.length > 0 ? ` · ${brands.slice(0, 3).join(", ")}${brands.length > 3 ? ` +${brands.length - 3}` : ""}` : ""}`
+                      : "Sin restaurantes asignados"}
+                  </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setAccessOpenFor((current) => (current === selected.id ? null : selected.id))}
-                  aria-expanded={accessOpenFor === selected.id}
-                  className="shrink-0 rounded-full border border-white/[0.08] px-2.5 py-1 text-[10px] font-medium text-gray-300 transition hover:bg-white/[0.06] hover:text-white"
+                  onClick={() => setInfoOpen(true)}
+                  className="shrink-0 rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-gray-200 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 min-[1360px]:hidden"
                 >
-                  Permisos
+                  Información
                 </button>
-                <span
-                  className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-medium ${
-                    selected.status === "open"
-                      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
-                      : "border-white/[0.08] bg-white/[0.03] text-gray-400"
-                  }`}
-                >
-                  {STATUS_LABEL[selected.status]}
-                </span>
               </div>
-
-              {accessOpenFor === selected.id ? (
-                <ContactPanel key={selected.id} conversationId={selected.id} onChanged={() => void loadList()} />
-              ) : null}
 
               <div className="flex min-h-0 flex-1 flex-col">
                 {messages === null ? (
@@ -1564,7 +974,47 @@ export function ConversationsView() {
             <EmptyState title="Selecciona una conversación" />
           )}
         </section>
+
+        {/* Información del contacto: columna fija en pantallas anchas */}
+        {selected ? (
+          <aside className="nexo-sidebar-scroll hidden w-[320px] shrink-0 overflow-y-auto border-l border-white/[0.07] bg-black/10 p-3 min-[1360px]:block">
+            {infoPanel}
+          </aside>
+        ) : null}
       </div>
+
+      {/* En pantallas más estrechas, la misma información en un drawer */}
+      <Drawer
+        open={infoOpen && selected !== null}
+        title="Información del contacto"
+        description={selected?.displayName}
+        onRequestClose={() => setInfoOpen(false)}
+      >
+        {infoPanel}
+      </Drawer>
+
+      {selectedId && contact.detail && contact.config ? (
+        <PermissionsDrawer
+          open={permissionsOpen}
+          conversationId={selectedId}
+          detail={contact.detail}
+          config={contact.config}
+          onClose={() => setPermissionsOpen(false)}
+          onSaved={(saved) => {
+            contact.setDetail(saved);
+            void loadList();
+          }}
+        />
+      ) : null}
+
+      <NewContactDrawer
+        open={newContactOpen}
+        onClose={() => setNewContactOpen(false)}
+        onCreated={(conversationId) => {
+          void loadList();
+          if (conversationId) select(conversationId);
+        }}
+      />
     </div>
   );
 }
