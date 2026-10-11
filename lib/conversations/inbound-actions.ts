@@ -2,6 +2,7 @@ import { deriveStableRequestId } from "@/lib/conversations/request-ids";
 import { resolveWhatsAppAction } from "@/lib/conversations/whatsapp-actions";
 import type { WhatsAppActionName } from "@/lib/conversations/whatsapp-templates";
 import type { InboundMessage } from "@/lib/conversations/types";
+import type { DailyReportViewResult } from "@/lib/reports/daily/view";
 
 /**
  * Acciones que la persona dispara desde WhatsApp (botones de plantilla u "OK").
@@ -23,6 +24,9 @@ import type { InboundMessage } from "@/lib/conversations/types";
 export const ACTIVATION_REPLY =
   "✅ Servicio activado.\n\nA partir de ahora recibirás la información de los restaurantes que tienes asignados en Nexo Origen. 💜";
 export const REPORT_REQUEST_REPLY = "📊 Solicitud de informe recibida.";
+export const REPORT_NOT_FOUND_REPLY =
+  "📊 No encuentro un informe reciente para enviarte. El próximo te llegará a las 09:00.";
+export const REPORT_NO_ACCESS_REPLY = "🔒 Ahora mismo no tienes restaurantes asignados en Nexo Origen, así que no hay informe que mostrar.";
 export const ALERTS_REQUEST_REPLY = "🚨 Solicitud de alertas recibida.";
 
 export type InboundActionContext = {
@@ -33,6 +37,10 @@ export type InboundActionContext = {
   redelivery: boolean;
   /** Responde con un texto normal; idempotente por `requestId`. */
   reply: (text: string) => Promise<void>;
+  /** Varios mensajes en orden, cada uno con su propio id derivado (idempotente). */
+  replyParts: (texts: string[]) => Promise<void>;
+  /** Informe diario asociado al aviso pulsado (snapshot guardado). Ausente → respuesta provisional. */
+  viewDailyReport?: () => Promise<DailyReportViewResult>;
   activations: InboundActivationRepository;
   now: () => Date;
 };
@@ -54,7 +62,15 @@ export const INBOUND_ACTION_HANDLERS: Record<WhatsAppActionName, InboundActionHa
     if (activatedNow || context.redelivery) await context.reply(ACTIVATION_REPLY);
   },
   async VIEW_DAILY_REPORT(context) {
-    await context.reply(REPORT_REQUEST_REPLY);
+    if (!context.viewDailyReport) {
+      await context.reply(REPORT_REQUEST_REPLY);
+      return;
+    }
+    // El informe sale de la foto guardada a las 09:00 del aviso pulsado: no se recalcula nada.
+    const view = await context.viewDailyReport();
+    if (view.status === "report") await context.replyParts(view.messages);
+    else if (view.status === "no_access") await context.reply(REPORT_NO_ACCESS_REPLY);
+    else await context.reply(REPORT_NOT_FOUND_REPLY);
   },
   async VIEW_PENDING_ALERTS(context) {
     await context.reply(ALERTS_REQUEST_REPLY);
@@ -65,6 +81,8 @@ export type InboundActionDeps = {
   activations: InboundActivationRepository;
   /** Envía un texto normal a la conversación. `requestId` hace el envío idempotente. */
   sendReply: (input: { conversationId: string; requestId: string; text: string }) => Promise<void>;
+  /** Resuelve el informe diario del aviso pulsado (snapshot). Opcional. */
+  viewDailyReport?: (input: { contactId: string; replyToWamid: string | null; redelivery: boolean }) => Promise<DailyReportViewResult>;
   now?: () => Date;
 };
 
@@ -100,6 +118,26 @@ export async function handleInboundAction(
         requestId: deriveStableRequestId(`reply:${action}:${message.externalMessageId}`),
         text,
       }),
+    replyParts: async (texts) => {
+      for (const [index, text] of texts.entries()) {
+        await deps.sendReply({
+          conversationId,
+          // El primero conserva el id de siempre; los siguientes añaden su posición.
+          requestId: deriveStableRequestId(
+            index === 0 ? `reply:${action}:${message.externalMessageId}` : `reply:${action}:${message.externalMessageId}:${index}`
+          ),
+          text,
+        });
+      }
+    },
+    viewDailyReport: deps.viewDailyReport
+      ? () =>
+          deps.viewDailyReport!({
+            contactId,
+            replyToWamid: message.replyToExternalId ?? null,
+            redelivery: input.redelivery,
+          })
+      : undefined,
   });
 
   return { action };

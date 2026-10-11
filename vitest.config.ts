@@ -15,6 +15,7 @@ export default defineConfig({
       "lib/reports/network-summary/**/*.test.ts",
       "lib/render/**/*.test.ts",
       "lib/dashboard/**/*.test.ts",
+      "lib/reports/daily/**/*.test.ts",
     ],
   },
 });

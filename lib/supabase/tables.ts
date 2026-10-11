@@ -31,6 +31,7 @@ export const SUPABASE_TABLES = {
   conv_contacto_restaurantes: "conv_contacto_restaurantes",
   conv_conversaciones: "conv_conversaciones",
   conv_mensajes: "conv_mensajes",
+  conv_informe_envios: "conv_informe_envios",
 } as const;
 
 export type SupabaseView = (typeof SUPABASE_VIEWS)[keyof typeof SUPABASE_VIEWS];

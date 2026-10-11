@@ -130,6 +130,10 @@ function parseMessage(
   const profileName = profileNames.get(senderPhone);
   if (profileName) message.senderProfileName = profileName;
 
+  // `context.id`: wamid del mensaje al que responde (la plantilla, en un botón de respuesta rápida).
+  const replyTo = isRecord(raw.context) ? asNonEmptyString(raw.context.id) : undefined;
+  if (replyTo) message.replyToExternalId = replyTo;
+
   const type = typeof raw.type === "string" ? raw.type : "";
 
   if (type === "text") {

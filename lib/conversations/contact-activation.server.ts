@@ -11,21 +11,15 @@ import {
   type ContactActivation,
   type ContactActivationRepository,
 } from "@/lib/conversations/contact-activation";
-import { outboundRepository } from "@/lib/conversations/outbound.server";
+import { SEND_TIMEOUT_MS, productionSendDeps } from "@/lib/conversations/send-deps.server";
+import { resolveDailyReportView } from "@/lib/reports/daily/process.server";
 import { sendTestTemplate, type TestTemplateKind, type TestTemplateOutcome } from "@/lib/conversations/template-test";
-import { sendConversationOperation, type SendDeps } from "@/lib/conversations/send-text";
+import { sendConversationOperation } from "@/lib/conversations/send-text";
 import type { InboundMessage } from "@/lib/conversations/types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { ConversationsDbError } from "@/lib/supabase/conversations.server";
 import { SUPABASE_TABLES } from "@/lib/supabase/tables";
-import {
-  isWhatsAppSenderConfigured,
-  sendDocumentMessage,
-  sendImageMessage,
-  sendTemplateMessage,
-  sendTextMessage,
-  uploadMedia,
-} from "@/lib/whatsapp/cloud-api.server";
+import { sendTemplateMessage } from "@/lib/whatsapp/cloud-api.server";
 
 /**
  * Persistencia y cableado de producción de la activación de contactos de WhatsApp (solo servidor,
@@ -115,21 +109,6 @@ export const contactActivationRepository: ContactActivationRepository & InboundA
   },
 };
 
-const UPLOAD_TIMEOUT_MS = 20_000;
-const SEND_TIMEOUT_MS = 15_000;
-
-/** Dependencias reales del envío (Meta + base de datos), las mismas que usa el resto de Conversations. */
-export function productionSendDeps(): SendDeps {
-  return {
-    repository: outboundRepository,
-    sendText: (input) => sendTextMessage(input, { timeoutMs: SEND_TIMEOUT_MS }),
-    uploadMedia: (input) => uploadMedia(input, { timeoutMs: UPLOAD_TIMEOUT_MS }),
-    sendDocument: (input) => sendDocumentMessage(input, { timeoutMs: SEND_TIMEOUT_MS }),
-    sendImage: (input) => sendImageMessage(input, { timeoutMs: SEND_TIMEOUT_MS }),
-    isConfigured: isWhatsAppSenderConfigured,
-  };
-}
-
 /** Botón manual "Enviar activación" (quien llama ya comprobó super_admin). */
 export function sendManualActivation(conversationId: string): Promise<ActivationOutcome> {
   return sendContactActivation(
@@ -172,6 +151,8 @@ export function runInboundAction(
     { message, ...ingest },
     {
       activations: contactActivationRepository,
+      // "Ver informe": el informe sale del snapshot guardado a las 09:00 del aviso pulsado (context.id).
+      viewDailyReport: resolveDailyReportView,
       async sendReply({ conversationId, requestId, text }) {
         const outcome = await sendConversationOperation({ conversationId, requestId, text }, deps);
         if (outcome.status !== "sent") {

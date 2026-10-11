@@ -78,6 +78,11 @@ export type InboundMessage = {
    * texto (`text` = título) y esto solo sirve para reconocer la acción.
    */
   interactive?: { id?: string; title?: string };
+  /**
+   * wamid del mensaje al que responde (`context.id` de Meta). En la respuesta a un botón de plantilla es la
+   * propia plantilla, y permite saber a qué envío (p. ej. qué informe diario) corresponde la pulsación.
+   */
+  replyToExternalId?: string;
   /** Momento del evento según el proveedor, no el de recepción. */
   providerTimestamp: Date;
   /** Fragmento original del proveedor, opcional, para depuración/reproceso. */
