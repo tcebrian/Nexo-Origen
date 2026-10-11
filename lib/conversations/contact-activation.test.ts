@@ -6,7 +6,7 @@ import {
   type ContactActivationRepository,
 } from "@/lib/conversations/contact-activation";
 import { CONVERSATION_ID, createFakeOutboundRepo } from "@/lib/conversations/outbound-fake.test-helper";
-import { ACTION_BUTTONS, WHATSAPP_TEMPLATES } from "@/lib/conversations/whatsapp-templates";
+import { WHATSAPP_TEMPLATES } from "@/lib/conversations/whatsapp-templates";
 import type { SendMessageResult } from "@/lib/whatsapp/cloud-api.server";
 
 const NOW = new Date("2026-10-08T09:00:00.000Z");
@@ -66,7 +66,8 @@ describe("Enviar activación (manual)", () => {
         name: "bienvenido_nexo",
         language: "es",
         bodyParams: ["Víctor"],
-        buttonPayloads: [ACTION_BUTTONS.ACTIVATE_SERVICE.payload],
+        // Prueba A/B del 132001: sin componente de botón (el botón sigue definido en la plantilla).
+        buttonPayloads: [],
       },
     });
     expect(t.sendText).not.toHaveBeenCalled();

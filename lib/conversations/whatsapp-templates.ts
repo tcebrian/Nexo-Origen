@@ -35,6 +35,13 @@ export type WhatsAppTemplateDefinition = {
   bodyParamCount: number;
   /** Botones de respuesta rápida, en orden, con la acción que disparan. */
   buttons: WhatsAppActionName[];
+  /**
+   * `false`: al enviar NO se manda el componente `button` (el botón sigue definido en la plantilla de
+   * Meta y se muestra igual). Prueba A/B del 132001 de `bienvenido_nexo`: Make la envía sin ese
+   * componente y Meta la acepta. Las respuestas siguen reconociéndose por el texto exacto del botón.
+   * Por defecto (`undefined`) se envía el payload propio de cada botón.
+   */
+  sendButtonPayloads?: boolean;
   /** Texto que ve el equipo en la conversación (no incluye datos del contacto). */
   display: string;
 };
@@ -45,6 +52,7 @@ export const WHATSAPP_TEMPLATES: Record<WhatsAppTemplateName, WhatsAppTemplateDe
     language: "es",
     bodyParamCount: 1,
     buttons: ["ACTIVATE_SERVICE"],
+    sendButtonPayloads: false,
     display: "📩 Plantilla enviada: activación de Nexo",
   },
   informe_diario_nexo: {
@@ -97,6 +105,6 @@ export function buildTemplateRequest(name: unknown, bodyParams: readonly string[
     name,
     language: definition.language,
     bodyParams: params,
-    buttonPayloads: definition.buttons.map((action) => ACTION_BUTTONS[action].payload),
+    buttonPayloads: definition.sendButtonPayloads === false ? [] : definition.buttons.map((action) => ACTION_BUTTONS[action].payload),
   };
 }

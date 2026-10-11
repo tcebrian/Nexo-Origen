@@ -25,13 +25,22 @@ describe("lista cerrada de plantillas", () => {
     }
   });
 
-  it("bienvenido_nexo: {{1}} = nombre y botón con payload estable", () => {
+  it("bienvenido_nexo: {{1}} = nombre y SIN componente de botón (prueba A/B del 132001)", () => {
     expect(buildTemplateRequest("bienvenido_nexo", ["  Víctor\n Soria "])).toEqual({
       name: "bienvenido_nexo",
       language: "es",
       bodyParams: ["Víctor Soria"],
-      buttonPayloads: [ACTION_BUTTONS.ACTIVATE_SERVICE.payload],
+      buttonPayloads: [],
     });
+    // El botón sigue definido: lo único que cambia es que no se manda su payload.
+    expect(WHATSAPP_TEMPLATES.bienvenido_nexo.buttons).toEqual(["ACTIVATE_SERVICE"]);
+  });
+
+  it("las demás plantillas siguen enviando el payload de su botón", () => {
+    expect(WHATSAPP_TEMPLATES.informe_diario_nexo.sendButtonPayloads).toBeUndefined();
+    expect(WHATSAPP_TEMPLATES.alertas_pendientes_nexo.sendButtonPayloads).toBeUndefined();
+    expect(buildTemplateRequest("informe_diario_nexo", ["Ana", "08/10/2026"]).buttonPayloads).toHaveLength(1);
+    expect(buildTemplateRequest("alertas_pendientes_nexo", ["Ana", "3"]).buttonPayloads).toHaveLength(1);
   });
 
   it("número de variables incorrecto o vacío → error", () => {
@@ -73,7 +82,7 @@ describe("sendTemplateMessage (Cloud API)", () => {
     return { result, init, body: JSON.parse(init.body as string) };
   };
 
-  it("envía type=template con idioma es, variable de cuerpo y botón quick_reply con payload", async () => {
+  it("bienvenido_nexo: type=template con idioma es y solo la variable de cuerpo (sin componente button)", async () => {
     const { result, body } = await run();
     expect(result).toEqual({ status: "sent", wamid: "wamid.T" });
     expect(body).toEqual({
@@ -84,12 +93,17 @@ describe("sendTemplateMessage (Cloud API)", () => {
       template: {
         name: "bienvenido_nexo",
         language: { code: "es" },
-        components: [
-          { type: "body", parameters: [{ type: "text", text: "Ana" }] },
-          { type: "button", sub_type: "quick_reply", index: "0", parameters: [{ type: "payload", payload: "nexo:activate_service" }] },
-        ],
+        components: [{ type: "body", parameters: [{ type: "text", text: "Ana" }] }],
       },
     });
+  });
+
+  it("una plantilla con payload de botón sigue enviando el componente quick_reply", async () => {
+    const { body } = await run(buildTemplateRequest("informe_diario_nexo", ["Ana", "08/10/2026"]));
+    expect(body.template.components).toEqual([
+      { type: "body", parameters: [{ type: "text", text: "Ana" }, { type: "text", text: "08/10/2026" }] },
+      { type: "button", sub_type: "quick_reply", index: "0", parameters: [{ type: "payload", payload: "nexo:view_daily_report" }] },
+    ]);
   });
 
   it("el token solo viaja en la cabecera, nunca en el cuerpo", async () => {
