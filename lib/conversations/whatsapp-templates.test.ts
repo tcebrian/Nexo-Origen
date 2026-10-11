@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { parseWhatsAppWebhook } from "@/lib/conversations/channels/whatsapp-cloud/parse-webhook";
 import { resolveWhatsAppAction } from "@/lib/conversations/whatsapp-actions";
 import {
-  ACTION_BUTTONS,
   WHATSAPP_TEMPLATES,
   WHATSAPP_TEMPLATE_NAMES,
   buildTemplateRequest,
@@ -15,7 +14,7 @@ const { sendTemplateMessage } = await import("@/lib/whatsapp/cloud-api.server");
 
 describe("lista cerrada de plantillas", () => {
   it("solo las tres plantillas de Nexo", () => {
-    expect([...WHATSAPP_TEMPLATE_NAMES]).toEqual(["bienvenido_nexo", "informe_diario_nexo", "alertas_pendientes_nexo"]);
+    expect([...WHATSAPP_TEMPLATE_NAMES]).toEqual(["bienvenido_nexo", "informe_diario", "alerta_negativa"]);
   });
 
   it("un nombre arbitrario se rechaza antes de llamar a Meta", () => {
@@ -36,11 +35,25 @@ describe("lista cerrada de plantillas", () => {
     expect(WHATSAPP_TEMPLATES.bienvenido_nexo.buttons).toEqual(["ACTIVATE_SERVICE"]);
   });
 
-  it("las demás plantillas siguen enviando el payload de su botón", () => {
-    expect(WHATSAPP_TEMPLATES.informe_diario_nexo.sendButtonPayloads).toBeUndefined();
-    expect(WHATSAPP_TEMPLATES.alertas_pendientes_nexo.sendButtonPayloads).toBeUndefined();
-    expect(buildTemplateRequest("informe_diario_nexo", ["Ana", "08/10/2026"]).buttonPayloads).toHaveLength(1);
-    expect(buildTemplateRequest("alertas_pendientes_nexo", ["Ana", "3"]).buttonPayloads).toHaveLength(1);
+  it("ninguna plantilla envía componente de botón: ya está definido en la plantilla aprobada de Meta", () => {
+    for (const name of WHATSAPP_TEMPLATE_NAMES) {
+      expect(WHATSAPP_TEMPLATES[name].sendButtonPayloads).toBe(false);
+      expect(buildTemplateRequest(name, name === "bienvenido_nexo" ? ["Ana"] : ["Ana", "1"]).buttonPayloads).toEqual([]);
+    }
+  });
+
+  it("cada plantilla lleva el idioma EXACTO con el que está registrada en Meta", () => {
+    expect(WHATSAPP_TEMPLATES.bienvenido_nexo.language).toBe("es");
+    expect(WHATSAPP_TEMPLATES.informe_diario.language).toBe("es");
+    expect(WHATSAPP_TEMPLATES.alerta_negativa.language).toBe("en");
+    expect(buildTemplateRequest("alerta_negativa", ["Ana", "1"]).language).toBe("en");
+  });
+
+  it("los nombres son los reales de Meta; los antiguos ya no están permitidos", () => {
+    expect([...WHATSAPP_TEMPLATE_NAMES]).toEqual(["bienvenido_nexo", "informe_diario", "alerta_negativa"]);
+    for (const old of ["informe_diario_nexo", "alertas_pendientes_nexo", "bienvenida_nexo"]) {
+      expect(isWhatsAppTemplateName(old)).toBe(false);
+    }
   });
 
   it("número de variables incorrecto o vacío → error", () => {
@@ -50,23 +63,27 @@ describe("lista cerrada de plantillas", () => {
     expect(sanitizeTemplateParam("a\t\tb      c")).toBe("a b c");
   });
 
-  it("informe_diario y alertas llevan su propio botón", () => {
-    expect(buildTemplateRequest("informe_diario_nexo", ["Ana", "08/10/2026"])).toMatchObject({
-      bodyParams: ["Ana", "08/10/2026"],
-      buttonPayloads: [ACTION_BUTTONS.VIEW_DAILY_REPORT.payload],
+  it("informe_diario y alerta_negativa: variables en orden y sin botón", () => {
+    expect(buildTemplateRequest("informe_diario", ["Ana", "8 de octubre de 2026"])).toEqual({
+      name: "informe_diario",
+      language: "es",
+      bodyParams: ["Ana", "8 de octubre de 2026"],
+      buttonPayloads: [],
     });
-    expect(buildTemplateRequest("alertas_pendientes_nexo", ["Ana", "3"])).toMatchObject({
-      bodyParams: ["Ana", "3"],
-      buttonPayloads: [ACTION_BUTTONS.VIEW_PENDING_ALERTS.payload],
+    expect(buildTemplateRequest("alerta_negativa", ["Ana", "1"])).toEqual({
+      name: "alerta_negativa",
+      language: "en",
+      bodyParams: ["Ana", "1"],
+      buttonPayloads: [],
     });
   });
 
   it("variables como en Meta: bienvenida 1, informe diario 2, alertas 2", () => {
     expect(WHATSAPP_TEMPLATES.bienvenido_nexo.bodyParamCount).toBe(1);
-    expect(WHATSAPP_TEMPLATES.informe_diario_nexo.bodyParamCount).toBe(2);
-    expect(WHATSAPP_TEMPLATES.alertas_pendientes_nexo.bodyParamCount).toBe(2);
-    expect(() => buildTemplateRequest("informe_diario_nexo", ["Ana"])).toThrow();
-    expect(() => buildTemplateRequest("alertas_pendientes_nexo", [])).toThrow();
+    expect(WHATSAPP_TEMPLATES.informe_diario.bodyParamCount).toBe(2);
+    expect(WHATSAPP_TEMPLATES.alerta_negativa.bodyParamCount).toBe(2);
+    expect(() => buildTemplateRequest("informe_diario", ["Ana"])).toThrow();
+    expect(() => buildTemplateRequest("alerta_negativa", [])).toThrow();
   });
 });
 
@@ -98,12 +115,22 @@ describe("sendTemplateMessage (Cloud API)", () => {
     });
   });
 
-  it("una plantilla con payload de botón sigue enviando el componente quick_reply", async () => {
-    const { body } = await run(buildTemplateRequest("informe_diario_nexo", ["Ana", "08/10/2026"]));
-    expect(body.template.components).toEqual([
-      { type: "body", parameters: [{ type: "text", text: "Ana" }, { type: "text", text: "08/10/2026" }] },
-      { type: "button", sub_type: "quick_reply", index: "0", parameters: [{ type: "payload", payload: "nexo:view_daily_report" }] },
-    ]);
+  it("informe_diario: idioma es y dos variables de cuerpo, sin componente button", async () => {
+    const { body } = await run(buildTemplateRequest("informe_diario", ["Ana", "8 de octubre de 2026"]));
+    expect(body.template).toEqual({
+      name: "informe_diario",
+      language: { code: "es" },
+      components: [{ type: "body", parameters: [{ type: "text", text: "Ana" }, { type: "text", text: "8 de octubre de 2026" }] }],
+    });
+  });
+
+  it("alerta_negativa: idioma en y dos variables de cuerpo, sin componente button", async () => {
+    const { body } = await run(buildTemplateRequest("alerta_negativa", ["Ana", "1"]));
+    expect(body.template).toEqual({
+      name: "alerta_negativa",
+      language: { code: "en" },
+      components: [{ type: "body", parameters: [{ type: "text", text: "Ana" }, { type: "text", text: "1" }] }],
+    });
   });
 
   it("el token solo viaja en la cabecera, nunca en el cuerpo", async () => {
@@ -206,7 +233,9 @@ describe("resolveWhatsAppAction", () => {
   it("sin payload propio, el texto exacto del botón (Meta lo devuelve como payload)", () => {
     expect(resolveWhatsAppAction(button("Activar servicio", "Activar servicio"), { activationPending: false })).toBe("ACTIVATE_SERVICE");
     expect(resolveWhatsAppAction(button(undefined, "ver informe"), { activationPending: false })).toBe("VIEW_DAILY_REPORT");
-    expect(resolveWhatsAppAction(button(undefined, "  Ver alertas "), { activationPending: false })).toBe("VIEW_PENDING_ALERTS");
+    expect(resolveWhatsAppAction(button(undefined, "  Ver alerta "), { activationPending: false })).toBe("VIEW_PENDING_ALERTS");
+    // El botón real de la plantilla es "Ver alerta" (singular): el plural ya no se reconoce.
+    expect(resolveWhatsAppAction(button(undefined, "Ver alertas"), { activationPending: false })).toBe("UNKNOWN");
   });
 
   it("botón desconocido o con coincidencia parcial → UNKNOWN", () => {

@@ -116,7 +116,7 @@ describe("Activar servicio", () => {
   });
 });
 
-describe("Ver informe / Ver alertas (preparados)", () => {
+describe("Ver informe / Ver alerta (preparados)", () => {
   it("Ver informe se reconoce y responde la recepción, sin informe real", async () => {
     const t = setup({ activatedAt: NOW.toISOString() });
     expect(await t.run(button("nexo:view_daily_report", "Ver informe"))).toEqual({ action: "VIEW_DAILY_REPORT" });
@@ -124,9 +124,12 @@ describe("Ver informe / Ver alertas (preparados)", () => {
     expect(REPORT_REQUEST_REPLY).toBe("📊 Solicitud de informe recibida.");
   });
 
-  it("Ver alertas se reconoce y responde la recepción, sin alertas reales", async () => {
+  it("Ver alerta se reconoce y responde la recepción, sin alertas reales", async () => {
     const t = setup({ activatedAt: NOW.toISOString() });
-    expect(await t.run(button("nexo:view_pending_alerts", "Ver alertas"))).toEqual({ action: "VIEW_PENDING_ALERTS" });
+    expect(await t.run(button("nexo:view_pending_alerts", "Ver alerta"))).toEqual({ action: "VIEW_PENDING_ALERTS" });
+    // Sin payload propio (como llega al enviar la plantilla sin componente de botón), por el texto del botón.
+    const byText = setup({ activatedAt: NOW.toISOString() });
+    expect(await byText.run(message({ text: "Ver alerta", interactive: { title: "Ver alerta" } }))).toEqual({ action: "VIEW_PENDING_ALERTS" });
     expect(t.replies.map((r) => r.text)).toEqual([ALERTS_REQUEST_REPLY]);
     expect(ALERTS_REQUEST_REPLY).toBe("🚨 Solicitud de alertas recibida.");
   });
@@ -141,7 +144,7 @@ describe("Ver informe / Ver alertas (preparados)", () => {
     const t = setup({ activatedAt: NOW.toISOString() });
     await t.run({ ...button("nexo:view_daily_report", "Ver informe"), externalMessageId: "wamid.A" });
     await t.run({ ...button("nexo:view_daily_report", "Ver informe"), externalMessageId: "wamid.B" });
-    await t.run({ ...button("nexo:view_pending_alerts", "Ver alertas"), externalMessageId: "wamid.A" });
+    await t.run({ ...button("nexo:view_pending_alerts", "Ver alerta"), externalMessageId: "wamid.A" });
     expect(new Set(t.replies.map((r) => r.requestId)).size).toBe(3);
   });
 });

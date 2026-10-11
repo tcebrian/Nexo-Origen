@@ -60,7 +60,7 @@ describe("POST /api/conversations/[id]/activation", () => {
   });
 
   it("el navegador no puede elegir plantilla, teléfono ni canal: el cuerpo se ignora", async () => {
-    await post(CONVERSATION, { template: "hello_world", name: "informe_diario_nexo", to: "+34000000000", phoneNumberId: "1" });
+    await post(CONVERSATION, { template: "hello_world", name: "informe_diario", to: "+34000000000", phoneNumberId: "1" });
     expect(sendManualActivation).toHaveBeenCalledTimes(1);
     expect(sendManualActivation.mock.calls[0]).toEqual([CONVERSATION]);
   });

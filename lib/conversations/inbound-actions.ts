@@ -8,7 +8,7 @@ import type { InboundMessage } from "@/lib/conversations/types";
  *
  *   mensaje entrante ya guardado → ¿qué acción es? (`resolveWhatsAppAction`) → handler de la acción
  *
- * Un handler por acción (`INBOUND_ACTION_HANDLERS`): "Ver informe" y "Ver alertas" ya están
+ * Un handler por acción (`INBOUND_ACTION_HANDLERS`): "Ver informe" y "Ver alerta" ya están
  * reconocidas y enlazadas al contacto; hoy solo confirman la recepción y el siguiente bloque
  * sustituirá su cuerpo por el informe y las alertas reales (sin tocar el reconocimiento).
  *

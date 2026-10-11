@@ -301,6 +301,69 @@ function LinkedAccountCard({
   );
 }
 
+/**
+ * PRUEBA TEMPORAL (solo super_admin: toda la pantalla lo es): envía `informe_diario` o `alerta_negativa`
+ * a este contacto por el mismo sistema de envío de Conversations, para comprobar que Meta las acepta.
+ * No cambia la activación ni los permisos. Se retirará cuando termine la validación.
+ */
+function TemplateTestCard({ conversationId, onSent }: { conversationId: string; onSent: () => void }) {
+  const [busy, setBusy] = useState<"daily_report" | "negative_alert" | null>(null);
+  const [result, setResult] = useState<{ kind: "ok" | "error"; text: string; detail?: string } | null>(null);
+
+  async function run(kind: "daily_report" | "negative_alert") {
+    setBusy(kind);
+    setResult(null);
+    try {
+      const response = await fetch(`/api/conversations/${conversationId}/template-test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Un id nuevo por pulsación: un doble clic no duplica, una pulsación nueva envía otro mensaje.
+        body: JSON.stringify({ kind, requestId: crypto.randomUUID() }),
+      });
+      const data = (await response.json().catch(() => null)) as { error?: string; detail?: string } | null;
+      if (!response.ok) {
+        setResult({ kind: "error", text: data?.error ?? "No se pudo enviar la plantilla de prueba", detail: data?.detail });
+        return;
+      }
+      setResult({ kind: "ok", text: "Plantilla enviada. Mira el estado de entrega en la conversación." });
+      onSent();
+    } catch {
+      setResult({ kind: "error", text: "No se pudo enviar la plantilla de prueba" });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-dashed border-amber-300/25 bg-amber-300/[0.04] p-4">
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-200/80">Prueba de plantillas</h3>
+        <span className="rounded-full border border-amber-300/25 px-2 py-0.5 text-[10px] font-medium text-amber-200">Temporal</span>
+      </div>
+      <p className="mb-3 text-xs text-gray-400">Envía una plantilla real a este contacto. No cambia su activación ni sus permisos.</p>
+      <div className="grid gap-2">
+        <button type="button" onClick={() => void run("daily_report")} disabled={busy !== null} className={secondaryButtonClass}>
+          {busy === "daily_report" ? "Enviando…" : "Probar informe diario"}
+        </button>
+        <button type="button" onClick={() => void run("negative_alert")} disabled={busy !== null} className={secondaryButtonClass}>
+          {busy === "negative_alert" ? "Enviando…" : "Probar alerta negativa"}
+        </button>
+      </div>
+      {result ? (
+        <div
+          role={result.kind === "error" ? "alert" : "status"}
+          className={`mt-3 rounded-xl border px-3 py-2.5 text-xs ${
+            result.kind === "ok" ? "border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-100" : "border-rose-400/20 bg-rose-400/[0.07] text-rose-100"
+          }`}
+        >
+          <p className="font-medium">{result.text}</p>
+          {result.detail ? <p className="mt-1 break-words opacity-80">{result.detail}</p> : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 /** Columna de información del contacto (derecha en pantallas anchas; en drawer en las demás). */
 export function ContactInfoPanel({
   conversationId,
@@ -339,6 +402,7 @@ export function ContactInfoPanel({
       />
       <PermissionsCard detail={detail} config={config} onEdit={onEditPermissions} />
       <LinkedAccountCard conversationId={conversationId} detail={detail} onDetailChange={onDetailChange} />
+      <TemplateTestCard conversationId={conversationId} onSent={onChanged} />
     </div>
   );
 }

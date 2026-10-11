@@ -12,6 +12,7 @@ import {
   type ContactActivationRepository,
 } from "@/lib/conversations/contact-activation";
 import { outboundRepository } from "@/lib/conversations/outbound.server";
+import { sendTestTemplate, type TestTemplateKind, type TestTemplateOutcome } from "@/lib/conversations/template-test";
 import { sendConversationOperation, type SendDeps } from "@/lib/conversations/send-text";
 import type { InboundMessage } from "@/lib/conversations/types";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -139,6 +140,22 @@ export function sendManualActivation(conversationId: string): Promise<Activation
       sendTemplate: (input) => sendTemplateMessage(input, { timeoutMs: SEND_TIMEOUT_MS }),
     }
   );
+}
+
+/**
+ * PRUEBA MANUAL y TEMPORAL de `informe_diario` / `alerta_negativa` (quien llama ya comprobó super_admin).
+ * Mismo sistema de envío que la activación y que producción; no toca fechas de activación ni permisos.
+ */
+export function sendManualTestTemplate(input: {
+  conversationId: string;
+  kind: TestTemplateKind;
+  requestId: string;
+}): Promise<TestTemplateOutcome> {
+  return sendTestTemplate(input, {
+    activations: contactActivationRepository,
+    send: productionSendDeps(),
+    sendTemplate: (request) => sendTemplateMessage(request, { timeoutMs: SEND_TIMEOUT_MS }),
+  });
 }
 
 /**

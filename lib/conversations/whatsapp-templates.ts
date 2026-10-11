@@ -18,28 +18,31 @@ export type WhatsAppAction = WhatsAppActionName | "UNKNOWN";
 export const ACTION_BUTTONS: Record<WhatsAppActionName, { payload: string; title: string }> = {
   ACTIVATE_SERVICE: { payload: "nexo:activate_service", title: "Activar servicio" },
   VIEW_DAILY_REPORT: { payload: "nexo:view_daily_report", title: "Ver informe" },
-  VIEW_PENDING_ALERTS: { payload: "nexo:view_pending_alerts", title: "Ver alertas" },
+  VIEW_PENDING_ALERTS: { payload: "nexo:view_pending_alerts", title: "Ver alerta" },
 };
 
-export const WHATSAPP_TEMPLATE_NAMES = ["bienvenido_nexo", "informe_diario_nexo", "alertas_pendientes_nexo"] as const;
+export const WHATSAPP_TEMPLATE_NAMES = ["bienvenido_nexo", "informe_diario", "alerta_negativa"] as const;
 export type WhatsAppTemplateName = (typeof WHATSAPP_TEMPLATE_NAMES)[number];
+
+/** Idioma EXACTO con el que la plantilla está registrada en Meta (puede ser distinto del del texto). */
+export type WhatsAppTemplateLanguage = "es" | "en";
 
 export type WhatsAppTemplateDefinition = {
   name: WhatsAppTemplateName;
-  language: "es";
+  language: WhatsAppTemplateLanguage;
   /**
    * Nº de variables del cuerpo, igual al aprobado en Meta (que rechaza otro número):
-   * bienvenido_nexo {{1}} nombre · informe_diario_nexo {{1}} nombre, {{2}} fecha ·
-   * alertas_pendientes_nexo {{1}} nombre, {{2}} nº de alertas.
+   * bienvenido_nexo {{1}} nombre · informe_diario {{1}} nombre, {{2}} fecha ·
+   * alerta_negativa {{1}} nombre, {{2}} nº de alertas.
    */
   bodyParamCount: number;
   /** Botones de respuesta rápida, en orden, con la acción que disparan. */
   buttons: WhatsAppActionName[];
   /**
-   * `false`: al enviar NO se manda el componente `button` (el botón sigue definido en la plantilla de
-   * Meta y se muestra igual). Prueba A/B del 132001 de `bienvenido_nexo`: Make la envía sin ese
-   * componente y Meta la acepta. Las respuestas siguen reconociéndose por el texto exacto del botón.
-   * Por defecto (`undefined`) se envía el payload propio de cada botón.
+   * `false`: al enviar NO se manda el componente `button`. El botón ya está definido en la plantilla
+   * aprobada de Meta y se muestra igual; mandarlo (con payload) hacía que Meta devolviera 132001.
+   * Las respuestas se reconocen por el texto exacto del botón (`ACTION_BUTTONS[...].title`).
+   * Por defecto (`undefined`) se enviaría el payload propio de cada botón.
    */
   sendButtonPayloads?: boolean;
   /** Texto que ve el equipo en la conversación (no incluye datos del contacto). */
@@ -55,19 +58,22 @@ export const WHATSAPP_TEMPLATES: Record<WhatsAppTemplateName, WhatsAppTemplateDe
     sendButtonPayloads: false,
     display: "📩 Plantilla enviada: activación de Nexo",
   },
-  informe_diario_nexo: {
-    name: "informe_diario_nexo",
+  informe_diario: {
+    name: "informe_diario",
     language: "es",
     bodyParamCount: 2,
     buttons: ["VIEW_DAILY_REPORT"],
+    sendButtonPayloads: false,
     display: "📩 Plantilla enviada: informe diario de Nexo",
   },
-  alertas_pendientes_nexo: {
-    name: "alertas_pendientes_nexo",
-    language: "es",
+  // OJO: en Meta está registrada en inglés ("en") aunque su texto sea español, y su botón es "Ver alerta".
+  alerta_negativa: {
+    name: "alerta_negativa",
+    language: "en",
     bodyParamCount: 2,
     buttons: ["VIEW_PENDING_ALERTS"],
-    display: "📩 Plantilla enviada: alertas pendientes de Nexo",
+    sendButtonPayloads: false,
+    display: "📩 Plantilla enviada: alerta negativa de Nexo",
   },
 };
 
@@ -82,7 +88,7 @@ export function sanitizeTemplateParam(value: string): string {
 
 export type TemplateRequest = {
   name: WhatsAppTemplateName;
-  language: "es";
+  language: WhatsAppTemplateLanguage;
   bodyParams: string[];
   /** Payload de cada botón de respuesta rápida, por posición. */
   buttonPayloads: string[];
