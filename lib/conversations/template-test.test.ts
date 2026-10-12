@@ -137,7 +137,9 @@ const requireApiAuth = vi.fn();
 const sendManualTestTemplate = vi.fn();
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/api-auth", () => ({ requireApiAuth }));
+const runManualDailyReportForConversation = vi.fn();
 vi.mock("@/lib/conversations/contact-activation.server", () => ({ sendManualTestTemplate }));
+vi.mock("@/lib/reports/daily/process.server", () => ({ runManualDailyReportForConversation }));
 
 const route = await import("@/app/api/conversations/[conversationId]/template-test/route");
 const asRole = (rol: string) => requireApiAuth.mockResolvedValue({ ok: true, session: { userId: "u-1", perfil: { rol }, scope: {} } });
@@ -156,6 +158,33 @@ describe("POST /api/conversations/[id]/template-test", () => {
     vi.resetAllMocks();
     asRole("super_admin");
     sendManualTestTemplate.mockResolvedValue({ status: "sent", messages: [], template: "informe_diario" });
+    runManualDailyReportForConversation.mockResolvedValue({
+      status: "sent",
+      envioId: "envio-1",
+      restaurants: 3,
+      slot: { kind: "WEEK_TO_DATE", slotDate: "2026-10-13", periodStart: "2026-10-12T00:00:00", periodEnd: "2026-10-13T09:00:00" },
+    });
+  });
+
+  it("informe diario: ejecuta el flujo real del job y NO el envío suelto de plantilla", async () => {
+    const res = await post({ kind: "daily_report", requestId: REQUEST_ID });
+    expect(res.status).toBe(200);
+    expect(runManualDailyReportForConversation).toHaveBeenCalledWith({ conversationId: CONVERSATION_ID, requestId: REQUEST_ID });
+    expect(sendManualTestTemplate).not.toHaveBeenCalled();
+    expect(await res.json()).toMatchObject({ template: "informe_diario", report: { kind: "WEEK_TO_DATE", restaurants: 3 } });
+  });
+
+  it("informe diario sin restaurantes asignados: 409 y no se envía nada (deny by default)", async () => {
+    runManualDailyReportForConversation.mockResolvedValue({ status: "no_restaurants" });
+    const res = await post({ kind: "daily_report", requestId: REQUEST_ID });
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe("no_restaurants");
+  });
+
+  it("alerta negativa sigue por el envío de plantilla, sin tocar el informe", async () => {
+    await post({ kind: "negative_alert", requestId: REQUEST_ID });
+    expect(sendManualTestTemplate).toHaveBeenCalledTimes(1);
+    expect(runManualDailyReportForConversation).not.toHaveBeenCalled();
   });
 
   it("solo super_admin", async () => {
@@ -166,6 +195,7 @@ describe("POST /api/conversations/[id]/template-test", () => {
       expect((await post({ kind: "daily_report", requestId: REQUEST_ID })).status).toBe(403);
     }
     expect(sendManualTestTemplate).not.toHaveBeenCalled();
+    expect(runManualDailyReportForConversation).not.toHaveBeenCalled();
   });
 
   it("el navegador solo elige el tipo: nada de nombre de plantilla, idioma, teléfono ni variables", async () => {

@@ -6,6 +6,7 @@ import { isValidConversationId, mapMessageRow } from "@/lib/conversations/read-m
 import { errorReply } from "@/lib/conversations/send-reply";
 import { isValidRequestId } from "@/lib/conversations/send-text";
 import { isTestTemplateKind } from "@/lib/conversations/template-test";
+import { runManualDailyReportForConversation } from "@/lib/reports/daily/process.server";
 import { describeTemplateRejection } from "@/lib/whatsapp/provider-error";
 
 export const runtime = "nodejs";
@@ -35,6 +36,41 @@ export async function POST(request: Request, { params }: { params: Promise<{ con
   if (!isValidRequestId(body?.requestId)) return NextResponse.json({ error: "requestId no válido" }, { status: 400 });
 
   try {
+    // "Probar informe diario" ejecuta el flujo REAL del job (restaurantes, slot de ahora, snapshot, fila de
+    // `conv_informe_envios`, plantilla y wamid), para que "Ver informe" sobre ese aviso funcione de verdad.
+    if (body.kind === "daily_report") {
+      const report = await runManualDailyReportForConversation({ conversationId, requestId: body.requestId });
+      if (report.status === "contact_not_found") {
+        return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
+      }
+      if (report.status === "no_restaurants") {
+        return NextResponse.json(
+          { error: "Este contacto no tiene restaurantes asignados: no hay informe que enviar.", code: "no_restaurants" },
+          { status: 409 }
+        );
+      }
+      if (report.status === "failed") {
+        console.error(
+          `[conversations] daily_report_test_failed conversationId=${conversationId} code=${report.code} reason=${report.reason}`
+        );
+        return NextResponse.json({ error: "No se pudo enviar el informe de prueba", code: report.reason, detail: `Código ${report.code}` }, { status: 502 });
+      }
+      return NextResponse.json(
+        {
+          template: "informe_diario",
+          report: {
+            envioId: report.envioId,
+            kind: report.slot.kind,
+            slotDate: report.slot.slotDate,
+            periodStart: report.slot.periodStart,
+            periodEnd: report.slot.periodEnd,
+            restaurants: report.restaurants,
+          },
+        },
+        { headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
     const outcome = await sendManualTestTemplate({ conversationId, kind: body.kind, requestId: body.requestId });
 
     if (outcome.status === "sent") {

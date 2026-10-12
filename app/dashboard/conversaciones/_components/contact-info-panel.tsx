@@ -340,7 +340,10 @@ function TemplateTestCard({ conversationId, onSent }: { conversationId: string; 
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-200/80">Prueba de plantillas</h3>
         <span className="rounded-full border border-amber-300/25 px-2 py-0.5 text-[10px] font-medium text-amber-200">Temporal</span>
       </div>
-      <p className="mb-3 text-xs text-gray-400">Envía una plantilla real a este contacto. No cambia su activación ni sus permisos.</p>
+      <p className="mb-3 text-xs text-gray-400">
+        Envía una plantilla real a este contacto. El informe diario ejecuta el flujo real (restaurantes asignados, informe de hoy y
+        snapshot), así que «Ver informe» funciona. No cambia su activación ni sus permisos.
+      </p>
       <div className="grid gap-2">
         <button type="button" onClick={() => void run("daily_report")} disabled={busy !== null} className={secondaryButtonClass}>
           {busy === "daily_report" ? "Enviando…" : "Probar informe diario"}

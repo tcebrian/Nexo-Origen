@@ -14,6 +14,7 @@ import { SUPABASE_TABLES } from "@/lib/supabase/tables";
 import { sendTemplateMessage } from "@/lib/whatsapp/cloud-api.server";
 import { DAILY_REPORT_TEMPLATE, runDailyReport, type DailyReportJobDeps, type DailyReportRunResult, type WindowData } from "./job";
 import type { DailySlot } from "./calendar";
+import { runManualDailyReport, type ManualDailyReportOutcome } from "./manual-test";
 import type { DailyReportSnapshot, RestaurantInfo, WindowMetrics } from "./snapshot";
 import { viewDailyReport, type DailyReportViewDeps, type DailyReportViewResult, type InformeEnvio } from "./view";
 
@@ -127,18 +128,25 @@ export function dailyReportJobDeps(): DailyReportJobDeps {
     resolveRestaurantIds: (contactIds) => resolveContactsRestaurantIds(contactIds),
 
     async listContactsWithEnvio(slotDate) {
-      const { data, error } = await admin().from(ENVIOS).select("contacto_id").eq("slot_date", slotDate).eq("template", DAILY_REPORT_TEMPLATE);
+      // Solo cuentan los envíos del job: una prueba manual no marca el slot como hecho.
+      const { data, error } = await admin()
+        .from(ENVIOS)
+        .select("contacto_id")
+        .eq("slot_date", slotDate)
+        .eq("template", DAILY_REPORT_TEMPLATE)
+        .eq("origen", "job");
       if (error) fail("existing", error);
       return new Set(((data ?? []) as { contacto_id: string }[]).map((row) => row.contacto_id));
     },
 
     loadWindowData,
 
-    async reserve({ contactId, slot, template }) {
+    async reserve({ contactId, slot, template, origin }) {
       const { data, error } = await admin()
         .from(ENVIOS)
         .insert({
           contacto_id: contactId,
+          origen: origin ?? "job",
           template,
           slot_date: slot.slotDate,
           kind: slot.kind,
@@ -223,6 +231,39 @@ export function processDailyReport(): Promise<DailyReportRunResult> {
   return runDailyReport(dailyReportJobDeps());
 }
 
+/**
+ * Prueba manual (super_admin, temporal): el flujo real del job para el contacto de UNA conversación.
+ * Ver `manual-test.ts`. No exige activación: es una prueba explícita del propio super_admin.
+ */
+export async function runManualDailyReportForConversation(input: {
+  conversationId: string;
+  requestId: string;
+}): Promise<ManualDailyReportOutcome | { status: "contact_not_found" }> {
+  const client = admin();
+  const { data: conversation, error } = await client
+    .from(SUPABASE_TABLES.conv_conversaciones)
+    .select("contacto_id")
+    .eq("id", input.conversationId)
+    .maybeSingle();
+  if (error) fail("manual_conversation", error);
+  const contactId = (conversation as { contacto_id: string } | null)?.contacto_id;
+  if (!contactId) return { status: "contact_not_found" };
+
+  const { data: contact, error: contactError } = await client
+    .from(SUPABASE_TABLES.conv_contactos)
+    .select("id,nombre,nombre_perfil")
+    .eq("id", contactId)
+    .maybeSingle();
+  if (contactError) fail("manual_contact", contactError);
+  if (!contact) return { status: "contact_not_found" };
+  const row = contact as { id: string; nombre: string | null; nombre_perfil: string | null };
+
+  return runManualDailyReport(
+    { contactId: row.id, contactName: row.nombre?.trim() || row.nombre_perfil?.trim() || null, requestId: input.requestId },
+    dailyReportJobDeps()
+  );
+}
+
 // "Ver informe" -------------------------------------------------------------------------------------
 
 type EnvioRow = { id: string; contacto_id: string; slot_date: string; snapshot: unknown; sent_at: string | null };
@@ -238,7 +279,14 @@ const mapEnvio = (row: EnvioRow): InformeEnvio => ({
 export function dailyReportViewDeps(): DailyReportViewDeps {
   return {
     async findByWamid(wamid) {
-      const { data, error } = await admin().from(ENVIOS).select(ENVIO_COLUMNS).eq("template_wamid", wamid).eq("status", "sent").maybeSingle();
+      const { data, error } = await admin()
+        .from(ENVIOS)
+        .select(ENVIO_COLUMNS)
+        .eq("template_wamid", wamid)
+        .eq("status", "sent")
+        .order("sent_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
       if (error) fail("find_wamid", error);
       return data ? mapEnvio(data as EnvioRow) : null;
     },

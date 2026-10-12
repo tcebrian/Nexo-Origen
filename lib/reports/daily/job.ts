@@ -37,8 +37,11 @@ export interface DailyReportJobDeps {
   /** Contactos que ya tienen fila de ese slot (enviada, fallida o reservada). */
   listContactsWithEnvio(slotDate: string): Promise<Set<string>>;
   loadWindowData(restaurantIds: number[], slot: DailySlot): Promise<WindowData>;
-  /** Reserva atómica; `null` si ya existe (otra ejecución se adelantó). */
-  reserve(input: { contactId: string; slot: DailySlot; template: string }): Promise<{ id: string } | null>;
+  /**
+   * Reserva atómica; `null` si ya existe (otra ejecución se adelantó). `origin` es 'job' por defecto; las
+   * pruebas manuales usan 'prueba' y quedan fuera de la unicidad del job.
+   */
+  reserve(input: { contactId: string; slot: DailySlot; template: string; origin?: "job" | "prueba" }): Promise<{ id: string } | null>;
   saveSnapshot(envioId: string, snapshot: DailyReportSnapshot): Promise<void>;
   send(input: { contactId: string; contactName: string | null; slot: DailySlot; requestSeed: string }): Promise<SendResult>;
   markSent(envioId: string, result: Extract<SendResult, { status: "sent" }>, at: Date): Promise<void>;
