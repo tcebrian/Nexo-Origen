@@ -2,6 +2,7 @@ import { deriveStableRequestId } from "@/lib/conversations/request-ids";
 import { resolveWhatsAppAction } from "@/lib/conversations/whatsapp-actions";
 import type { WhatsAppActionName } from "@/lib/conversations/whatsapp-templates";
 import type { InboundMessage } from "@/lib/conversations/types";
+import type { PendingAlertsResult } from "@/lib/alerts/negative-review/orchestrator";
 import type { DailyReportViewResult } from "@/lib/reports/daily/view";
 
 /**
@@ -28,6 +29,11 @@ export const REPORT_NOT_FOUND_REPLY =
   "📊 No encuentro un informe reciente para enviarte. El próximo te llegará a las 09:00.";
 export const REPORT_NO_ACCESS_REPLY = "🔒 Ahora mismo no tienes restaurantes asignados en Nexo Origen, así que no hay informe que mostrar.";
 export const ALERTS_REQUEST_REPLY = "🚨 Solicitud de alertas recibida.";
+export const ALERTS_NONE_REPLY = "✅ No tienes alertas pendientes ahora mismo.";
+export const ALERTS_NO_ACCESS_REPLY = "🔒 Ahora mismo no tienes restaurantes asignados en Nexo Origen, así que no hay alertas que mostrar.";
+export const ALERTS_FAILED_REPLY = "⚠️ No he podido enviarte la alerta ahora mismo. Vuelve a pulsar «Ver alerta» en unos minutos.";
+export const alertsRemainingReply = (remaining: number) =>
+  `📌 Tienes ${remaining} ${remaining === 1 ? "alerta más" : "alertas más"} pendiente${remaining === 1 ? "" : "s"}. Te las enviaremos con el siguiente aviso.`;
 
 export type InboundActionContext = {
   message: InboundMessage;
@@ -41,6 +47,8 @@ export type InboundActionContext = {
   replyParts: (texts: string[]) => Promise<void>;
   /** Informe diario asociado al aviso pulsado (snapshot guardado). Ausente → respuesta provisional. */
   viewDailyReport?: () => Promise<DailyReportViewResult>;
+  /** Entrega las alertas negativas pendientes del contacto (imagen + texto). Ausente → respuesta provisional. */
+  viewPendingAlerts?: () => Promise<PendingAlertsResult>;
   activations: InboundActivationRepository;
   now: () => Date;
 };
@@ -73,7 +81,18 @@ export const INBOUND_ACTION_HANDLERS: Record<WhatsAppActionName, InboundActionHa
     else await context.reply(REPORT_NOT_FOUND_REPLY);
   },
   async VIEW_PENDING_ALERTS(context) {
-    await context.reply(ALERTS_REQUEST_REPLY);
+    if (!context.viewPendingAlerts) {
+      await context.reply(ALERTS_REQUEST_REPLY);
+      return;
+    }
+    // La imagen y el texto de cada alerta los envía la propia entrega; aquí solo se responde lo que falta.
+    const result = await context.viewPendingAlerts();
+    if (result.status === "no_access") await context.reply(ALERTS_NO_ACCESS_REPLY);
+    else if (result.status === "none") {
+      // En una reentrega del mismo clic, "ninguna pendiente" suele significar que ya se entregaron.
+      if (!context.redelivery) await context.reply(ALERTS_NONE_REPLY);
+    } else if (result.delivered === 0 && result.failed > 0) await context.reply(ALERTS_FAILED_REPLY);
+    else if (result.remaining > 0) await context.reply(alertsRemainingReply(result.remaining));
   },
 };
 
@@ -83,6 +102,8 @@ export type InboundActionDeps = {
   sendReply: (input: { conversationId: string; requestId: string; text: string }) => Promise<void>;
   /** Resuelve el informe diario del aviso pulsado (snapshot). Opcional. */
   viewDailyReport?: (input: { contactId: string; replyToWamid: string | null; redelivery: boolean }) => Promise<DailyReportViewResult>;
+  /** Entrega las alertas negativas pendientes del contacto. Opcional. */
+  viewPendingAlerts?: (input: { contactId: string; conversationId: string }) => Promise<PendingAlertsResult>;
   now?: () => Date;
 };
 
@@ -138,6 +159,7 @@ export async function handleInboundAction(
             redelivery: input.redelivery,
           })
       : undefined,
+    viewPendingAlerts: deps.viewPendingAlerts ? () => deps.viewPendingAlerts!({ contactId, conversationId }) : undefined,
   });
 
   return { action };

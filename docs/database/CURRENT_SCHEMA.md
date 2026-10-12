@@ -420,3 +420,10 @@ Tipos: `empresa_id` y `restaurante_id` son `bigint` (como `empresas.id` / `resta
 ## Historial
 
 `conversations_foundation` creó un primer modelo con `empresa_id` en cada tabla (canal → empresa). `conversations_central_channel` lo sustituyó (las tablas estaban vacías; la migración aborta si alguna tiene filas) por el modelo actual.
+
+## conv_alertas_negativas (alertas negativas por WhatsApp)
+
+Una fila por (reseña, contacto): `resena_id`, `contacto_id`, `restaurante_id`, `conversacion_id`, `origen` (`real`/`prueba`),
+`status` (`reserved|pending|notified|delivering|delivered|failed`), `via` (`direct|template`), `template_wamid`, errores y fechas.
+Único (`resena_id`, `contacto_id`) solo para `origen = 'real'`. RLS activada; solo service role. Ver `supabase/conv_alertas_negativas.sql`.
+`restaurantes.google_maps_url` (nullable) se añade en el mismo script.

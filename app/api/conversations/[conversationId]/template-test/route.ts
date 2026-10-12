@@ -6,6 +6,7 @@ import { isValidConversationId, mapMessageRow } from "@/lib/conversations/read-m
 import { errorReply } from "@/lib/conversations/send-reply";
 import { isValidRequestId } from "@/lib/conversations/send-text";
 import { isTestTemplateKind } from "@/lib/conversations/template-test";
+import { runManualNegativeAlertForConversation } from "@/lib/alerts/negative-review/process.server";
 import { runManualDailyReportForConversation } from "@/lib/reports/daily/process.server";
 import { describeTemplateRejection } from "@/lib/whatsapp/provider-error";
 
@@ -67,6 +68,34 @@ export async function POST(request: Request, { params }: { params: Promise<{ con
             restaurants: report.restaurants,
           },
         },
+        { headers: { "Cache-Control": "no-store" } }
+      );
+    }
+
+    // "Probar alerta negativa" también ejecuta el flujo REAL (permisos, ventana de 24 h, imagen, texto con
+    // enlace, plantilla y "Ver alerta") sobre la reseña negativa más reciente a la que el contacto tiene acceso.
+    if (body.kind === "negative_alert" || body.kind === "negative_alert_template") {
+      const run = await runManualNegativeAlertForConversation({
+        conversationId,
+        forceTemplate: body.kind === "negative_alert_template",
+      });
+      if (run.status === "contact_not_found") return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
+      if (run.status === "no_restaurants") {
+        return NextResponse.json({ error: "Este contacto no tiene restaurantes asignados: no hay alertas que enviar.", code: "no_restaurants" }, { status: 409 });
+      }
+      if (run.status === "no_negative_review") {
+        return NextResponse.json({ error: "No hay reseñas negativas en los restaurantes de este contacto.", code: "no_negative_review" }, { status: 409 });
+      }
+      if (run.result.status === "skipped") {
+        return NextResponse.json({ error: "La reseña no es válida para alerta", code: run.result.reason }, { status: 409 });
+      }
+      const outcome = run.result.outcomes[0]?.outcome ?? "failed";
+      if (outcome === "failed" || outcome === "pending_template_failed") {
+        console.error(`[conversations] negative_alert_test_failed conversationId=${conversationId} outcome=${outcome}`);
+        return NextResponse.json({ error: "No se pudo enviar la alerta de prueba", code: outcome }, { status: 502 });
+      }
+      return NextResponse.json(
+        { template: "alerta_negativa", alert: { outcome, resenaId: run.resenaId } },
         { headers: { "Cache-Control": "no-store" } }
       );
     }

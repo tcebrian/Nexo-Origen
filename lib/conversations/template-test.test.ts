@@ -139,7 +139,9 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/api-auth", () => ({ requireApiAuth }));
 const runManualDailyReportForConversation = vi.fn();
 vi.mock("@/lib/conversations/contact-activation.server", () => ({ sendManualTestTemplate }));
+const runManualNegativeAlertForConversation = vi.fn();
 vi.mock("@/lib/reports/daily/process.server", () => ({ runManualDailyReportForConversation }));
+vi.mock("@/lib/alerts/negative-review/process.server", () => ({ runManualNegativeAlertForConversation }));
 
 const route = await import("@/app/api/conversations/[conversationId]/template-test/route");
 const asRole = (rol: string) => requireApiAuth.mockResolvedValue({ ok: true, session: { userId: "u-1", perfil: { rol }, scope: {} } });
@@ -181,10 +183,28 @@ describe("POST /api/conversations/[id]/template-test", () => {
     expect((await res.json()).code).toBe("no_restaurants");
   });
 
-  it("alerta negativa sigue por el envío de plantilla, sin tocar el informe", async () => {
-    await post({ kind: "negative_alert", requestId: REQUEST_ID });
-    expect(sendManualTestTemplate).toHaveBeenCalledTimes(1);
+  it("alerta negativa: ejecuta el flujo real de alertas (no la plantilla suelta) y no toca el informe", async () => {
+    runManualNegativeAlertForConversation.mockResolvedValue({
+      status: "done",
+      resenaId: 501,
+      result: { status: "processed", restaurantId: 7, recipients: 1, outcomes: [{ contactId: "c-1", outcome: "delivered_direct" }] },
+    });
+    const res = await post({ kind: "negative_alert", requestId: REQUEST_ID });
+    expect(res.status).toBe(200);
+    expect(runManualNegativeAlertForConversation).toHaveBeenCalledWith({ conversationId: CONVERSATION_ID, forceTemplate: false });
+    expect(sendManualTestTemplate).not.toHaveBeenCalled();
     expect(runManualDailyReportForConversation).not.toHaveBeenCalled();
+    expect(await res.json()).toMatchObject({ alert: { outcome: "delivered_direct", resenaId: 501 } });
+
+    await post({ kind: "negative_alert_template", requestId: REQUEST_ID });
+    expect(runManualNegativeAlertForConversation).toHaveBeenLastCalledWith({ conversationId: CONVERSATION_ID, forceTemplate: true });
+  });
+
+  it("alerta negativa sin restaurantes o sin reseñas negativas: 409 y nada se envía", async () => {
+    runManualNegativeAlertForConversation.mockResolvedValue({ status: "no_restaurants" });
+    expect((await post({ kind: "negative_alert", requestId: REQUEST_ID })).status).toBe(409);
+    runManualNegativeAlertForConversation.mockResolvedValue({ status: "no_negative_review" });
+    expect((await post({ kind: "negative_alert", requestId: REQUEST_ID })).status).toBe(409);
   });
 
   it("solo super_admin", async () => {
@@ -196,6 +216,7 @@ describe("POST /api/conversations/[id]/template-test", () => {
     }
     expect(sendManualTestTemplate).not.toHaveBeenCalled();
     expect(runManualDailyReportForConversation).not.toHaveBeenCalled();
+    expect(runManualNegativeAlertForConversation).not.toHaveBeenCalled();
   });
 
   it("el navegador solo elige el tipo: nada de nombre de plantilla, idioma, teléfono ni variables", async () => {
@@ -204,29 +225,23 @@ describe("POST /api/conversations/[id]/template-test", () => {
     expect((await post({ kind: "daily_report", requestId: "no-uuid" })).status).toBe(400);
     expect((await post({ kind: "daily_report", requestId: REQUEST_ID }, "nope")).status).toBe(400);
 
+    runManualNegativeAlertForConversation.mockResolvedValue({ status: "no_restaurants" });
     await post({ kind: "negative_alert", requestId: REQUEST_ID, template: "x", language: "es", to: "+34000000000", params: ["a"] });
-    expect(sendManualTestTemplate).toHaveBeenCalledWith({ conversationId: CONVERSATION_ID, kind: "negative_alert", requestId: REQUEST_ID });
+    expect(runManualNegativeAlertForConversation).toHaveBeenCalledWith({ conversationId: CONVERSATION_ID, forceTemplate: false });
   });
 
-  it("Meta rechaza → 502 con el código y el motivo saneado; el log no lleva teléfono ni token", async () => {
+  it("alerta negativa que no se puede enviar → 502 y el log no lleva teléfono, nombre ni token", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    sendManualTestTemplate.mockResolvedValue({
-      status: "rejected",
-      reason: "other",
-      sent: [],
-      template: "alerta_negativa",
-      providerError: { httpStatus: 404, code: 132001, type: "OAuthException", details: "template name (alerta_negativa) does not exist in es" },
+    runManualNegativeAlertForConversation.mockResolvedValue({
+      status: "done",
+      resenaId: 501,
+      result: { status: "processed", restaurantId: 7, recipients: 1, outcomes: [{ contactId: "c-1", outcome: "pending_template_failed" }] },
     });
-    const res = await post({ kind: "negative_alert", requestId: REQUEST_ID });
+    const res = await post({ kind: "negative_alert_template", requestId: REQUEST_ID });
     expect(res.status).toBe(502);
-    expect(await res.json()).toEqual({
-      error: "WhatsApp rechazó la plantilla (Meta 132001)",
-      code: "rejected",
-      detail: "template name (alerta_negativa) does not exist in es",
-    });
+    expect(await res.json()).toEqual({ error: "No se pudo enviar la alerta de prueba", code: "pending_template_failed" });
     const line = String(spy.mock.calls[0]![0]);
-    expect(line).toContain("template=alerta_negativa");
-    expect(line).toContain("metaCode=132001");
+    expect(line).toContain("outcome=pending_template_failed");
     expect(line).not.toMatch(/\+?\d{8,}|token|Bearer/i);
     spy.mockRestore();
   });
@@ -238,6 +253,7 @@ describe("interfaz temporal", () => {
   it("dos botones en una tarjeta marcada como temporal, que llaman a la ruta de prueba", () => {
     expect(panel).toContain("Probar informe diario");
     expect(panel).toContain("Probar alerta negativa");
+    expect(panel).toContain("Probar alerta (forzar plantilla)");
     expect(panel).toContain("Temporal");
     expect(panel).toContain("/template-test");
     // No manda plantilla, idioma ni variables: solo el tipo y un id por pulsación.

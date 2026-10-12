@@ -518,3 +518,32 @@ Los proveedores:
 Nexo:
 
 > identifica, normaliza, calcula, autoriza, interpreta y distribuye.
+
+---
+
+# 5. Alertas negativas por WhatsApp Cloud (Conversations)
+
+## Estado
+
+**IMPLEMENTADO** (sustituye en la práctica al aviso Twilio de la sección 4; ese flujo legado sigue en el repo sin cambios).
+
+## Flujo
+
+```
+INSERT en resenas (Database Webhook de Supabase, x-webhook-secret = WHATSAPP_WEBHOOK_SECRET)
+   ↓
+POST /api/webhooks/negative-review-alert        (solo ≤ 2★; todo se relee de la base de datos)
+   ↓
+destinatarios = contactos con acceso al restaurante (conv_contacto_empresas / conv_contacto_restaurantes, deny by default)
+   ↓
+por contacto:
+  · no activado             → fila `pending` en conv_alertas_negativas (no se envía nada)
+  · activado, ventana ≤ 24h → imagen (renderer interno) + texto con enlace
+  · activado, ventana cerrada → plantilla `alerta_negativa`; al pulsar "Ver alerta" se envía imagen + texto
+```
+
+- Código: `lib/alerts/negative-review/` (`orchestrator.ts` núcleo, `process.server.ts` cableado, `maps-link.ts`, `message.ts`).
+- "Ver alerta" lo resuelve `VIEW_PENDING_ALERTS` en `lib/conversations/inbound-actions.ts` (comprueba permisos de hoy, entrega hasta 10 pendientes).
+- Idempotencia: una fila por (reseña, contacto) reservada antes de enviar; ids de envío estables.
+- Enlace de Google Maps: `resenas.url` solo si es de una reseña (`/maps/reviews/…`; el ~99 % es el perfil del autor y se descarta) → `restaurantes.google_maps_url` → `place_id` → búsqueda por nombre y dirección.
+- Las filas `origen = 'prueba'` son las del botón temporal de Conversaciones (super_admin).

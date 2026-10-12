@@ -24,6 +24,8 @@ import type { ProviderError } from "@/lib/whatsapp/provider-error";
 export const TEST_TEMPLATE_KINDS = {
   daily_report: { template: "informe_diario" as const, label: "informe diario" },
   negative_alert: { template: "alerta_negativa" as const, label: "alerta negativa" },
+  /** Igual que `negative_alert` pero forzando la plantilla aunque la ventana esté abierta. */
+  negative_alert_template: { template: "alerta_negativa" as const, label: "alerta negativa (plantilla)" },
 } satisfies Record<string, { template: WhatsAppTemplateName; label: string }>;
 
 export type TestTemplateKind = keyof typeof TEST_TEMPLATE_KINDS;

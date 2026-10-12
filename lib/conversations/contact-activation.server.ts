@@ -12,6 +12,7 @@ import {
   type ContactActivationRepository,
 } from "@/lib/conversations/contact-activation";
 import { SEND_TIMEOUT_MS, productionSendDeps } from "@/lib/conversations/send-deps.server";
+import { resolvePendingAlerts } from "@/lib/alerts/negative-review/process.server";
 import { resolveDailyReportView } from "@/lib/reports/daily/process.server";
 import { sendTestTemplate, type TestTemplateKind, type TestTemplateOutcome } from "@/lib/conversations/template-test";
 import { sendConversationOperation } from "@/lib/conversations/send-text";
@@ -153,6 +154,8 @@ export function runInboundAction(
       activations: contactActivationRepository,
       // "Ver informe": el informe sale del snapshot guardado a las 09:00 del aviso pulsado (context.id).
       viewDailyReport: resolveDailyReportView,
+      // "Ver alerta": imagen + texto de las alertas negativas pendientes del contacto (permisos de hoy).
+      viewPendingAlerts: resolvePendingAlerts,
       async sendReply({ conversationId, requestId, text }) {
         const outcome = await sendConversationOperation({ conversationId, requestId, text }, deps);
         if (outcome.status !== "sent") {

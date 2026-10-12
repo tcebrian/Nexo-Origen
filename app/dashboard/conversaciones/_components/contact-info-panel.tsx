@@ -307,10 +307,10 @@ function LinkedAccountCard({
  * No cambia la activación ni los permisos. Se retirará cuando termine la validación.
  */
 function TemplateTestCard({ conversationId, onSent }: { conversationId: string; onSent: () => void }) {
-  const [busy, setBusy] = useState<"daily_report" | "negative_alert" | null>(null);
+  const [busy, setBusy] = useState<"daily_report" | "negative_alert" | "negative_alert_template" | null>(null);
   const [result, setResult] = useState<{ kind: "ok" | "error"; text: string; detail?: string } | null>(null);
 
-  async function run(kind: "daily_report" | "negative_alert") {
+  async function run(kind: "daily_report" | "negative_alert" | "negative_alert_template") {
     setBusy(kind);
     setResult(null);
     try {
@@ -342,7 +342,9 @@ function TemplateTestCard({ conversationId, onSent }: { conversationId: string; 
       </div>
       <p className="mb-3 text-xs text-gray-400">
         Envía una plantilla real a este contacto. El informe diario ejecuta el flujo real (restaurantes asignados, informe de hoy y
-        snapshot), así que «Ver informe» funciona. No cambia su activación ni sus permisos.
+        snapshot), así que «Ver informe» funciona. Las alertas usan la reseña negativa más reciente de sus restaurantes: con la
+        ventana de 24 h abierta llegan directas (imagen + enlace); «forzar plantilla» envía el aviso para probar «Ver alerta». No
+        cambia su activación ni sus permisos.
       </p>
       <div className="grid gap-2">
         <button type="button" onClick={() => void run("daily_report")} disabled={busy !== null} className={secondaryButtonClass}>
@@ -350,6 +352,9 @@ function TemplateTestCard({ conversationId, onSent }: { conversationId: string; 
         </button>
         <button type="button" onClick={() => void run("negative_alert")} disabled={busy !== null} className={secondaryButtonClass}>
           {busy === "negative_alert" ? "Enviando…" : "Probar alerta negativa"}
+        </button>
+        <button type="button" onClick={() => void run("negative_alert_template")} disabled={busy !== null} className={secondaryButtonClass}>
+          {busy === "negative_alert_template" ? "Enviando…" : "Probar alerta (forzar plantilla)"}
         </button>
       </div>
       {result ? (
