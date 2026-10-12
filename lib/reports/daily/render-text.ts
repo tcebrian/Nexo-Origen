@@ -49,10 +49,79 @@ function restaurantLine(restaurant: SnapshotRestaurant): string {
   return `${icon} ${restaurant.name} · ${formatAverage(restaurant.reviews, restaurant.ratingSum)} · ${reviewsText(restaurant.reviews)}`;
 }
 
+const average = (r: SnapshotRestaurant) => (r.reviews > 0 ? r.ratingSum / r.reviews : null);
+
+const normalizeBrand = (brand: string) => brand.trim().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+/** Orden preferente de marcas; el resto va después, alfabéticamente. */
+const PREFERRED_BRANDS: { key: string; icon: string; label: string }[] = [
+  { key: "burger king", icon: "🍔", label: "BURGER KING" },
+  { key: "popeyes", icon: "🍗", label: "POPEYES" },
+  { key: "tim hortons", icon: "☕", label: "TIM HORTONS" },
+  { key: "santa gloria", icon: "🥐", label: "SANTA GLORIA" },
+];
+
+type BrandGroup = { rank: number; sortKey: string; icon: string; label: string; restaurants: SnapshotRestaurant[] };
+
+/** Cada restaurante aparece una sola vez, en el grupo de su marca. */
+function groupByBrand(restaurants: SnapshotRestaurant[]): BrandGroup[] {
+  const groups = new Map<string, BrandGroup>();
+  for (const restaurant of restaurants) {
+    const key = normalizeBrand(restaurant.brand ?? "");
+    const preferredIndex = PREFERRED_BRANDS.findIndex((brand) => brand.key === key);
+    const groupKey = preferredIndex >= 0 ? PREFERRED_BRANDS[preferredIndex]!.key : key || "(otras)";
+    let group = groups.get(groupKey);
+    if (!group) {
+      const preferred = preferredIndex >= 0 ? PREFERRED_BRANDS[preferredIndex]! : null;
+      group = {
+        rank: preferredIndex >= 0 ? preferredIndex : PREFERRED_BRANDS.length,
+        sortKey: groupKey,
+        icon: preferred?.icon ?? "🏪",
+        label: preferred?.label ?? ((restaurant.brand ?? "").trim().toUpperCase() || "OTROS"),
+        restaurants: [],
+      };
+      groups.set(groupKey, group);
+    }
+    group.restaurants.push(restaurant);
+  }
+  return [...groups.values()].sort((a, b) => a.rank - b.rank || a.sortKey.localeCompare(b.sortKey, "es"));
+}
+
+const byName = (a: SnapshotRestaurant, b: SnapshotRestaurant) => a.name.localeCompare(b.name, "es");
+
+/** Líneas de una marca: fuera de objetivo (peor primero), en objetivo (mejor primero) y, al final, sin reseñas. */
+function brandLines(group: BrandGroup): string[] {
+  const withReviews = group.restaurants.filter((restaurant) => restaurant.reviews > 0);
+  const off = withReviews
+    .filter((restaurant) => restaurantStatus(restaurant) !== "green")
+    .sort((a, b) => average(a)! - average(b)! || byName(a, b));
+  const on = withReviews
+    .filter((restaurant) => restaurantStatus(restaurant) === "green")
+    .sort((a, b) => average(b)! - average(a)! || byName(a, b));
+  const empty = group.restaurants.filter((restaurant) => restaurant.reviews === 0).sort(byName);
+
+  const lines = [`${group.icon} ${group.label}`];
+  if (off.length > 0) lines.push("", "🚨 Fuera de objetivo", ...off.map(restaurantLine));
+  if (on.length > 0) {
+    lines.push("", off.length === 0 && empty.length === 0 ? "✅ Todos los restaurantes están en objetivo" : "✅ En objetivo", ...on.map(restaurantLine));
+  }
+  if (empty.length > 0) lines.push("", "📭 Sin reseñas en el periodo", ...empty.map(restaurantLine));
+  return lines;
+}
+
 function priorities(restaurants: SnapshotRestaurant[]): string[] {
+  const brandRank = new Map<number, number>();
+  groupByBrand(restaurants).forEach((group, index) => group.restaurants.forEach((restaurant) => brandRank.set(restaurant.id, index)));
+
   const flagged = restaurants
     .filter((restaurant) => restaurant.negative > 0 || restaurantStatus(restaurant) === "red")
-    .sort((a, b) => b.negative - a.negative || a.name.localeCompare(b.name, "es"));
+    .sort(
+      (a, b) =>
+        brandRank.get(a.id)! - brandRank.get(b.id)! ||
+        b.negative - a.negative ||
+        (average(a) ?? Infinity) - (average(b) ?? Infinity) ||
+        byName(a, b)
+    );
 
   if (flagged.length === 0) return ["✅ Sin reseñas negativas ni restaurantes en rojo en este periodo."];
 
@@ -82,13 +151,6 @@ export function renderDailyReportLines(snapshot: DailyReportSnapshot, options: R
     { reviews: 0, ratingSum: 0, positive: 0, neutral: 0, negative: 0 }
   );
 
-  // Más media primero; los que no tienen reseñas, al final.
-  const ordered = [...restaurants].sort((a, b) => {
-    if ((a.reviews === 0) !== (b.reviews === 0)) return a.reviews === 0 ? 1 : -1;
-    const average = (r: SnapshotRestaurant) => (r.reviews > 0 ? r.ratingSum / r.reviews : 0);
-    return average(b) - average(a) || b.reviews - a.reviews || a.name.localeCompare(b.name, "es");
-  });
-
   const lines = [
     ...headerLines(snapshot),
     "",
@@ -98,8 +160,7 @@ export function renderDailyReportLines(snapshot: DailyReportSnapshot, options: R
     `➖ Neutras: ${totals.neutral}`,
     `🚨 Negativas: ${totals.negative}`,
     "",
-    "🏪 Restaurantes",
-    ...ordered.map(restaurantLine),
+    ...groupByBrand(restaurants).flatMap((group, index) => (index === 0 ? brandLines(group) : ["", ...brandLines(group)])),
     "",
     "🚨 Prioridades",
     ...priorities(restaurants),

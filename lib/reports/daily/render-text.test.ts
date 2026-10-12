@@ -62,15 +62,16 @@ describe("semana en curso", () => {
     expect(text).toContain("🚨 Negativas: 4");
   });
 
-  it("restaurantes con estado, media y reseñas, de mejor a peor y los vacíos al final", () => {
-    const lines = text.split("\n");
-    const rows = lines.filter((line) => /^(🟢|🟡|🔴|⚪) /.test(line));
+  it("una marca: fuera de objetivo (peor primero), en objetivo (mejor primero) y sin reseñas al final", () => {
+    expect(text).toContain("🍔 BURGER KING");
+    const rows = text.split("\n").filter((line) => /^(🟢|🟡|🔴|⚪) /.test(line));
     expect(rows).toEqual([
-      "🟢 Restaurante A · 4,60 · 8 reseñas",
-      "🟡 Restaurante B · 4,20 · 11 reseñas",
       "🔴 Restaurante C · 3,80 · 9 reseñas",
+      "🟡 Restaurante B · 4,20 · 11 reseñas",
+      "🟢 Restaurante A · 4,60 · 8 reseñas",
       "⚪ Restaurante D · sin reseñas",
     ]);
+    expect(text.indexOf("🚨 Fuera de objetivo")).toBeLessThan(text.indexOf("✅ En objetivo"));
   });
 
   it("prioridades con negativas y motivo principal", () => {
@@ -172,5 +173,72 @@ describe("snapshot", () => {
     const built = buildSnapshot({ slot: slotForDate("2026-10-19"), restaurants: [], metrics: new Map(), reasons: new Map() });
     expect(built.slotAt).toBe("2026-10-19T09:00:00");
     expect(built.period.end).toBe("2026-10-19T00:00:00");
+  });
+});
+
+describe("orden por marcas y objetivo", () => {
+  const r = (id: number, brand: string, name: string, average: number, reviews: number, negative = 0) =>
+    restaurant({ id, brand, name, reviews, ratingSum: average * reviews, negative, positive: reviews - negative });
+  const multi = snapshotOf("2026-10-21", [
+    r(1, "Santa Gloria", "SG Zaragoza", 4.9, 5),
+    r(2, "Zeta Food", "Zeta Uno", 4.5, 4),
+    r(3, "Burger King", "BK Andorra", 4.67, 6),
+    r(4, "Popeyes", "Popeyes Centro", 4.1, 7, 1),
+    r(5, "Burger King", "BK Soria", 3.7, 10, 3),
+    r(6, "Burger King", "BK Huesca", 4.52, 3),
+    r(7, "Burger King", "BK Calahorra", 4.08, 6, 1),
+    r(8, "Tim Hortons", "Tim Norte", 4.45, 8),
+    r(9, "Alfa Food", "Alfa Uno", 3.9, 5, 2),
+    r(10, "Burger King", "BK Borde", 4.4, 5),
+    r(11, "Burger King", "BK Casi", 4.39, 5),
+  ]);
+  const lines = renderDailyReportLines(multi);
+
+  it("marcas en orden preferente y el resto alfabético", () => {
+    const headers = lines.filter((line) => /^(🍔|🍗|☕|🥐|🏪) [A-Z]/.test(line));
+    expect(headers).toEqual(["🍔 BURGER KING", "🍗 POPEYES", "☕ TIM HORTONS", "🥐 SANTA GLORIA", "🏪 ALFA FOOD", "🏪 ZETA FOOD"]);
+  });
+
+  it("dentro de la marca: fuera de objetivo ascendente y en objetivo descendente; 4,40 ya está en objetivo", () => {
+    const start = lines.indexOf("🍔 BURGER KING");
+    const end = lines.indexOf("🍗 POPEYES");
+    expect(lines.slice(start, end).filter((line) => line !== "")).toEqual([
+      "🍔 BURGER KING",
+      "🚨 Fuera de objetivo",
+      "🔴 BK Soria · 3,70 · 10 reseñas",
+      "🟡 BK Calahorra · 4,08 · 6 reseñas",
+      "🟡 BK Casi · 4,39 · 5 reseñas",
+      "✅ En objetivo",
+      "🟢 BK Andorra · 4,67 · 6 reseñas",
+      "🟢 BK Huesca · 4,52 · 3 reseñas",
+      "🟢 BK Borde · 4,40 · 5 reseñas",
+    ]);
+  });
+
+  it("sin fuera de objetivo: 'Todos en objetivo'; sin en objetivo: solo el bloque fuera de objetivo; sin encabezados vacíos", () => {
+    const text = lines.join("\n");
+    expect(text).toContain("☕ TIM HORTONS\n\n✅ Todos los restaurantes están en objetivo\n🟢 Tim Norte");
+    expect(text).toContain("🍗 POPEYES\n\n🚨 Fuera de objetivo\n🟡 Popeyes Centro");
+    const popeyes = lines.slice(lines.indexOf("🍗 POPEYES"), lines.indexOf("☕ TIM HORTONS")).join("\n");
+    expect(popeyes).not.toContain("✅ En objetivo");
+    expect(text).not.toMatch(/(🚨 Fuera de objetivo|✅ En objetivo)\n\n/);
+  });
+
+  it("cada restaurante sale una sola vez en el listado", () => {
+    const rows = lines.filter((line) => /^(🟢|🟡|🔴|⚪) /.test(line));
+    expect(rows).toHaveLength(11);
+    expect(new Set(rows).size).toBe(11);
+  });
+
+  it("prioridades: marca, más negativas y peor media; el resumen global se mantiene", () => {
+    const start = lines.indexOf("🚨 Prioridades");
+    expect(lines.slice(start + 1).filter((line) => line.startsWith("• ")).map((line) => line.split(" · ")[0])).toEqual([
+      "• BK Soria",
+      "• BK Calahorra",
+      "• Popeyes Centro",
+      "• Alfa Uno",
+    ]);
+    expect(lines).toContain("💬 Reseñas: 64");
+    expect(lines.some((line) => line.startsWith("⭐ Media global:"))).toBe(true);
   });
 });
