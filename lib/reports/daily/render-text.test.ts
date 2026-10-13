@@ -19,18 +19,35 @@ const weekToDate = fixtureSnapshot(TUESDAY, multiBrandFixture());
 const text = (snapshot: DailyReportSnapshot, options?: Parameters<typeof renderDailyReport>[1]) => renderDailyReport(snapshot, options).join("\n\n");
 
 describe("estado, objetivo y positivas necesarias", () => {
-  it("≥ objetivo verde · ≥ objetivo − 0,4 amarillo · menos rojo · sin reseñas ⭕ (se compara la media real)", () => {
+  it("🟢 ≥ objetivo de la marca · 🟡 ≥ 4,00 y < objetivo · 🔴 < 4,00 · ⭕ sin reseñas (media real, sin redondear)", () => {
     const status = (reviews: number, average: number, target?: number) => restaurantStatus({ reviews, ratingSum: reviews * average }, target);
-    expect(status(10, 4.6)).toBe("green");
-    expect(status(10, 4.4)).toBe("green");
-    expect(status(1000, 4.395)).toBe("yellow");
-    expect(status(10, 4.0)).toBe("yellow");
-    expect(status(10, 3.99)).toBe("red");
-    expect(status(0, 0)).toBe("none");
-    // Objetivo de la marca distinto (Vault 4,7): 4,6 ya no cumple.
+    // Burger King, objetivo 4,40.
+    expect(status(10, 4.45, 4.4)).toBe("green");
+    expect(status(10, 4.2, 4.4)).toBe("yellow");
+    expect(status(10, 3.9, 4.4)).toBe("red");
+    // Vault, objetivo 4,70.
+    expect(status(10, 4.75, 4.7)).toBe("green");
     expect(status(10, 4.6, 4.7)).toBe("yellow");
+    expect(status(10, 3.9, 4.7)).toBe("red");
+    // Límites: el rojo es SIEMPRE < 4,00, también con objetivo 4,70.
+    expect(status(10, 4.0, 4.4)).toBe("yellow");
+    expect(status(10, 3.99, 4.4)).toBe("red");
+    expect(status(10, 4.0, 4.7)).toBe("yellow");
     expect(status(10, 4.3, 4.7)).toBe("yellow");
-    expect(status(10, 4.29, 4.7)).toBe("red");
+    expect(status(10, 3.99, 4.7)).toBe("red");
+    expect(status(1000, 4.395, 4.4)).toBe("yellow");
+    expect(status(10, 4.4)).toBe("green"); // objetivo por defecto 4,4
+    expect(status(0, 0)).toBe("none");
+  });
+
+  it("en objetivo / fuera de objetivo usa exactamente la misma regla (Vault 4,60 con objetivo 4,70 está fuera)", () => {
+    const briefing = buildBriefing(weekToDate);
+    const vault = briefing.restaurants.find((r) => r.id === 13)!;
+    expect(vault).toMatchObject({ status: "yellow", target: 4.7 });
+    expect(briefing.counts.offTarget).toBe(
+      briefing.restaurants.filter((r) => r.status === "yellow" || r.status === "red").length
+    );
+    expect(briefing.counts.onTarget).toBe(briefing.restaurants.filter((r) => r.status === "green").length);
   });
 
   it("positivas necesarias: el menor n con (suma + 5n) / (reseñas + n) ≥ objetivo", () => {
@@ -134,13 +151,23 @@ describe("cabecera y leyenda", () => {
     ]);
   });
 
-  it("leyenda con el objetivo real y la excepción de la marca con otro objetivo", () => {
-    expect(head).toContain("🎯 *Objetivo: 4,40⭐* · Vault: *4,70⭐*");
-    expect(head).toContain("🔴 media < 4,00");
-    expect(head).toContain("🟡 media ≥ 4,00 y < 4,40");
-    expect(head).toContain("🟢 media ≥ 4,40");
+  it("objetivos distintos: lista el objetivo de cada marca y no muestra umbrales '≥ 4,40'", () => {
+    expect(head).toContain(
+      "🎯 *Objetivos*\nBurger King: *4,40⭐* · Popeyes: *4,40⭐* · Santa Gloria: *4,40⭐* · Tim Hortons: *4,40⭐* · Ribs: *4,40⭐* · Sibuya: *4,40⭐* · Vault: *4,70⭐*"
+    );
+    expect(head).toContain("🔴 Crítico · 🟡 En vigilancia · 🟢 En objetivo");
+    expect(head).not.toMatch(/media [<≥]/);
+    expect(head).not.toContain("🎯 *Objetivo:");
     expect(head).toContain("⚠️ Poco volumen: entre 1 y 6 reseñas");
     expect(head).toContain("⭕ Sin actividad: 0 reseñas");
+  });
+
+  it("mismo objetivo en todas las marcas visibles: una sola línea de objetivo", () => {
+    const onlyBk = fixtureSnapshot(TUESDAY, multiBrandFixture().filter((r) => r.brand !== "Vault"));
+    const legend = renderDailyReport(onlyBk)[0]!;
+    expect(legend).toContain("🎯 *Objetivo: 4,40⭐*\n🔴 Crítico · 🟡 En vigilancia · 🟢 En objetivo");
+    expect(legend).not.toContain("🎯 *Objetivos*");
+    expect(legend).not.toMatch(/media [<≥]/);
   });
 
   it("cierre semanal: semana cerrada completa y 'Semana cerrada' al final", () => {
@@ -181,8 +208,17 @@ describe("resumen ejecutivo y evolución", () => {
   });
 
   it("lectura ejecutiva determinista y respaldada por las cifras", () => {
-    expect(head).toContain("La media global (4,39⭐) está por debajo del objetivo de 4,40⭐, y baja 0,02 desde ayer.");
+    // Hay objetivos distintos (Vault 4,70): la media global no se compara contra un único objetivo.
+    expect(head).toContain("La media global es 4,39⭐, y baja 0,02 desde ayer.");
+    expect(head).not.toContain("por debajo del objetivo");
     expect(head).toContain("El dato a vigilar es el aumento de negativas: 2 nuevas desde ayer.");
+  });
+
+  it("con un único objetivo sí compara la media global contra él", () => {
+    const uniform = fixtureSnapshot(TUESDAY, [
+      { id: 1, brand: "Burger King", name: "Burger King Soria", average: 4.2, reviews: 10, previous: { average: 4.2, reviews: 9 } },
+    ]);
+    expect(renderDailyReport(uniform)[0]).toContain("La media global (4,20⭐) está por debajo del objetivo de 4,40⭐.");
   });
 
   it("sin comparación (snapshot sin ventana anterior) no se inventa ninguna evolución", () => {
@@ -295,6 +331,32 @@ describe("bloques por marca", () => {
     expect(resto).toContain("⭕ Sibuya");
   });
 
+  it("RESTO: lectura por restaurante contra su objetivo; nunca compara la media agregada", () => {
+    expect(blocks).toContain(
+      "*Lectura resto:* 0 de 2 restaurantes con actividad están en objetivo; el más crítico es Ribs Zaragoza (3,90⭐). 1 restaurante sin actividad."
+    );
+    const resto = blocks.slice(blocks.indexOf("📍 *RESTO*"));
+    expect(resto).toContain("*4,28⭐ · 22 reseñas*"); // media agregada + reseñas
+    expect(resto).not.toContain("frente a");
+    expect(resto).not.toContain("objetivo (");
+  });
+
+  it("RESTO con el mismo objetivo en todas sus marcas tampoco compara la media agregada; incluye negativas nuevas", () => {
+    const snapshot = fixtureSnapshot(TUESDAY, [
+      { id: 1, brand: "Ribs", name: "Ribs Zaragoza", average: 4.6, reviews: 10, previous: { average: 4.6, reviews: 9 } },
+      {
+        id: 2, brand: "Sibuya", name: "Sibuya", average: 4.2, reviews: 8, negative: 1, previous: { average: 4.3, reviews: 7 },
+        newNegatives: [{ stars: 2, reason: null, excerpt: null, at: "2026-10-13T08:00:00" }],
+      },
+      { id: 3, brand: "Vault", name: "Vault", target: 4.4 },
+    ]);
+    const out = renderDailyReport(snapshot).slice(2, -1).join("\n\n");
+    expect(out).toContain(
+      "*Lectura resto:* 1 de 2 restaurantes con actividad está en objetivo; el más crítico es Sibuya (4,20⭐). Entra 1 nueva negativa; 1 restaurante sin actividad."
+    );
+    expect(out).not.toContain("frente a");
+  });
+
   it("lectura corta por marca basada en las cifras (cumplimiento, evolución, negativas, más crítico)", () => {
     expect(all).toContain(
       "*Lectura BK:* BK no llega al objetivo (4,37⭐ frente a 4,40⭐), empeora 0,05 desde ayer. Entra 1 nueva negativa; el más crítico es BK Soria (3,70⭐)."
@@ -310,7 +372,7 @@ describe("lectura operativa y cierre", () => {
   it("de 3 a 5 hechos relevantes numerados", () => {
     const facts = last.split("\n").filter((line) => /^\*\d\. /.test(line));
     expect(facts).toEqual([
-      "*1. Media por debajo del objetivo:* 4,39⭐ con 117 reseñas.",
+      "*1. Media global:* 4,39⭐ con 117 reseñas.",
       "*2. Alerta del día:* 2 nuevas negativas desde ayer.",
       "*3. BK Soria es el foco principal:* 3,70⭐ con 10 reseñas.",
       "*4. Cerca del objetivo:* Popeyes Andorra queda a 2 positivas (4,35⭐).",

@@ -7,7 +7,7 @@ import {
   type BrandBlock,
   type DerivedRestaurant,
 } from "./briefing";
-import { WATCH_MARGIN, type DailyReportSnapshot } from "./snapshot";
+import type { DailyReportSnapshot } from "./snapshot";
 
 /**
  * Texto de WhatsApp del informe diario: briefing operativo. Se renderiza SIEMPRE desde el snapshot (ver
@@ -68,14 +68,15 @@ function headerBlock(snapshot: DailyReportSnapshot, briefing: Briefing): string[
 }
 
 function legendBlock(briefing: Briefing): string[] {
-  const target = briefing.defaultTarget;
-  const exceptions = briefing.targetExceptions.map((item) => `${item.brand}: *${fmt(item.target)}⭐*`);
+  // Cada restaurante se evalúa contra el objetivo de su marca: con objetivos distintos no hay un único
+  // umbral que mostrar, así que se listan los objetivos por marca.
+  const targets =
+    briefing.uniformTarget !== null
+      ? [`🎯 *Objetivo: ${fmt(briefing.uniformTarget)}⭐*`]
+      : ["🎯 *Objetivos*", briefing.brandTargets.map((item) => `${item.brand}: *${fmt(item.target)}⭐*`).join(" · ")];
   return [
-    `🎯 *Objetivo: ${fmt(target)}⭐*${exceptions.length > 0 ? ` · ${exceptions.join(" · ")}` : ""}`,
-    "",
-    `🔴 media < ${fmt(target - WATCH_MARGIN)}`,
-    `🟡 media ≥ ${fmt(target - WATCH_MARGIN)} y < ${fmt(target)}`,
-    `🟢 media ≥ ${fmt(target)}`,
+    ...targets,
+    "🔴 Crítico · 🟡 En vigilancia · 🟢 En objetivo",
     "⚠️ Poco volumen: entre 1 y 6 reseñas",
     "⭕ Sin actividad: 0 reseñas",
   ];
@@ -108,7 +109,7 @@ function executiveReading(snapshot: DailyReportSnapshot, briefing: Briefing): st
     return "Sin reseñas en el periodo: no hay actividad que valorar todavía.";
   }
   const average = briefing.average;
-  const target = briefing.defaultTarget;
+  const target = briefing.uniformTarget;
   const when = sinceText(snapshot.kind);
   const comparison = briefing.comparison;
 
@@ -117,10 +118,13 @@ function executiveReading(snapshot: DailyReportSnapshot, briefing: Briefing): st
     averageDiff !== null && Math.abs(averageDiff) >= 0.005
       ? `, y ${averageDiff > 0 ? "sube" : "baja"} ${fmt(Math.abs(averageDiff))} desde ${when}`
       : "";
+  // Con objetivos distintos por marca, la media global no se compara contra un único objetivo.
   const first =
-    average >= target
-      ? `La media global (${fmt(average)}⭐) cumple el objetivo de ${fmt(target)}⭐${trend}.`
-      : `La media global (${fmt(average)}⭐) está por debajo del objetivo de ${fmt(target)}⭐${trend}.`;
+    target === null
+      ? `La media global es ${fmt(average)}⭐${trend}.`
+      : average >= target
+        ? `La media global (${fmt(average)}⭐) cumple el objetivo de ${fmt(target)}⭐${trend}.`
+        : `La media global (${fmt(average)}⭐) está por debajo del objetivo de ${fmt(target)}⭐${trend}.`;
 
   const active = briefing.restaurants.length - briefing.counts.inactive;
   const negativesDiff = comparison ? briefing.totals.negative - comparison.previousTotals.negative : 0;
@@ -229,17 +233,8 @@ function brandReading(block: BrandBlock, kind: DailyReportSnapshot["kind"]): str
 
   if (block.average === null) return `*Lectura ${name}:* sin reseñas en el periodo.`;
 
-  let first: string;
-  if (block.target !== null) {
-    const verb = block.average >= block.target ? "cumple el objetivo" : "no llega al objetivo";
-    const diff = block.previousAverage !== null ? block.average - block.previousAverage : null;
-    const trend =
-      diff !== null && Math.abs(diff) >= 0.005 ? `, ${diff > 0 ? "mejora" : "empeora"} ${fmt(Math.abs(diff))} desde ${when}` : "";
-    first = `${name} ${verb} (${fmt(block.average)}⭐ frente a ${fmt(block.target)}⭐)${trend}.`;
-  } else {
-    first = `${block.on.length} de ${active} restaurantes con actividad están en objetivo.`;
-  }
-
+  // RESTO mezcla marcas con objetivos distintos: nunca se compara su media agregada contra un objetivo;
+  // se evalúa cada restaurante contra el suyo.
   const critical = block.off[0];
   const criticalText = critical ? `el más crítico es ${critical.displayName} (${fmt(critical.average!)}⭐)` : null;
   const entra =
@@ -247,15 +242,28 @@ function brandReading(block: BrandBlock, kind: DailyReportSnapshot["kind"]): str
       ? "Entra 1 nueva negativa"
       : `Entran ${block.newNegativeCount} nuevas negativas`;
 
+  if (block.isResto || block.target === null) {
+    if (active === 0) return `*Lectura ${name}:* sin reseñas en el periodo.`;
+    const firstResto = `${block.on.length} de ${active} restaurantes con actividad ${block.on.length === 1 ? "está" : "están"} en objetivo${
+      criticalText ? `; ${criticalText}` : ""
+    }.`;
+    const extra: string[] = [];
+    if (block.newNegativeCount > 0) extra.push(entra);
+    if (block.inactive.length > 0) extra.push(`${plural(block.inactive.length, "restaurante", "restaurantes")} sin actividad`);
+    return `*Lectura ${name}:* ${firstResto}${extra.length > 0 ? ` ${extra.join("; ")}.` : ""}`;
+  }
+
+  const verb = block.average >= block.target ? "cumple el objetivo" : "no llega al objetivo";
+  const diff = block.previousAverage !== null ? block.average - block.previousAverage : null;
+  const trend =
+    diff !== null && Math.abs(diff) >= 0.005 ? `, ${diff > 0 ? "mejora" : "empeora"} ${fmt(Math.abs(diff))} desde ${when}` : "";
+  const first = `${name} ${verb} (${fmt(block.average)}⭐ frente a ${fmt(block.target)}⭐)${trend}.`;
+
   let second: string;
   if (block.newNegativeCount > 0) {
     second = criticalText ? `${entra}; ${criticalText}.` : `${entra}.`;
   } else if (critical) {
-    const offText =
-      block.target === null
-        ? ""
-        : `${block.off.length} de ${active} restaurantes con actividad ${block.off.length === 1 ? "está" : "están"} fuera de objetivo; `;
-    second = `${offText}${offText ? criticalText : `El ${criticalText!.slice(3)}`}.`;
+    second = `${block.off.length} de ${active} restaurantes con actividad ${block.off.length === 1 ? "está" : "están"} fuera de objetivo; ${criticalText}.`;
   } else if (block.inactive.length > 0) {
     second = `Todos los restaurantes con actividad están en objetivo; ${plural(block.inactive.length, "restaurante", "restaurantes")} sin actividad.`;
   } else {
@@ -292,10 +300,10 @@ function operativeFacts(snapshot: DailyReportSnapshot, briefing: Briefing): stri
   const when = sinceText(snapshot.kind);
 
   if (totals.reviews > 0 && briefing.average !== null) {
-    const ok = briefing.average >= briefing.defaultTarget;
-    facts.push(
-      `*${ok ? "Media sólida" : "Media por debajo del objetivo"}:* ${fmt(briefing.average)}⭐ con ${plural(totals.reviews, "reseña", "reseñas")}.`
-    );
+    // Con objetivos distintos por marca no hay un único objetivo contra el que valorar la media global.
+    const uniform = briefing.uniformTarget;
+    const title = uniform === null ? "Media global" : briefing.average >= uniform ? "Media sólida" : "Media por debajo del objetivo";
+    facts.push(`*${title}:* ${fmt(briefing.average)}⭐ con ${plural(totals.reviews, "reseña", "reseñas")}.`);
   }
 
   const comparison = briefing.comparison;

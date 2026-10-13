@@ -19,8 +19,8 @@ export const SNAPSHOT_VERSION = 2;
 
 /** Objetivo de reputación de Nexo por defecto: media ≥ 4,4 (BUSINESS_RULES). */
 export const TARGET_AVERAGE = 4.4;
-/** Por debajo de objetivo − 0,4 (4,0 con el objetivo por defecto) el restaurante pasa de amarillo a rojo. */
-export const WATCH_MARGIN = 0.4;
+/** Por debajo de esta media (fija, igual para todas las marcas) el restaurante es crítico (rojo). */
+export const CRITICAL_AVERAGE = 4.0;
 
 export type WindowMetrics = { reviews: number; ratingSum: number; positive: number; neutral: number; negative: number };
 
@@ -146,8 +146,11 @@ export function buildSnapshot(input: {
 export type RestaurantStatus = "green" | "yellow" | "red" | "none";
 
 /**
- * Estado determinista: media ≥ objetivo verde · ≥ objetivo − 0,4 amarillo · menos, rojo · sin reseñas, sin estado.
- * Se compara la media real (sin redondear): 4,395 no es 4,4.
+ * Estado determinista, con el objetivo de la MARCA del restaurante:
+ *   media ≥ objetivo → verde (en objetivo) · media ≥ 4,00 y < objetivo → amarillo (en vigilancia) ·
+ *   media < 4,00 → rojo (crítico) · sin reseñas → sin estado.
+ * "En objetivo / fuera de objetivo" usa exactamente esta misma regla. Se compara la media real (sin
+ * redondear): 4,395 no es 4,4.
  */
 export function restaurantStatus(
   restaurant: Pick<SnapshotRestaurant, "reviews" | "ratingSum">,
@@ -156,7 +159,7 @@ export function restaurantStatus(
   if (restaurant.reviews === 0) return "none";
   const average = restaurant.ratingSum / restaurant.reviews;
   if (average >= target) return "green";
-  if (average >= target - WATCH_MARGIN) return "yellow";
+  if (average >= CRITICAL_AVERAGE) return "yellow";
   return "red";
 }
 

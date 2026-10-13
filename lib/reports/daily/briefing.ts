@@ -100,8 +100,10 @@ export type Briefing = {
   average: number | null;
   /** Objetivo común o, si varía, el más frecuente. */
   defaultTarget: number;
-  /** Objetivos distintos del principal, por marca (leyenda). */
-  targetExceptions: { brand: string; target: number }[];
+  /** Objetivo de cada marca visible, en orden de marca (leyenda). */
+  brandTargets: { brand: string; target: number }[];
+  /** Objetivo común si todos los restaurantes visibles comparten el mismo; `null` si hay objetivos distintos. */
+  uniformTarget: number | null;
   counts: { onTarget: number; offTarget: number; inactive: number };
   /** `null` si el snapshot no trae comparación. */
   comparison: {
@@ -288,10 +290,18 @@ export function buildBriefing(snapshot: DailyReportSnapshot, options: { allowedR
   for (const restaurant of restaurants) targetCount.set(restaurant.target, (targetCount.get(restaurant.target) ?? 0) + 1);
   const defaultTarget =
     [...targetCount].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0] ?? TARGET_AVERAGE;
-  const exceptionByBrand = new Map<string, number>();
+  const targetByBrand = new Map<string, { brand: string; target: number }>();
   for (const restaurant of restaurants) {
-    if (restaurant.target !== defaultTarget) exceptionByBrand.set(plainText(restaurant.brand) || "Otras", restaurant.target);
+    const key = normalizeBrand(restaurant.brand) || "(sin marca)";
+    if (!targetByBrand.has(key)) targetByBrand.set(key, { brand: plainText(restaurant.brand) || "Otras", target: restaurant.target });
   }
+  const preferredIndex = (key: string) => {
+    const index = (PREFERRED_BRANDS as readonly string[]).indexOf(key);
+    return index === -1 ? PREFERRED_BRANDS.length : index;
+  };
+  const brandTargets = [...targetByBrand]
+    .sort((a, b) => preferredIndex(a[0]) - preferredIndex(b[0]) || a[1].brand.localeCompare(b[1].brand, "es"))
+    .map(([, value]) => value);
 
   const priorities = pickPriorities(restaurants);
   const brands = groupBrands(restaurants);
@@ -307,7 +317,8 @@ export function buildBriefing(snapshot: DailyReportSnapshot, options: { allowedR
     totals,
     average: averageOf(totals),
     defaultTarget,
-    targetExceptions: [...exceptionByBrand].map(([brand, target]) => ({ brand, target })).sort((a, b) => a.brand.localeCompare(b.brand, "es")),
+    brandTargets,
+    uniformTarget: targetCount.size <= 1 ? defaultTarget : null,
     counts: {
       onTarget: restaurants.filter((restaurant) => restaurant.status === "green").length,
       offTarget: restaurants.filter((restaurant) => restaurant.status === "red" || restaurant.status === "yellow").length,
