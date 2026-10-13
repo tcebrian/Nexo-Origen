@@ -13,9 +13,9 @@ import { fetchResenaMotivosForReviewIds } from "@/lib/supabase/resena-motivos.se
 import { SUPABASE_TABLES } from "@/lib/supabase/tables";
 import { sendTemplateMessage } from "@/lib/whatsapp/cloud-api.server";
 import { DAILY_REPORT_TEMPLATE, runDailyReport, type DailyReportJobDeps, type DailyReportRunResult, type WindowData } from "./job";
-import type { DailySlot } from "./calendar";
+import { comparisonWindowEnd, type DailySlot } from "./calendar";
 import { runManualDailyReport, type ManualDailyReportOutcome } from "./manual-test";
-import type { DailyReportSnapshot, RestaurantInfo, WindowMetrics } from "./snapshot";
+import { TARGET_AVERAGE, type DailyReportSnapshot, type NewNegative, type RestaurantInfo, type WindowMetrics } from "./snapshot";
 import { viewDailyReport, type DailyReportViewDeps, type DailyReportViewResult, type InformeEnvio } from "./view";
 
 /**
@@ -42,51 +42,87 @@ function fail(operation: string, error: DbError): never {
 const NON_CAUSAL = new Set(["sin motivo", "valoracion incoherente", "no operativo", "sin comentario", "otros", "otro"]);
 const normalizeLabel = (label: string) => label.trim().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
+const normalizeWall = (value: unknown): string => String(value ?? "").replace(" ", "T").slice(0, 19);
+const toMetrics = (row: Record<string, unknown>): WindowMetrics => ({
+  reviews: Number(row.total_resenas),
+  ratingSum: Number(row.rating_sum),
+  positive: Number(row.positivas),
+  neutral: Number(row.neutras),
+  negative: Number(row.negativas),
+});
+
+/** Comienzo de un texto en una sola línea y con límite; nunca se guarda el comentario completo. */
+function excerptOf(text: string | null | undefined, max = 110): string | null {
+  const clean = (text ?? "").replace(/\s+/g, " ").trim();
+  if (!clean) return null;
+  const chars = Array.from(clean);
+  return chars.length <= max ? clean : `${chars.slice(0, max - 1).join("").trimEnd()}…`;
+}
+
 async function loadWindowData(restaurantIds: number[], slot: DailySlot): Promise<WindowData> {
   const client = admin();
   const window = { p_start: slot.periodStart, p_end: slot.periodEnd, p_restaurant_ids: restaurantIds };
+  // Ventana de comparación: mismo inicio, fin a las 09:00 del día anterior (misma semana).
+  const previousEnd = comparisonWindowEnd(slot);
+  const previousWindow = { p_start: slot.periodStart, p_end: previousEnd, p_restaurant_ids: restaurantIds };
 
-  const [restaurants, brands, metricRows, reviewRows] = await Promise.all([
-    client.from(SUPABASE_TABLES.restaurantes).select("id,nombre,marca_id").in("id", restaurantIds),
-    client.from(SUPABASE_TABLES.marcas).select("id,nombre"),
+  const [restaurants, brands, companies, metricRows, previousRows, reviewRows] = await Promise.all([
+    client.from(SUPABASE_TABLES.restaurantes).select("id,nombre,marca_id,empresa_id").in("id", restaurantIds),
+    client.from(SUPABASE_TABLES.marcas).select("id,nombre,objetivo_media"),
+    client.from(SUPABASE_TABLES.empresas).select("id,nombre"),
     client.rpc("nexo_reputation_window_metrics", window),
+    client.rpc("nexo_reputation_window_metrics", previousWindow),
     client.rpc("nexo_window_reviews", window),
   ]);
   if (restaurants.error) fail("restaurants", restaurants.error);
   if (brands.error) fail("brands", brands.error);
+  if (companies.error) fail("companies", companies.error);
   if (metricRows.error) fail("metrics", metricRows.error);
+  if (previousRows.error) fail("previous_metrics", previousRows.error);
   if (reviewRows.error) fail("reviews", reviewRows.error);
 
-  const brandName = new Map((brands.data ?? []).map((row) => [Number((row as { id: number }).id), String((row as { nombre: string }).nombre)]));
-  const info = new Map<number, RestaurantInfo>();
-  for (const row of (restaurants.data ?? []) as { id: number; nombre: string; marca_id: number | null }[]) {
-    const brand = row.marca_id === null ? "" : (brandName.get(Number(row.marca_id)) ?? "");
-    const name = brand && !row.nombre.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${row.nombre}` : row.nombre;
-    info.set(Number(row.id), { id: Number(row.id), name, brand });
-  }
+  const brandRows = new Map(
+    ((brands.data ?? []) as { id: number; nombre: string; objetivo_media: number | string | null }[]).map((row) => [Number(row.id), row])
+  );
+  const companyName = new Map(((companies.data ?? []) as { id: number; nombre: string }[]).map((row) => [Number(row.id), String(row.nombre)]));
 
-  const metrics = new Map<number, WindowMetrics>();
-  for (const row of (metricRows.data ?? []) as Record<string, unknown>[]) {
-    metrics.set(Number(row.restaurante_id), {
-      reviews: Number(row.total_resenas),
-      ratingSum: Number(row.rating_sum),
-      positive: Number(row.positivas),
-      neutral: Number(row.neutras),
-      negative: Number(row.negativas),
+  const info = new Map<number, RestaurantInfo>();
+  for (const row of (restaurants.data ?? []) as { id: number; nombre: string; marca_id: number | null; empresa_id: number | null }[]) {
+    const brandRow = row.marca_id === null ? undefined : brandRows.get(Number(row.marca_id));
+    const brand = brandRow ? String(brandRow.nombre) : "";
+    const name = brand && !row.nombre.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${row.nombre}` : row.nombre;
+    const target = Number(brandRow?.objetivo_media);
+    info.set(Number(row.id), {
+      id: Number(row.id),
+      name,
+      brand,
+      company: row.empresa_id === null ? null : (companyName.get(Number(row.empresa_id)) ?? null),
+      // Objetivo de la marca (`marcas.objetivo_media`); sin dato, 4,4.
+      target: Number.isFinite(target) && target > 0 ? target : TARGET_AVERAGE,
     });
   }
 
+  const metrics = new Map<number, WindowMetrics>();
+  for (const row of (metricRows.data ?? []) as Record<string, unknown>[]) metrics.set(Number(row.restaurante_id), toMetrics(row));
+  const previousMetrics = new Map<number, WindowMetrics>();
+  for (const row of (previousRows.data ?? []) as Record<string, unknown>[]) previousMetrics.set(Number(row.restaurante_id), toMetrics(row));
+
   // Motivo principal por restaurante: mismas fuentes que el informe mensual (categoría guardada → clasificador).
-  const negatives = ((reviewRows.data ?? []) as { restaurante_id: number; review_id: string | null; estrellas: number; comentario: string | null }[]).filter(
-    (row) => Number(row.estrellas) <= 2
-  );
-  const motives = await fetchResenaMotivosForReviewIds(negatives.map((row) => String(row.review_id ?? "")).filter(Boolean));
+  type ReviewRow = { restaurante_id: number; review_id: string | null; estrellas: number; comentario: string | null; activity_wall: string };
+  const negatives = ((reviewRows.data ?? []) as ReviewRow[]).filter((row) => Number(row.estrellas) <= 2);
+  const reviewIds = negatives.map((row) => String(row.review_id ?? "")).filter(Boolean);
+  const motives = await fetchResenaMotivosForReviewIds(reviewIds);
   const categoryById = new Map(motives.rows.map((row) => [row.review_id, row.categoria]));
-  const counts = new Map<number, Map<string, number>>();
-  for (const row of negatives) {
+  const labelOf = (row: ReviewRow): string | null => {
     const category = categoryById.get(String(row.review_id ?? ""));
     const label = category ? categoriaMotivoLabel(category) : classifyReviewReason({ comentario: row.comentario });
-    if (!label || NON_CAUSAL.has(normalizeLabel(label))) continue;
+    return !label || NON_CAUSAL.has(normalizeLabel(label)) ? null : label;
+  };
+
+  const counts = new Map<number, Map<string, number>>();
+  for (const row of negatives) {
+    const label = labelOf(row);
+    if (!label) continue;
     const byLabel = counts.get(Number(row.restaurante_id)) ?? new Map<string, number>();
     byLabel.set(label, (byLabel.get(label) ?? 0) + 1);
     counts.set(Number(row.restaurante_id), byLabel);
@@ -96,7 +132,31 @@ async function loadWindowData(restaurantIds: number[], slot: DailySlot): Promise
     reasons.set(restaurantId, [...byLabel].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es"))[0]![0]);
   }
 
-  return { restaurants: info, metrics, reasons };
+  // Negativas NUEVAS desde el corte anterior (actividad >= fin de la ventana de comparación). Se reutiliza el
+  // resumen del análisis ya guardado; nunca se llama a IA.
+  const fresh = negatives.filter((row) => normalizeWall(row.activity_wall) >= previousEnd);
+  const summaries = new Map<string, string>();
+  const freshIds = fresh.map((row) => String(row.review_id ?? "")).filter(Boolean);
+  if (freshIds.length > 0) {
+    const { data: analyses, error: analysisError } = await client.from("analisis_ia").select("review_id,resumen").in("review_id", freshIds);
+    if (analysisError) fail("analysis", analysisError);
+    for (const row of (analyses ?? []) as { review_id: string; resumen: string | null }[]) {
+      if (row.resumen?.trim()) summaries.set(String(row.review_id), row.resumen);
+    }
+  }
+  const newNegatives = new Map<number, NewNegative[]>();
+  for (const row of fresh) {
+    const list = newNegatives.get(Number(row.restaurante_id)) ?? [];
+    list.push({
+      stars: Number(row.estrellas),
+      at: normalizeWall(row.activity_wall),
+      reason: labelOf(row),
+      excerpt: excerptOf(summaries.get(String(row.review_id ?? "")) ?? row.comentario),
+    });
+    newNegatives.set(Number(row.restaurante_id), list);
+  }
+
+  return { restaurants: info, metrics, reasons, previousMetrics, newNegatives };
 }
 
 async function singleConnectedChannelId(): Promise<string> {

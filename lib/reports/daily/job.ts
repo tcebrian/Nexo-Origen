@@ -1,5 +1,5 @@
 import { currentSlot, type DailySlot } from "./calendar";
-import { buildSnapshot, type DailyReportSnapshot, type RestaurantInfo, type WindowMetrics } from "./snapshot";
+import { buildSnapshot, type DailyReportSnapshot, type NewNegative, type RestaurantInfo, type WindowMetrics } from "./snapshot";
 
 /**
  * Job del informe diario de las 09:00 (Europe/Madrid). Núcleo sin dependencias de Next, Supabase ni Meta:
@@ -22,6 +22,10 @@ export type WindowData = {
   restaurants: Map<number, RestaurantInfo>;
   metrics: Map<number, WindowMetrics>;
   reasons: Map<number, string | null>;
+  /** Cifras de la ventana de comparación (ayer / domingo) por restaurante. Ausente → sin comparación. */
+  previousMetrics?: Map<number, WindowMetrics>;
+  /** Negativas nuevas desde el corte anterior por restaurante. */
+  newNegatives?: Map<number, NewNegative[]>;
 };
 
 export type SendResult =
@@ -123,6 +127,8 @@ export async function runDailyReport(deps: DailyReportJobDeps): Promise<DailyRep
         }),
         metrics: data.metrics,
         reasons: data.reasons,
+        previousMetrics: data.previousMetrics,
+        newNegatives: data.newNegatives,
       });
       await deps.saveSnapshot(reservation.id, snapshot);
 

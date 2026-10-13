@@ -68,9 +68,10 @@ describe("Ver informe: el snapshot del aviso pulsado", () => {
     expect(result).toMatchObject({ status: "report", fallback: false, envioId: "e-tue" });
     if (result.status !== "report") throw new Error("esperaba informe");
     const text = result.messages.join("\n");
-    expect(text).toContain("Actualizado: martes 20 de octubre · 09:00");
-    expect(text).toContain("Restaurante A · 4,50 · 8 reseñas");
-    expect(text).not.toContain("15 reseñas");
+    expect(text).toContain("📅 20 de octubre de 2026");
+    expect(text).toContain("Restaurante A · *4,50⭐* · 8");
+    expect(text).not.toContain("21 de octubre");
+    expect(text).not.toContain("*15*");
     // Con wamid no se busca ningún respaldo.
     expect(t.latestCalls).toHaveLength(0);
   });

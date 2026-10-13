@@ -54,6 +54,8 @@ export async function runManualDailyReport(
       }),
       metrics: data.metrics,
       reasons: data.reasons,
+      previousMetrics: data.previousMetrics,
+      newNegatives: data.newNegatives,
     });
     await deps.saveSnapshot(reservation.id, snapshot);
 

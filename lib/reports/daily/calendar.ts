@@ -163,3 +163,13 @@ export function currentSlot(now: Date): DailySlot | null {
   if (clock.hour < SLOT_HOUR || clock.hour >= SLOT_LATEST_HOUR) return null;
   return slotForDate(clock.date);
 }
+
+/**
+ * Fin (excl.) de la ventana de comparación de un slot: las 09:00 del día anterior, con el mismo inicio.
+ *   · Martes a sábado y domingo: lunes 00:00 → 09:00 de ayer (mismo corte del día anterior).
+ *   · Lunes (cierre semanal): semana anterior lunes 00:00 → domingo 09:00, es decir, el último WEEK_TO_DATE.
+ * La comparación empieza siempre en `periodStart`, así que ambas ventanas son de la MISMA semana.
+ */
+export function comparisonWindowEnd(slot: DailySlot): string {
+  return `${addCalendarDays(slot.slotDate, -1)}T${String(SLOT_HOUR).padStart(2, "0")}:00:00`;
+}
