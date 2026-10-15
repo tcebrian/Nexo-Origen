@@ -1,4 +1,5 @@
 import { renderViaInternal } from "@/lib/render/internal-render-client";
+import { secretsMatch, verifyMediaToken } from "@/lib/auth/signed-media-token";
 import { buildAlertDataForResena } from "@/lib/notifications/build-alert-for-resena";
 
 export const runtime = "nodejs";
@@ -13,15 +14,22 @@ export const maxDuration = 60;
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const resenaIdRaw = searchParams.get("resena_id");
-  const token = searchParams.get("token");
+  const sig = searchParams.get("sig");
+  // Compatibilidad: `token` con el secreto en bruto (URLs ya emitidas antes de la firma). Se retirará
+  // cuando se confirme que ningún sistema externo lo usa.
+  const legacyToken = searchParams.get("token");
 
   const secret = process.env.WHATSAPP_WEBHOOK_SECRET;
-  if (!secret || token !== secret) {
+  const resenaId = resenaIdRaw && /^\d+$/.test(resenaIdRaw) ? Number(resenaIdRaw) : NaN;
+  const authorized =
+    !!secret &&
+    ((Number.isSafeInteger(resenaId) && verifyMediaToken({ token: sig, secret, scope: "whatsapp-alert-image", resourceId: resenaId })) ||
+      secretsMatch(legacyToken, secret));
+  if (!authorized) {
     return new Response("No autorizado", { status: 401 });
   }
 
-  const resenaId = resenaIdRaw ? Number(resenaIdRaw) : NaN;
-  if (!Number.isFinite(resenaId)) {
+  if (!Number.isSafeInteger(resenaId)) {
     return new Response("resena_id inválido", { status: 400 });
   }
 
