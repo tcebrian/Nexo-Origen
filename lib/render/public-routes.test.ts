@@ -126,6 +126,19 @@ describe("GET /api/notifications/whatsapp-alert-image", () => {
     expect(renderViaInternal).not.toHaveBeenCalled();
   });
 
+  it("firma válida, ligada a la reseña, caducada o de otra reseña", async () => {
+    const { createMediaToken } = await import("@/lib/auth/signed-media-token");
+    process.env.WHATSAPP_WEBHOOK_SECRET = "secreto-whatsapp";
+    buildAlertDataForResena.mockResolvedValue(sampleAlert());
+    const sign = (over = {}) => createMediaToken({ secret: "secreto-whatsapp", scope: "whatsapp-alert-image", resourceId: 55, ...over });
+    const url = (sig: string, id = "55") => `/api/notifications/whatsapp-alert-image?resena_id=${id}&sig=${sig}`;
+    expect((await alertRoute.GET(get(url(sign())))).status).toBe(200);
+    expect((await alertRoute.GET(get(url(sign(), "56")))).status).toBe(401);
+    expect((await alertRoute.GET(get(url(sign({ nowMs: Date.now() - 3_600_000 }))))).status).toBe(401);
+    expect((await alertRoute.GET(get(url(sign({ scope: "otra" }))))).status).toBe(401);
+    expect((await alertRoute.GET(get("/api/notifications/whatsapp-alert-image?resena_id=55"))).status).toBe(401);
+  });
+
   it("con token válido devuelve el PNG de la alerta", async () => {
     process.env.WHATSAPP_WEBHOOK_SECRET = "secreto-whatsapp";
     buildAlertDataForResena.mockResolvedValue(sampleAlert());
