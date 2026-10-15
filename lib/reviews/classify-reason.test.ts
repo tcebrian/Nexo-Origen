@@ -1,4 +1,4 @@
-import { describe, expect, it } from "node:test";
+import { describe, expect, it } from "vitest";
 import { classifyReviewReason } from "./classify-reason";
 
 describe("classifyReviewReason", () => {

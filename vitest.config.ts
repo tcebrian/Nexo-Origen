@@ -17,6 +17,8 @@ export default defineConfig({
       "lib/dashboard/**/*.test.ts",
       "lib/reports/daily/**/*.test.ts",
       "lib/alerts/**/*.test.ts",
+      "lib/reviews/**/*.test.ts",
+      "lib/talento/**/*.test.ts",
     ],
   },
 });
