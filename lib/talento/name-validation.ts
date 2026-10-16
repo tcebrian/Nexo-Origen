@@ -195,23 +195,34 @@ export function extractPersonNamesFromComment(
   const found = new Map<string, number>();
   const ctx: NameValidationContext = { source: "text", restaurantName };
 
+  // Sin flag `i` global: el nombre propio exige mayúscula inicial real
+  // (con `i`, [A-Z] aceptaba minúsculas y capturaba "Camarero Pedro" o "María Por").
+  // Los disparadores se hacen insensibles a mayúsculas solo con (?:[Xx]) explícitos.
+  const NAME = String.raw`[A-ZÁÉÍÓÚÑ][\p{L}'-]+`;
   const patterns: { regex: RegExp; confidence: number }[] = [
     {
-      regex:
-        /(?:camarer[oa]s?|encargad[oa]|gerente|emplead[oa]|mozo[a]?|azafat[oa]|dependient[ea]|trabajador[a]?)\s+([A-ZÁÉÍÓÚÑ][\p{L}'-]+(?:\s+(?:de|del|la|las|los|y)\s+[A-ZÁÉÍÓÚÑ][\p{L}'-]+|\s+[A-ZÁÉÍÓÚÑ][\p{L}'-]+)*)/giu,
+      regex: new RegExp(
+        String.raw`(?:[Cc]amarer[oa]s?|[Ee]ncargad[oa]|[Gg]erente|[Ee]mplead[oa]|[Mm]ozo[a]?|[Aa]zafat[oa]|[Dd]ependient[ea]|[Tt]rabajador[a]?)\s+(${NAME}(?:\s+(?:de|del|la|las|los|y)\s+${NAME}|\s+${NAME})*)`,
+        "gu"
+      ),
       confidence: 0.92,
     },
     {
-      regex: /(?:gracias a)\s+([A-ZÁÉÍÓÚÑ][\p{L}'-]+(?:\s+[A-ZÁÉÍÓÚÑ][\p{L}'-]+)?)/giu,
+      regex: new RegExp(String.raw`(?:[Gg]racias a)\s+(${NAME}(?:\s+${NAME})?)`, "gu"),
       confidence: 0.88,
     },
     {
-      regex: /(?:atendió|atendio|atiende|atiendió|atiendio)\s+([A-ZÁÉÍÓÚÑ][\p{L}'-]+(?:\s+[A-ZÁÉÍÓÚÑ][\p{L}'-]+)?)/giu,
+      regex: new RegExp(
+        String.raw`(?:[Aa]tendi[óo]|[Aa]tiende|[Aa]tiendi[óo])\s+(${NAME}(?:\s+${NAME})?)`,
+        "gu"
+      ),
       confidence: 0.85,
     },
     {
-      regex:
-        /([A-ZÁÉÍÓÚÑ][\p{L}'-]+(?:\s+[A-ZÁÉÍÓÚÑ][\p{L}'-]+)?)\s+(?:nos atendió|nos atendio|nos sirvió|nos sirvio|nos ayudó|nos ayudo|muy amable|muy atent[oa])/giu,
+      regex: new RegExp(
+        String.raw`(${NAME}(?:\s+${NAME})?)\s+(?:[Nn]os atendi[óo]|[Nn]os servi[óo]|[Nn]os ayud[óo]|[Mm]uy amable|[Mm]uy atent[oa])`,
+        "gu"
+      ),
       confidence: 0.8,
     },
   ];

@@ -184,15 +184,18 @@ function resolveClassifyFields(
     };
   }
 
-  const row = review as ResenaRow;
+  // Entrada directa (ClassifyReviewReasonInput): los campos IA vienen en el propio objeto
+  // y el análisis externo, si existe, solo rellena los huecos.
+  const row = review as ResenaRow & ClassifyReviewReasonInput;
   const ia = analisis ?? null;
 
   return {
-    comentario: row.comentario,
-    resumen_ia: ia?.resumen,
-    analisis_ia: ia?.motivo,
-    recomendacion_ia: ia?.recomendacion,
-    empleado_mencionado: ia?.empleado_mencionado,
+    ...row,
+    comentario: row.comentario ?? row.text,
+    resumen_ia: ia?.resumen ?? row.resumen_ia,
+    analisis_ia: ia?.motivo ?? row.analisis_ia,
+    recomendacion_ia: ia?.recomendacion ?? row.recomendacion_ia,
+    empleado_mencionado: ia?.empleado_mencionado ?? row.empleado_mencionado,
   };
 }
 
