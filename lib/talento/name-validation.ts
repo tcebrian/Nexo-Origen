@@ -197,30 +197,43 @@ export function extractPersonNamesFromComment(
 
   // Sin flag `i` global: el nombre propio exige mayúscula inicial real
   // (con `i`, [A-Z] aceptaba minúsculas y capturaba "Camarero Pedro" o "María Por").
-  // Los disparadores se hacen insensibles a mayúsculas solo con (?:[Xx]) explícitos.
+  // Los disparadores se hacen insensibles a mayúsculas letra a letra con ci().
   const NAME = String.raw`[A-ZÁÉÍÓÚÑ][\p{L}'-]+`;
+  const ci = (w: string) =>
+    w.replace(/\p{L}/gu, (c) => `[${c.toLowerCase()}${c.toUpperCase()}]`);
+  const roles = [
+    ci("camarer") + "[oO][aA]?s?",
+    ci("camarera") + "s?",
+    ci("encargad") + "[oOaA]",
+    ci("gerente"),
+    ci("emplead") + "[oOaA]",
+    ci("mozo") + "[aA]?",
+    ci("azafat") + "[oOaA]",
+    ci("dependient") + "[eEaA]",
+    ci("trabajador") + "[aA]?",
+  ].join("|");
   const patterns: { regex: RegExp; confidence: number }[] = [
     {
       regex: new RegExp(
-        String.raw`(?:[Cc]amarer[oa]s?|[Ee]ncargad[oa]|[Gg]erente|[Ee]mplead[oa]|[Mm]ozo[a]?|[Aa]zafat[oa]|[Dd]ependient[ea]|[Tt]rabajador[a]?)\s+(${NAME}(?:\s+(?:de|del|la|las|los|y)\s+${NAME}|\s+${NAME})*)`,
+        String.raw`(?:${roles})\s+(${NAME}(?:\s+(?:de|del|la|las|los|y)\s+${NAME}|\s+${NAME})*)`,
         "gu"
       ),
       confidence: 0.92,
     },
     {
-      regex: new RegExp(String.raw`(?:[Gg]racias a)\s+(${NAME}(?:\s+${NAME})?)`, "gu"),
+      regex: new RegExp(String.raw`(?:${ci("gracias")}\s+${ci("a")})\s+(${NAME}(?:\s+${NAME})?)`, "gu"),
       confidence: 0.88,
     },
     {
       regex: new RegExp(
-        String.raw`(?:[Aa]tendi[óo]|[Aa]tiende|[Aa]tiendi[óo])\s+(${NAME}(?:\s+${NAME})?)`,
+        String.raw`(?:${ci("atendi")}[óÓoO]|${ci("atiende")}|${ci("atiendi")}[óÓoO])\s+(${NAME}(?:\s+${NAME})?)`,
         "gu"
       ),
       confidence: 0.85,
     },
     {
       regex: new RegExp(
-        String.raw`(${NAME}(?:\s+${NAME})?)\s+(?:[Nn]os atendi[óo]|[Nn]os servi[óo]|[Nn]os ayud[óo]|[Mm]uy amable|[Mm]uy atent[oa])`,
+        String.raw`(${NAME}(?:\s+${NAME})?)\s+(?:${ci("nos")}\s+${ci("atendi")}[óÓoO]|${ci("nos")}\s+${ci("sirvi")}[óÓoO]|${ci("nos")}\s+${ci("ayud")}[óÓoO]|${ci("muy")}\s+${ci("amable")}|${ci("muy")}\s+${ci("atent")}[oOaA])`,
         "gu"
       ),
       confidence: 0.8,

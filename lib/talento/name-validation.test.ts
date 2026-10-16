@@ -34,6 +34,26 @@ describe("extractPersonNamesFromComment", () => {
     expect(names.map((n) => n.name).sort()).toEqual(["María", "Pedro"]);
   });
 
+  it("reconoce sirvió y sirvio (con y sin tilde)", () => {
+    expect(extractPersonNamesFromComment("Pedro nos sirvió").map((n) => n.name)).toEqual(["Pedro"]);
+    expect(extractPersonNamesFromComment("Pedro nos sirvio").map((n) => n.name)).toEqual(["Pedro"]);
+  });
+
+  it("los disparadores no dependen de mayúsculas/minúsculas", () => {
+    for (const text of ["GRACIAS A María", "gracias a María", "Gracias a María", "Gracias A María"]) {
+      expect(extractPersonNamesFromComment(text).map((n) => n.name)).toEqual(["María"]);
+    }
+    expect(extractPersonNamesFromComment("CAMARERO Pedro").map((n) => n.name)).toEqual(["Pedro"]);
+    expect(extractPersonNamesFromComment("ATENDIÓ Lucía").map((n) => n.name)).toEqual(["Lucía"]);
+    expect(extractPersonNamesFromComment("Pedro NOS ATENDIÓ").map((n) => n.name)).toEqual(["Pedro"]);
+  });
+
+  it("sigue exigiendo mayúscula inicial en el nombre", () => {
+    expect(extractPersonNamesFromComment("gracias a maría")).toHaveLength(0);
+    const names = extractPersonNamesFromComment("El camarero Pedro nos atendió genial, gracias a María por el trato.");
+    expect(names.map((n) => n.name).sort()).toEqual(["María", "Pedro"]);
+  });
+
   it("no extrae palabras sueltas tras gracias sin 'a'", () => {
     const names = extractPersonNamesFromComment("Gracias todo estuvo bien", "BK Tudela");
     expect(names).toHaveLength(0);
