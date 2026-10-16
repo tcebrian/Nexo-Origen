@@ -126,6 +126,21 @@ function stripBrandPrefix(name: string): string {
   return name.replace(/^\s*(tv|taberna\s*volapi[eé])\s+/i, "").trim();
 }
 
+/**
+ * "Gta. de Quevedo, 5, Chamberí, 28015 Madrid, España" -> { city: "Madrid", street: "Gta. de Quevedo, 5" }
+ * Ciudad = penúltimo segmento sin código postal; calle = primer segmento (+ número si lo hay).
+ */
+function splitAddress(address: string | null): { city: string | null; street: string } | null {
+  if (!address) return null;
+  const segments = address.split(",").map((part) => part.trim()).filter(Boolean);
+  if (segments.length === 0) return null;
+  const cityRaw = segments.length >= 3 ? segments[segments.length - 2] : null;
+  const city = cityRaw ? cityRaw.replace(/^[A-Z]{0,2}-?\d{4,5}\s+/i, "").trim() || null : null;
+  const hasNumber = segments.length > 1 && /^(s\/n|\d+\w?)$/i.test(segments[1]);
+  const street = hasNumber ? `${segments[0]}, ${segments[1]}` : segments[0];
+  return { city, street };
+}
+
 type RiskTone = "high" | "medium" | "low" | "neutral";
 
 function riskTone(risk: string | null): RiskTone {
@@ -202,10 +217,18 @@ export const TabernaVolapieAlertTemplate = forwardRef<HTMLDivElement, TabernaVol
     const shiftTier = isExtremeComment ? "" : commentShiftTier(fullComment.length);
 
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
-    const locationLabel = stripBrandPrefix(data.restaurant_name) || data.restaurant_name;
+    const strippedName = stripBrandPrefix(data.restaurant_name) || data.restaurant_name;
+    // El catálogo llama al local "Taberna Del Volapié" (sin ciudad): en ese caso el
+    // título sería solo el nombre de la marca, así que se usa la localidad.
+    const addressParts = splitAddress(cleanValue(data.restaurant_address));
+    const nameIsOnlyBrand = /volapi[eé]/i.test(strippedName);
+    const locationLabel = nameIsOnlyBrand
+      ? addressParts?.city ?? cleanValue(data.restaurant_location) ?? strippedName
+      : strippedName;
+    const addressLabel = nameIsOnlyBrand ? addressParts?.street ?? null : null;
 
     return (
-      <div ref={ref} className="tva-canvas" style={{ width: design.width, height: design.height }}>
+      <div ref={ref} className="tva-canvas" style={{ width: design.width, height: design.height, flexShrink: 0 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={absUrl(assetBaseUrl, "/design/taberna-volapie/tv-product1.png")}
@@ -261,6 +284,7 @@ export const TabernaVolapieAlertTemplate = forwardRef<HTMLDivElement, TabernaVol
                 <TvIconPin />
                 {locationLabel}
               </p>
+              {addressLabel ? <p className="tva-header__restaurant-address">{addressLabel}</p> : null}
             </div>
 
             {/* eslint-disable-next-line @next/next/no-img-element */}

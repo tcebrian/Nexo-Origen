@@ -66,7 +66,7 @@ export default async function NegativeReviewAlertTemplatePage({ searchParams }: 
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "safe center",
         background,
         padding: 24,
       }}

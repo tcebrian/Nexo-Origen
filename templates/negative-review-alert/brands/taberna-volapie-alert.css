@@ -226,6 +226,19 @@
   text-overflow: ellipsis;
 }
 
+.tva-header__restaurant-address {
+  max-width: 300px;
+  margin: 2px auto 0;
+  /* +19px: centra la calle bajo la palabra (no bajo el pin + palabra) */
+  transform: translateX(89px);
+  text-align: center;
+  font-family: "Inter", sans-serif;
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--tv-ink-soft);
+}
+
 .tva-header__restaurant-location svg {
   width: 32px;
   height: 32px;
