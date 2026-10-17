@@ -9,7 +9,9 @@ import type { KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
 import type { ResenaRow } from "@/lib/supabase/resenas";
 import {
   ACTIVE_COMPANY_COOKIE,
+  encodeCompanyCookie,
   narrowScopeToCompany,
+  parseCompanyCookie,
   parseCompanyId,
   pickActiveCompany,
   resolveCompanyAccess,
@@ -18,6 +20,7 @@ import {
   type RestaurantRecord,
 } from "./access";
 import { buildCompanyCards, defaultDashboardPeriod, formatCompanyAverage } from "./cards";
+import { sessionKeyFromAccessToken } from "./session-key";
 
 const read = (file: string) => readFileSync(path.join(process.cwd(), file), "utf-8");
 
@@ -273,9 +276,14 @@ describe("tarjetas de la pantalla de selección", () => {
 const requireApiAuth = vi.fn();
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/api-auth", () => ({ requireApiAuth }));
+const getCurrentSessionKey = vi.fn();
+vi.mock("@/lib/company/session-key.server", () => ({ getCurrentSessionKey }));
 
 const route = await import("@/app/api/company/select/route");
-const sessionWith = (list: { id: number; name: string }[]) => ({ ok: true, session: { userId: "u-1", companies: list } });
+const sessionWith = (list: { id: number; name: string }[], rol = "marca_admin") => ({
+  ok: true,
+  session: { userId: "u-1", perfil: { rol }, companies: list },
+});
 const post = (body: unknown) =>
   route.POST(new Request("https://nexo.example/api/company/select", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
 
@@ -364,7 +372,8 @@ describe("resolveCompanyContext", () => {
   });
 
   it("super_admin: empresas desde la base de datos, y acotado a la elegida ve solo sus restaurantes", async () => {
-    const ctx = await resolveCompanyContext({ userId: "u-1", perfil: perfil("super_admin"), baseScope: superScope, cookieValue: "1" });
+    const key = "abcdef0123456789abcdef01";
+    const ctx = await resolveCompanyContext({ userId: "u-1", perfil: perfil("super_admin"), baseScope: superScope, cookieValue: encodeCompanyCookie(1, key), sessionKey: key });
     expect(ctx.companies.map((c) => c.name)).toEqual(["Grupo Hambar", "Vault"]);
     expect(ctx.scope.restauranteIds).toEqual([10, 11, 12]);
     expect(isUnrestrictedScope(ctx.scope)).toBe(false);
@@ -440,5 +449,162 @@ describe("cableado", () => {
     for (const file of ["lib/company/access.ts", "lib/company/cards.ts", "lib/company/context.server.ts", "lib/company/directory.server.ts", "app/seleccionar-empresa/page.tsx", "app/seleccionar-empresa/company-picker.tsx", "app/dashboard/_components/company-switcher.tsx"]) {
       expect(read(file), file).not.toMatch(/hambar|hámbar|vault/i);
     }
+  });
+});
+
+// Super_admin: cada sesión nueva empieza en la selección --------------------------------------------------------
+const token = (claims: Record<string, unknown>) =>
+  `h.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.s`;
+
+describe("super_admin: login nuevo → siempre selección de empresa", () => {
+  const list = access({ rol: "super_admin" });
+  const fresh = (sessionKey: string | null) => ({ requireFreshSelection: true, sessionKey });
+
+  it("la clave de sesión cambia en cada login y se mantiene al renovar el token", () => {
+    const login1 = sessionKeyFromAccessToken(token({ session_id: "sess-aaa", iat: 1000 }));
+    const refreshed = sessionKeyFromAccessToken(token({ session_id: "sess-aaa", iat: 4600 }));
+    const login2 = sessionKeyFromAccessToken(token({ session_id: "sess-bbb", iat: 9000 }));
+    expect(login1).toMatch(/^[0-9a-f]{24}$/);
+    expect(refreshed).toBe(login1);
+    expect(login2).not.toBe(login1);
+    // Respaldo: momento del login (amr) si el token no trae session_id.
+    expect(sessionKeyFromAccessToken(token({ amr: [{ method: "password", timestamp: 1700000000 }], iat: 1 }))).toMatch(/^[0-9a-f]{24}$/);
+    for (const bad of [null, undefined, "", "x", "a.!!.c", token({})]) expect(sessionKeyFromAccessToken(bad as string)).toBeNull();
+  });
+
+  it("cookie de una sesión anterior (otro login) → no vale: empieza en la selección", () => {
+    const oldKey = sessionKeyFromAccessToken(token({ session_id: "sess-aaa" }));
+    const newKey = sessionKeyFromAccessToken(token({ session_id: "sess-bbb" }));
+    const cookie = encodeCompanyCookie(1, oldKey);
+    expect(pickActiveCompany(list, cookie, fresh(newKey))).toBeNull();
+  });
+
+  it("durante la misma sesión se mantiene la empresa activa (refresh y navegación no vuelven al selector)", () => {
+    const key = sessionKeyFromAccessToken(token({ session_id: "sess-aaa" }));
+    const cookie = encodeCompanyCookie(2, key);
+    expect(pickActiveCompany(list, cookie, fresh(key))).toEqual({ id: 2, name: "Vault" });
+    expect(pickActiveCompany(list, cookie, fresh(key))).toEqual({ id: 2, name: "Vault" });
+  });
+
+  it("puede cambiar de empresa con el switcher dentro de la sesión", () => {
+    const key = sessionKeyFromAccessToken(token({ session_id: "sess-aaa" }));
+    expect(pickActiveCompany(list, encodeCompanyCookie(1, key), fresh(key))?.id).toBe(1);
+    expect(pickActiveCompany(list, encodeCompanyCookie(2, key), fresh(key))?.id).toBe(2);
+  });
+
+  it("la cookie antigua de 30 días (sin clave de sesión) deja de dar entrada directa", () => {
+    expect(pickActiveCompany(list, "1", fresh("abcdef0123456789abcdef01"))).toBeNull();
+    expect(pickActiveCompany(list, "2", fresh(null))).toBeNull();
+  });
+
+  it("sin clave de sesión fiable no se acepta ninguna cookie (falla cerrado)", () => {
+    expect(pickActiveCompany(list, encodeCompanyCookie(1, "abcdef0123456789abcdef01"), fresh(null))).toBeNull();
+  });
+
+  it("aunque solo exista UNA empresa, super_admin no entra automáticamente: ve la selección", () => {
+    const single = access({ rol: "super_admin", companies: [hambar], restaurants: restaurants.filter((r) => r.companyId === 1) });
+    expect(single.companies).toHaveLength(1);
+    expect(pickActiveCompany(single, undefined, fresh("abcdef0123456789abcdef01"))).toBeNull();
+  });
+
+  it("cookie manipulada: clave ajena o formato raro se ignoran", () => {
+    const key = "abcdef0123456789abcdef01";
+    for (const raw of ["2.zzzz", "2.", "2.abc.def", "2..", ".abcdef0123456789abcdef01", encodeCompanyCookie(2, "ffffffffffffffffffffffff")]) {
+      expect(pickActiveCompany(list, raw, fresh(key)), raw).toBeNull();
+    }
+    expect(parseCompanyCookie("2.abcdef0123456789abcdef01")).toEqual({ companyId: 2, sessionKey: "abcdef0123456789abcdef01" });
+    expect(parseCompanyCookie("2")).toEqual({ companyId: 2, sessionKey: null });
+  });
+
+  it("usuarios normales: comportamiento idéntico al anterior (una empresa entra directo; cookie sin atar sigue valiendo)", () => {
+    const one = access({ rol: "empresa_admin", perfilCompanyId: 1, permittedRestaurantIds: [10, 11, 12] });
+    const two = access({ rol: "marca_admin", permittedRestaurantIds: [10, 20] });
+    expect(pickActiveCompany(one, undefined)).toEqual({ id: 1, name: "Grupo Hambar" });
+    expect(pickActiveCompany(one, undefined, { requireFreshSelection: false, sessionKey: "otra" })).toEqual({ id: 1, name: "Grupo Hambar" });
+    expect(pickActiveCompany(two, undefined)).toBeNull();
+    expect(pickActiveCompany(two, "2")).toEqual({ id: 2, name: "Vault" });
+    // Una cookie con clave sigue funcionando para ellos.
+    expect(pickActiveCompany(two, "2.abcdef0123456789abcdef01")).toEqual({ id: 2, name: "Vault" });
+  });
+});
+
+describe("super_admin en el contexto de servidor", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    loadCompanyDirectory.mockResolvedValue(directory);
+  });
+  const KEY = "abcdef0123456789abcdef01";
+
+  it("login nuevo (clave distinta) → sin empresa activa y sin datos hasta elegir", async () => {
+    const ctx = await resolveCompanyContext({
+      userId: "u-1", perfil: perfil("super_admin"), baseScope: superScope, cookieValue: encodeCompanyCookie(1, "ffffffffffffffffffffffff"), sessionKey: KEY,
+    });
+    expect(ctx.activeCompany).toBeNull();
+    expect(ctx.scope.restauranteIds).toEqual([]);
+    expect(ctx.companies.map((c) => c.id)).toEqual([1, 2]);
+  });
+
+  it("misma sesión → empresa activa y alcance acotado, como antes", async () => {
+    const ctx = await resolveCompanyContext({
+      userId: "u-1", perfil: perfil("super_admin"), baseScope: superScope, cookieValue: encodeCompanyCookie(2, KEY), sessionKey: KEY,
+    });
+    expect(ctx.activeCompany).toEqual({ id: 2, name: "Vault" });
+    expect(ctx.scope.restauranteIds).toEqual([20]);
+  });
+
+  it("un usuario normal con una empresa sigue entrando directo aunque cambie su sesión", async () => {
+    const base = { ...superScope, rol: "empresa_admin" as const, restauranteIds: [10, 11, 12] };
+    const ctx = await resolveCompanyContext({
+      userId: "u-1", perfil: perfil("empresa_admin", "1"), baseScope: base, cookieValue: undefined, sessionKey: KEY,
+    });
+    expect(ctx.activeCompany).toEqual({ id: 1, name: "Grupo Hambar" });
+  });
+});
+
+describe("cookie de super_admin: de sesión, atada a la sesión y olvidada al cerrar sesión", () => {
+  beforeEach(() => vi.resetAllMocks());
+  const list = [{ id: 1, name: "Grupo Hambar" }, { id: 2, name: "Vault" }];
+
+  it("POST de super_admin: cookie '<empresa>.<clave>' SIN caducidad (de sesión)", async () => {
+    requireApiAuth.mockResolvedValue(sessionWith(list, "super_admin"));
+    getCurrentSessionKey.mockResolvedValue("abcdef0123456789abcdef01");
+    const res = await post({ companyId: 2 });
+    const cookie = res.headers.get("set-cookie") ?? "";
+    expect(cookie).toContain(`${ACTIVE_COMPANY_COOKIE}=2.abcdef0123456789abcdef01`);
+    expect(cookie.toLowerCase()).toContain("httponly");
+    expect(cookie.toLowerCase()).not.toContain("max-age");
+    expect(cookie.toLowerCase()).not.toContain("expires");
+  });
+
+  it("POST de usuario normal: igual que antes ('<empresa>' con 30 días)", async () => {
+    requireApiAuth.mockResolvedValue(sessionWith(list, "marca_admin"));
+    const res = await post({ companyId: 1 });
+    const cookie = res.headers.get("set-cookie") ?? "";
+    expect(cookie).toContain(`${ACTIVE_COMPANY_COOKIE}=1;`);
+    expect(cookie.toLowerCase()).toContain("max-age=2592000");
+    expect(getCurrentSessionKey).not.toHaveBeenCalled();
+  });
+
+  it("DELETE olvida la empresa activa (cookie expirada)", async () => {
+    const res = await route.DELETE();
+    const cookie = (res.headers.get("set-cookie") ?? "").toLowerCase();
+    expect(cookie).toContain(`${ACTIVE_COMPANY_COOKIE}=;`);
+    expect(cookie).toContain("max-age=0");
+  });
+
+  it("cerrar sesión borra la empresa activa en el servidor", () => {
+    const logoutRoute = read("app/api/auth/logout/route.ts");
+    expect(logoutRoute).toContain("ACTIVE_COMPANY_COOKIE");
+    expect(logoutRoute).toContain("maxAge: 0");
+    expect(read("app/dashboard/_components/use-logout.ts")).toContain("/api/auth/logout");
+  });
+
+  it("la sesión del servidor ata la elección a la sesión actual y la pantalla de selección no salta para super_admin", () => {
+    const session = read("lib/auth/session.ts");
+    expect(session).toContain("sessionKey: sessionKeyFromAccessToken(authSession?.access_token)");
+    const page = read("app/seleccionar-empresa/page.tsx");
+    expect(page).toContain('if (!superAdmin && session.companies.length === 1) redirect("/dashboard");');
+    // El dashboard no obliga a volver al selector mientras haya empresa activa en la sesión.
+    expect(read("app/dashboard/layout.tsx")).toContain("if (!session.activeCompany)");
   });
 });

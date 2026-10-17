@@ -68,6 +68,24 @@ export function resolveCompanyAccess(input: {
   };
 }
 
+/**
+ * Valor de la cookie: `<empresa>` (usuarios normales) o `<empresa>.<clave de sesión>` (super_admin).
+ * La clave ata la elección a UNA sesión de autenticación: tras un login nuevo la cookie anterior ya no vale.
+ */
+export function encodeCompanyCookie(companyId: number, sessionKey: string | null): string {
+  return sessionKey ? `${companyId}.${sessionKey}` : String(companyId);
+}
+
+export function parseCompanyCookie(raw: unknown): { companyId: number; sessionKey: string | null } | null {
+  if (typeof raw !== "string") return null;
+  const [idPart, keyPart, ...rest] = raw.trim().split(".");
+  if (rest.length > 0) return null;
+  const companyId = parseCompanyId(idPart);
+  if (companyId === null) return null;
+  if (keyPart === undefined) return { companyId, sessionKey: null };
+  return /^[0-9a-f]{8,64}$/.test(keyPart) ? { companyId, sessionKey: keyPart } : null;
+}
+
 /** Interpreta el valor de la cookie: solo enteros positivos; cualquier otra cosa es "sin valor". */
 export function parseCompanyId(raw: unknown): number | null {
   if (typeof raw === "number") return Number.isSafeInteger(raw) && raw > 0 ? raw : null;
@@ -80,10 +98,22 @@ export function parseCompanyId(raw: unknown): number | null {
  * Empresa activa: la de la cookie SI está permitida; si solo hay una, esa; si no, `null` (hay que elegir).
  * Una cookie con una empresa no permitida se ignora (nunca da acceso).
  */
-export function pickActiveCompany(access: Pick<CompanyAccess, "companies">, cookieValue: unknown): CompanyOption | null {
-  const requested = parseCompanyId(cookieValue);
-  const chosen = requested === null ? undefined : access.companies.find((company) => company.id === requested);
+export function pickActiveCompany(
+  access: Pick<CompanyAccess, "companies">,
+  cookieValue: unknown,
+  /**
+   * `requireFreshSelection` (super_admin): la empresa solo vale si se eligió en ESTA sesión (la clave de la
+   * cookie coincide con `sessionKey`) y nunca se entra automáticamente por tener una sola empresa. Cada login
+   * nuevo empieza, por tanto, en la selección. Usuarios normales: sin cambios.
+   */
+  binding: { requireFreshSelection: boolean; sessionKey: string | null } = { requireFreshSelection: false, sessionKey: null }
+): CompanyOption | null {
+  const cookie = parseCompanyCookie(cookieValue);
+  const sameSession = cookie !== null && cookie.sessionKey !== null && cookie.sessionKey === binding.sessionKey;
+  const usable = cookie !== null && (!binding.requireFreshSelection || sameSession);
+  const chosen = usable ? access.companies.find((company) => company.id === cookie.companyId) : undefined;
   if (chosen) return chosen;
+  if (binding.requireFreshSelection) return null;
   return access.companies.length === 1 ? access.companies[0]! : null;
 }
 

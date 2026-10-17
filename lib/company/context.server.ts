@@ -32,6 +32,8 @@ export async function resolveCompanyContext(input: {
   perfil: Perfil;
   baseScope: UserScope;
   cookieValue: string | null | undefined;
+  /** Clave de la sesión de autenticación actual (para atar la elección del super_admin a esta sesión). */
+  sessionKey?: string | null;
 }): Promise<CompanyContext> {
   const { userId, perfil, baseScope } = input;
   const rol = normalizeRole(perfil.rol);
@@ -57,7 +59,11 @@ export async function resolveCompanyContext(input: {
       companies: directory.companies,
       restaurants: directory.restaurants,
     });
-    const activeCompany = pickActiveCompany(access, input.cookieValue);
+    // super_admin: cada sesión nueva empieza en la selección; usuarios normales: como siempre.
+    const activeCompany = pickActiveCompany(access, input.cookieValue, {
+      requireFreshSelection: isSuperAdmin(rol),
+      sessionKey: input.sessionKey ?? null,
+    });
     if (!activeCompany) {
       return { ...access, activeCompany: null, scope: narrowScopeToCompany(baseScope, null, EMPTY_PARTS) };
     }

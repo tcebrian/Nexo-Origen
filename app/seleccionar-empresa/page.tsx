@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { NexoOrigenWordmark } from "@/app/_components/nexo-brand";
 import { DashboardAmbient } from "@/app/dashboard/_components/dashboard-ambient";
 import { CHANGE_PASSWORD_PATH, isPasswordChangePending } from "@/lib/auth/password-gate";
+import { isSuperAdmin, normalizeRole } from "@/lib/auth/permissions";
 import { getAuthSessionWithCompanies } from "@/lib/auth/session";
 import { loadCompanyCards } from "@/lib/company/cards.server";
 import { CompanyPicker } from "./company-picker";
@@ -22,9 +23,12 @@ export default async function SelectCompanyPage() {
   const { session, company } = loaded;
 
   if (await isPasswordChangePending(session.perfil)) redirect(CHANGE_PASSWORD_PATH);
-  if (session.companies.length === 1) redirect("/dashboard");
+  // super_admin ve SIEMPRE la selección al empezar sesión, aunque solo exista una empresa; el resto, con una
+  // sola empresa, entra directamente.
+  const superAdmin = isSuperAdmin(normalizeRole(session.perfil.rol));
+  if (!superAdmin && session.companies.length === 1) redirect("/dashboard");
 
-  const cards = session.companies.length > 1 ? await loadCompanyCards(company) : [];
+  const cards = session.companies.length > 0 ? await loadCompanyCards(company) : [];
 
   return (
     <main className="relative flex min-h-screen items-center justify-center bg-[#05030A] px-4 py-10 font-sans text-white antialiased">

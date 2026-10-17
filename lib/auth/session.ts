@@ -7,6 +7,7 @@ import { fetchUserScope } from "@/lib/auth/scopes";
 import type { AuthSession } from "@/lib/auth/types";
 import { ACTIVE_COMPANY_COOKIE } from "@/lib/company/access";
 import { resolveCompanyContext, type CompanyContext } from "@/lib/company/context.server";
+import { sessionKeyFromAccessToken } from "@/lib/company/session-key";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 
@@ -36,11 +37,15 @@ export async function getAuthSessionWithCompanies(): Promise<LoadedSession | nul
   // únicamente si está entre ellas. Desde aquí `scope` es el alcance acotado a esa empresa, así que TODO el
   // código que ya filtra con `session.scope` (dashboard, reseñas, informes…) queda limitado a la empresa.
   const cookieStore = await cookies();
+  const {
+    data: { session: authSession },
+  } = await supabase.auth.getSession();
   const company = await resolveCompanyContext({
     userId: user.id,
     perfil: perfilResult.perfil!,
     baseScope,
     cookieValue: cookieStore.get(ACTIVE_COMPANY_COOKIE)?.value,
+    sessionKey: sessionKeyFromAccessToken(authSession?.access_token),
   });
   const scope = company.scope;
 

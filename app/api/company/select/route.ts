@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { isSuperAdmin, normalizeRole } from "@/lib/auth/permissions";
 import {
   ACTIVE_COMPANY_COOKIE,
   ACTIVE_COMPANY_COOKIE_MAX_AGE,
+  encodeCompanyCookie,
   validateCompanySelection,
 } from "@/lib/company/access";
+import { getCurrentSessionKey } from "@/lib/company/session-key.server";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +30,26 @@ export async function POST(request: Request) {
     { company: selection.company },
     { headers: { "Cache-Control": "private, no-store" } }
   );
-  response.cookies.set(ACTIVE_COMPANY_COOKIE, String(selection.company.id), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: ACTIVE_COMPANY_COOKIE_MAX_AGE,
-  });
+  // super_admin: la elección queda atada a ESTA sesión y es una cookie de sesión (sin caducidad): un login nuevo
+  // o cerrar el navegador la dejan sin efecto y vuelve a empezar en la selección. Usuarios normales: como antes.
+  const superAdmin = isSuperAdmin(normalizeRole(auth.session.perfil.rol));
+  response.cookies.set(
+    ACTIVE_COMPANY_COOKIE,
+    encodeCompanyCookie(selection.company.id, superAdmin ? await getCurrentSessionKey() : null),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      ...(superAdmin ? {} : { maxAge: ACTIVE_COMPANY_COOKIE_MAX_AGE }),
+    }
+  );
+  return response;
+}
+
+/** Olvida la empresa activa (se llama al cerrar sesión). No concede nada, solo borra la cookie. */
+export async function DELETE() {
+  const response = NextResponse.json({ ok: true }, { headers: { "Cache-Control": "private, no-store" } });
+  response.cookies.set(ACTIVE_COMPANY_COOKIE, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });
   return response;
 }
