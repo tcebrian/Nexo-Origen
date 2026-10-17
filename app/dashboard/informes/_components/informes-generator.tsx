@@ -4,6 +4,7 @@ import { useState } from "react";
 import { brands } from "@/app/dashboard/restaurantes/data";
 import type { BrandId } from "@/app/dashboard/restaurantes/data";
 import type { GenerateReportInput, ReportFormat, ReportType } from "@/lib/reports/types";
+import { useAuth } from "../../_components/auth-context";
 import { tenant } from "../../tenant";
 import { btnPrimary, card, inputField, sectionPad, shell, textKicker, textTitle } from "./ui/informes-styles";
 
@@ -31,6 +32,8 @@ export function InformesGenerator({
   generating,
   restaurantOptions = [],
 }: InformesGeneratorProps) {
+  const { activeCompany } = useAuth();
+  const companyName = activeCompany?.name ?? tenant.name;
   const [type, setType] = useState<ReportType>("semanal");
   const [brand, setBrand] = useState<GenerateReportInput["brand"]>("todas");
   const [restaurant, setRestaurant] = useState("");
@@ -47,7 +50,7 @@ export function InformesGenerator({
 
     onGenerate({
       type,
-      company: tenant.name,
+      company: companyName,
       brand,
       restaurant,
       start,
@@ -85,7 +88,7 @@ export function InformesGenerator({
 
           <label className="block">
             <span className="mb-1.5 block text-xs text-gray-500">Empresa</span>
-            <input type="text" value={tenant.name} readOnly className={`${inputField} opacity-70`} />
+            <input type="text" value={companyName} readOnly className={`${inputField} opacity-70`} />
           </label>
 
           <label className="block">

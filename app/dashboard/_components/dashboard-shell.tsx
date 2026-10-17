@@ -16,6 +16,7 @@ import { menuItems, restaurantUserMenuItems, settingsMenuItem, isMenuItemActive,
 import { PageEnter } from "./motion/page-enter";
 import { usePrefersReducedMotion } from "./motion/use-prefers-reduced-motion";
 import { SidebarIcon } from "./sidebar-icons";
+import { CompanySwitcher } from "./company-switcher";
 import { UserMenu } from "./user-menu";
 
 function SidebarPeriodButton() {
@@ -159,6 +160,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     isRestaurantUser,
     primaryRestaurant,
     scope,
+    companies,
   } = useAuth();
   // Mismos filtros de siempre: permisos por rol y "un solo restaurante → sin lista de Restaurantes".
   // Ajustes entra al mismo filtro (`canAccessSection("ajustes")`) y solo cambia de sitio: ahora va en "Más".
@@ -189,6 +191,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </div>
     </div>
   ) : null;
+
+  // Con acceso a varias empresas, el selector de empresa sustituye a la etiqueta fija de cliente.
+  const companyBlock = companies.length > 1 ? <CompanySwitcher /> : empresaBadge;
 
   const restaurantCard =
     isRestaurantUser && primaryRestaurant && restaurantHref ? (
@@ -266,7 +271,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               </nav>
             ) : null}
 
-            {empresaBadge}
+            {companyBlock}
             <SidebarPeriodButton />
             {restaurantCard}
           </div>
@@ -314,7 +319,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <aside className="hidden h-full min-h-0 w-[250px] shrink-0 flex-col border-r border-white/[0.08] bg-black/35 backdrop-blur-2xl lg:flex">
             <div className="shrink-0 px-6 pb-4 pt-7">
               <NexoOrigenWordmark size="sm" align="center" variant="dashboard" className="mx-auto" />
-              {empresaBadge ? <div className="mt-4">{empresaBadge}</div> : null}
+              {companyBlock ? <div className="mt-4">{companyBlock}</div> : null}
             </div>
 
             {/* Zona con scroll: la navegación y las tarjetas. El bloque de usuario NO se mueve. */}

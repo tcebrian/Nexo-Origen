@@ -1,11 +1,11 @@
 import type { UserScope } from "@/lib/auth/types";
-import { isSuperAdmin, isUnrestrictedScope } from "@/lib/auth/permissions";
+import { isUnrestrictedScope } from "@/lib/auth/permissions";
 import type { KpiRestaurantRow } from "@/lib/supabase/kpi-restaurantes";
 import type { ResenaRow } from "@/lib/supabase/resenas";
 import type { KpiDiarioRow } from "@/lib/supabase/kpi-diario";
 
 function allowedRestauranteSet(scope: UserScope): Set<number> | null {
-  if (isSuperAdmin(scope.rol) || isUnrestrictedScope(scope)) return null;
+  if (isUnrestrictedScope(scope)) return null;
   return new Set(scope.restauranteIds ?? []);
 }
 

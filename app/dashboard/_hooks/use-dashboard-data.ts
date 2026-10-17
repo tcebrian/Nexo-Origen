@@ -55,7 +55,9 @@ function writeCachedDashboard(userId: string, startKey: string, endKey: string, 
 }
 
 export function useDashboardData(start: Date, end: Date) {
-  const { userId } = useAuth();
+  const { userId: authUserId, activeCompany } = useAuth();
+  // La caché del navegador es por usuario Y empresa: nunca se muestran datos de otra empresa mientras carga.
+  const userId = `${authUserId}:${activeCompany?.id ?? "sin-empresa"}`;
   const startKey = useMemo(() => toDateKey(start), [start]);
   const endKey = useMemo(() => toDateKey(end), [end]);
 

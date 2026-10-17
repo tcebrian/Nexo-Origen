@@ -31,7 +31,7 @@ function IconCalendar() {
 
 export function RestaurantesPage() {
   const router = useRouter();
-  const { isRestaurantUser, primaryRestaurant, isSuperAdmin } = useAuth();
+  const { isRestaurantUser, primaryRestaurant, isSuperAdmin, activeCompany } = useAuth();
   const { range: activeRange } = useDateRange();
   const range = useMemo(() => getSelectedRange(activeRange), [activeRange]);
   const periodLabel = formatDateRangeLabel(activeRange);
@@ -45,7 +45,7 @@ export function RestaurantesPage() {
 
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [filters, setFilters] = useState<RestaurantFilters>({
-    company: tenant.name,
+    company: activeCompany?.name ?? tenant.name,
     brand: "todas",
     status: "todos",
     search: "",

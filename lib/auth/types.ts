@@ -62,6 +62,8 @@ export type UserScope = {
   brandIds: BrandId[] | null;
 };
 
+import type { CompanyOption } from "@/lib/company/access";
+
 export type AuthSession = {
   userId: string;
   email: string;
@@ -69,4 +71,8 @@ export type AuthSession = {
   scope: UserScope;
   /** Restaurantes asignados (usuario de restaurante). */
   assignedRestaurants: AssignedRestaurant[];
+  /** Empresas a las que el usuario puede acceder (calculadas en el servidor). */
+  companies: CompanyOption[];
+  /** Empresa activa validada en el servidor; `null` = hay que elegir una (o no tiene ninguna). */
+  activeCompany: CompanyOption | null;
 };

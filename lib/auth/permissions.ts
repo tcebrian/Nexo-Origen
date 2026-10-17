@@ -181,6 +181,8 @@ export function resolveProfileEmpresaLabel(
 
 /** true si el scope no restringe datos (super_admin o fase 1 sin filtrado) */
 export function isUnrestrictedScope(scope: UserScope): boolean {
+  // Un alcance con lista de restaurantes (por rol o por empresa activa) SIEMPRE acota, también a super_admin.
+  if (scope.restauranteIds !== null) return false;
   if (isSuperAdmin(scope.rol)) return true;
   if (!DATA_SCOPING_ENABLED) return true;
   return false;
@@ -193,7 +195,7 @@ export function canAccessRestaurante(scope: UserScope, restauranteId: number): b
 }
 
 export function canAccessMarca(scope: UserScope, marcaId: number): boolean {
-  if (isSuperAdmin(scope.rol)) return true;
+  if (isSuperAdmin(scope.rol) && scope.marcaIds === null) return true;
   if (scope.marcaIds === null && scope.empresaId) return true;
   if (!scope.marcaIds?.length) return false;
   return scope.marcaIds.includes(marcaId);
