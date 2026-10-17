@@ -302,6 +302,87 @@ function LinkedAccountCard({
 }
 
 /**
+ * Interruptor "Reseñas negativas": si el contacto recibe automáticamente por WhatsApp las reseñas de 1⭐ y 2⭐
+ * de SUS restaurantes. No concede acceso: el alcance sigue saliendo de empresa y restaurantes asignados.
+ */
+function NegativeAlertsCard({
+  conversationId,
+  enabled,
+  onChange,
+}: {
+  conversationId: string;
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function toggle() {
+    const next = !enabled;
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/conversations/${conversationId}/negative-alerts`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: next }),
+      });
+      const data = (await response.json().catch(() => null)) as { enabled?: boolean; error?: string } | null;
+      if (!response.ok || typeof data?.enabled !== "boolean") {
+        setError(data?.error ?? "No se pudo guardar el cambio");
+        return;
+      }
+      onChange(data.enabled);
+    } catch {
+      setError("No se pudo guardar el cambio");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card
+      title="Reseñas negativas"
+      action={
+        <span
+          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+            enabled ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-300" : "border-white/[0.1] text-gray-400"
+          }`}
+        >
+          {enabled ? "Activado" : "Desactivado"}
+        </span>
+      }
+    >
+      <div className="flex items-start gap-3">
+        <p className="min-w-0 flex-1 text-xs text-gray-400">
+          Recibir automáticamente por WhatsApp las reseñas de 1⭐ y 2⭐ de sus restaurantes.
+        </p>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          aria-label="Reseñas negativas"
+          disabled={busy}
+          onClick={() => void toggle()}
+          className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition disabled:opacity-60 ${
+            enabled ? "border-emerald-400/40 bg-emerald-400/30" : "border-white/[0.12] bg-white/[0.06]"
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${enabled ? "translate-x-6" : "translate-x-1"}`}
+          />
+        </button>
+      </div>
+      {error ? (
+        <p role="alert" className="mt-2 text-xs text-rose-300">
+          {error}
+        </p>
+      ) : null}
+    </Card>
+  );
+}
+
+/**
  * PRUEBA TEMPORAL (solo super_admin: toda la pantalla lo es): envía `informe_diario` o `alerta_negativa`
  * a este contacto por el mismo sistema de envío de Conversations, para comprobar que Meta las acepta.
  * No cambia la activación ni los permisos. Se retirará cuando termine la validación.
@@ -409,6 +490,11 @@ export function ContactInfoPanel({
         onError={onActivationError}
       />
       <PermissionsCard detail={detail} config={config} onEdit={onEditPermissions} />
+      <NegativeAlertsCard
+        conversationId={conversationId}
+        enabled={detail.negativeAlerts}
+        onChange={(negativeAlerts) => onDetailChange({ ...detail, negativeAlerts })}
+      />
       <LinkedAccountCard conversationId={conversationId} detail={detail} onDetailChange={onDetailChange} />
       <TemplateTestCard conversationId={conversationId} onSent={onChanged} />
     </div>

@@ -101,6 +101,8 @@ export type ContactDetail = {
   linkedUser: LinkedUser | null;
   /** Estado de la activación por WhatsApp (solo informativo: no concede permisos). */
   whatsapp: ContactWhatsAppState;
+  /** Interruptor "Reseñas negativas" (no concede acceso: solo decide si recibe las alertas de sus restaurantes). */
+  negativeAlerts: boolean;
 };
 
 async function empresaNombre(empresaId: string | null): Promise<string | null> {
@@ -115,7 +117,7 @@ export async function getConversationContactDetail(conversationId: string): Prom
 
   const { data, error } = await requireAdminClient()
     .from(SUPABASE_TABLES.conv_contactos)
-    .select("telefono_e164,nombre,nombre_perfil,tipo,usuario_id,welcome_sent_at,whatsapp_activated_at")
+    .select("telefono_e164,nombre,nombre_perfil,tipo,usuario_id,welcome_sent_at,whatsapp_activated_at,recibir_alertas_negativas")
     .eq("id", contactoId)
     .maybeSingle();
   if (error) throw new ConversationsDbError("contact.get", error.code);
@@ -129,6 +131,7 @@ export async function getConversationContactDetail(conversationId: string): Prom
     usuario_id: string | null;
     welcome_sent_at: string | null;
     whatsapp_activated_at: string | null;
+    recibir_alertas_negativas: boolean | null;
   };
 
   const [selection, restaurantIds, catalog, perfil] = await Promise.all([
@@ -160,7 +163,23 @@ export async function getConversationContactDetail(conversationId: string): Prom
       ? { id: perfil.id, nombre: perfil.nombre ?? "", rol: perfil.rol, empresaNombre: await empresaNombre(perfil.empresaId) }
       : null,
     whatsapp: contactWhatsAppState({ welcomeSentAt: contact.welcome_sent_at, activatedAt: contact.whatsapp_activated_at }),
+    negativeAlerts: contact.recibir_alertas_negativas === true,
   };
+}
+
+/**
+ * Activa o desactiva "Reseñas negativas" del contacto de la conversación. Solo escribe ese booleano:
+ * no toca permisos, activación ni informe diario. `false` si la conversación no existe.
+ */
+export async function setConversationNegativeAlerts(conversationId: string, enabled: boolean): Promise<boolean> {
+  const contactoId = await findContactOfConversation(conversationId);
+  if (!contactoId) return false;
+  const { error } = await requireAdminClient()
+    .from(SUPABASE_TABLES.conv_contactos)
+    .update({ recibir_alertas_negativas: enabled, updated_at: new Date().toISOString() })
+    .eq("id", contactoId);
+  if (error) throw new ConversationsDbError("contact.negativeAlerts", error.code);
+  return true;
 }
 
 /** Edita nombre, tipo, empresa, "todos" y restaurantes del contacto de la conversación. */

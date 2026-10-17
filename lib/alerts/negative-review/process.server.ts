@@ -12,6 +12,7 @@ import { SUPABASE_TABLES } from "@/lib/supabase/tables";
 import { sendTemplateMessage } from "@/lib/whatsapp/cloud-api.server";
 import { buildAlertDataForResena } from "@/lib/notifications/build-alert-for-resena";
 import { alertImagePreview, buildAlertText } from "./message";
+import { selectAlertRecipients } from "./recipients";
 import { resolveMapsLink, type MapsLinkInput } from "./maps-link";
 import {
   deliverPendingAlerts,
@@ -248,21 +249,31 @@ export function negativeAlertDeps(): NegativeAlertDeps {
       ];
       if (candidates.length === 0) return [];
 
-      // DENY BY DEFAULT: solo quien HOY puede consultar ese restaurante (misma resolución que informes y bot).
-      const access = await resolveContactsRestaurantIds(candidates);
-      const allowed = candidates.filter((id) => access.get(id)?.includes(review.restauranteId));
-      if (allowed.length === 0) return [];
-
+      // Solo contactos con el interruptor "Reseñas negativas" activado. El interruptor no da acceso:
+      // el alcance se sigue resolviendo después, solo desde conv_contacto_empresas / conv_contacto_restaurantes.
       const { data, error } = await client
         .from(SUPABASE_TABLES.conv_contactos)
-        .select("id,nombre,nombre_perfil,whatsapp_activated_at")
-        .in("id", allowed);
+        .select("id,nombre,nombre_perfil,whatsapp_activated_at,recibir_alertas_negativas")
+        .in("id", candidates)
+        .eq("recibir_alertas_negativas", true);
       if (error) fail("contacts", error);
-      return ((data ?? []) as { id: string; nombre: string | null; nombre_perfil: string | null; whatsapp_activated_at: string | null }[]).map((row) => ({
-        contactId: row.id,
+      const contacts = ((data ?? []) as {
+        id: string;
+        nombre: string | null;
+        nombre_perfil: string | null;
+        whatsapp_activated_at: string | null;
+        recibir_alertas_negativas: boolean;
+      }[]).map((row) => ({
+        id: row.id,
         name: row.nombre?.trim() || row.nombre_perfil?.trim() || null,
         activated: row.whatsapp_activated_at !== null,
+        alertsEnabled: row.recibir_alertas_negativas === true,
       }));
+      if (contacts.length === 0) return [];
+
+      // DENY BY DEFAULT: solo quien HOY puede consultar ese restaurante (misma resolución que informes y bot).
+      const access = await resolveContactsRestaurantIds(contacts.map((contact) => contact.id));
+      return selectAlertRecipients({ restaurantId: review.restauranteId, contacts, access });
     },
 
     async reserve({ resenaId, contactId, restauranteId, origin }) {
@@ -343,6 +354,7 @@ export async function runManualNegativeAlertForConversation(input: {
   forceTemplate: boolean;
 }): Promise<
   | { status: "contact_not_found" }
+  | { status: "alerts_disabled" }
   | { status: "no_restaurants" }
   | { status: "no_negative_review" }
   | { status: "done"; resenaId: number; result: ProcessAlertResult }
@@ -356,6 +368,17 @@ export async function runManualNegativeAlertForConversation(input: {
   if (error) fail("manual_conversation", error);
   const contactId = (conversation as { contacto_id: string } | null)?.contacto_id;
   if (!contactId) return { status: "contact_not_found" };
+
+  // El interruptor "Reseñas negativas" también manda en la prueba: desactivado, no se envía nada.
+  const { data: contactRow, error: contactError } = await client
+    .from(SUPABASE_TABLES.conv_contactos)
+    .select("recibir_alertas_negativas")
+    .eq("id", contactId)
+    .maybeSingle();
+  if (contactError) fail("manual_toggle", contactError);
+  if ((contactRow as { recibir_alertas_negativas: boolean } | null)?.recibir_alertas_negativas !== true) {
+    return { status: "alerts_disabled" };
+  }
 
   const restaurantIds = await resolveContactRestaurantIds(contactId);
   if (restaurantIds.length === 0) return { status: "no_restaurants" };

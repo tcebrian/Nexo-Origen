@@ -22,6 +22,8 @@ export type ContactDetail = {
   access: { count: number; restaurants: { id: number; name: string; brand: string; city: string }[] };
   linkedUser: { id: string; nombre: string; rol: string; empresaNombre: string | null } | null;
   whatsapp: WhatsAppState;
+  /** Interruptor "Reseñas negativas". */
+  negativeAlerts: boolean;
 };
 
 export type LinkableUser = { id: string; nombre: string; rol: string; empresaNombre: string | null; linkedElsewhere: boolean };

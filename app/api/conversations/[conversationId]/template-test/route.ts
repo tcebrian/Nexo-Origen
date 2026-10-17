@@ -80,6 +80,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ con
         forceTemplate: body.kind === "negative_alert_template",
       });
       if (run.status === "contact_not_found") return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
+      if (run.status === "alerts_disabled") {
+        return NextResponse.json(
+          { error: "Las alertas negativas están desactivadas para este contacto", code: "alerts_disabled" },
+          { status: 409 }
+        );
+      }
       if (run.status === "no_restaurants") {
         return NextResponse.json({ error: "Este contacto no tiene restaurantes asignados: no hay alertas que enviar.", code: "no_restaurants" }, { status: 409 });
       }

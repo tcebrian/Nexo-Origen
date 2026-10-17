@@ -200,6 +200,15 @@ describe("POST /api/conversations/[id]/template-test", () => {
     expect(runManualNegativeAlertForConversation).toHaveBeenLastCalledWith({ conversationId: CONVERSATION_ID, forceTemplate: true });
   });
 
+  it("alerta negativa con el interruptor desactivado: mensaje claro, 409 y nada se envía", async () => {
+    runManualNegativeAlertForConversation.mockResolvedValue({ status: "alerts_disabled" });
+    for (const kind of ["negative_alert", "negative_alert_template"]) {
+      const res = await post({ kind, requestId: REQUEST_ID });
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error: "Las alertas negativas están desactivadas para este contacto", code: "alerts_disabled" });
+    }
+  });
+
   it("alerta negativa sin restaurantes o sin reseñas negativas: 409 y nada se envía", async () => {
     runManualNegativeAlertForConversation.mockResolvedValue({ status: "no_restaurants" });
     expect((await post({ kind: "negative_alert", requestId: REQUEST_ID })).status).toBe(409);
