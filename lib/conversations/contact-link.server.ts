@@ -204,6 +204,27 @@ export async function updateConversationContact(conversationId: string, input: u
   return detail;
 }
 
+export type DeleteContactResult = "deleted" | "not_found";
+
+/**
+ * Elimina por completo el contacto de la conversación (permisos, conversaciones, mensajes, alertas e
+ * informes) con `nexo_delete_contact`: una transacción en la base de datos, todo o nada. El contacto se
+ * resuelve SIEMPRE desde la conversación (nunca se acepta un `contacto_id` del cliente). No toca la cuenta
+ * web vinculada (`usuario_id`), perfiles, empresas, restaurantes ni reseñas.
+ */
+export async function deleteConversationContact(conversationId: string): Promise<DeleteContactResult> {
+  const contactoId = await findContactOfConversation(conversationId);
+  if (!contactoId) return "not_found";
+
+  const { error } = await requireAdminClient().rpc("nexo_delete_contact", { p_contacto_id: contactoId });
+  if (error) {
+    if (error.code === "P0002") return "not_found";
+    // Solo el SQLSTATE: el mensaje de la base de datos puede incluir valores.
+    throw new ConversationsDbError("contact.delete", error.code);
+  }
+  return "deleted";
+}
+
 export type LinkResult = "ok" | "conversation_not_found" | "user_not_found" | "already_linked";
 
 /** Vincula (o desvincula con `null`) el contacto a una cuenta web. Solo informativo: no cambia permisos. */

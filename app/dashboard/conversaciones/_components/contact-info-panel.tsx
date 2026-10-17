@@ -302,6 +302,89 @@ function LinkedAccountCard({
 }
 
 /**
+ * Zona de peligro: elimina el contacto de Conversations (permisos, conversaciones, mensajes, alertas e
+ * informes). Pide confirmación; no borra cuentas web. Al terminar avisa al padre para cerrar la ficha.
+ */
+function DangerZone({ conversationId, onDeleted }: { conversationId: string; onDeleted: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function remove() {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/conversations/${conversationId}/contact`, { method: "DELETE" });
+      const data = (await response.json().catch(() => null)) as { deleted?: boolean; error?: string } | null;
+      if (!response.ok || data?.deleted !== true) {
+        setError(data?.error ?? "No se pudo eliminar el contacto");
+        return;
+      }
+      setConfirming(false);
+      onDeleted();
+    } catch {
+      setError("No se pudo eliminar el contacto");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-rose-400/20 bg-rose-400/[0.04] p-4">
+      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-300/80">Eliminar contacto</h3>
+      <p className="mb-3 text-xs text-gray-400">Borra el contacto y todo lo asociado en Conversaciones. No elimina su cuenta web.</p>
+      <button
+        type="button"
+        onClick={() => {
+          setError(null);
+          setConfirming(true);
+        }}
+        className="w-full rounded-xl border border-rose-400/40 bg-rose-500/80 px-3 py-2 text-[13px] font-medium text-white transition hover:bg-rose-500"
+      >
+        Eliminar contacto
+      </button>
+
+      {confirming ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4" role="presentation">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-contact-title"
+            aria-describedby="delete-contact-description"
+            className="w-full max-w-sm rounded-2xl border border-white/[0.1] bg-[#12121a] p-5 shadow-2xl"
+          >
+            <h4 id="delete-contact-title" className="text-sm font-semibold text-white">
+              ¿Seguro que quieres eliminar este contacto?
+            </h4>
+            <p id="delete-contact-description" className="mt-2 text-xs leading-relaxed text-gray-400">
+              Se eliminarán sus permisos, conversaciones, mensajes, alertas e informes asociados. Esta acción no se puede deshacer.
+            </p>
+            {error ? (
+              <p role="alert" className="mt-3 text-xs text-rose-300">
+                {error}
+              </p>
+            ) : null}
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" disabled={busy} onClick={() => setConfirming(false)} className={secondaryButtonClass}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void remove()}
+                className="rounded-xl border border-rose-400/40 bg-rose-500/80 px-3 py-2 text-[13px] font-medium text-white transition hover:bg-rose-500 disabled:opacity-60"
+              >
+                {busy ? "Eliminando…" : "Eliminar contacto"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/**
  * Interruptor "Reseñas negativas": si el contacto recibe automáticamente por WhatsApp las reseñas de 1⭐, 2⭐ y 3⭐
  * de SUS restaurantes. No concede acceso: el alcance sigue saliendo de empresa y restaurantes asignados.
  */
@@ -463,6 +546,7 @@ export function ContactInfoPanel({
   onActivationError,
   onChanged,
   onEditPermissions,
+  onDeleted,
 }: {
   conversationId: string;
   detail: ContactDetail | null;
@@ -472,6 +556,7 @@ export function ContactInfoPanel({
   onActivationError: (error: ActivationError | null) => void;
   onChanged: () => void;
   onEditPermissions: () => void;
+  onDeleted: () => void;
 }) {
   if (!detail || !config) {
     return <p className="px-1 py-6 text-center text-xs text-gray-500">Cargando…</p>;
@@ -497,6 +582,7 @@ export function ContactInfoPanel({
       />
       <LinkedAccountCard conversationId={conversationId} detail={detail} onDetailChange={onDetailChange} />
       <TemplateTestCard conversationId={conversationId} onSent={onChanged} />
+      <DangerZone conversationId={conversationId} onDeleted={onDeleted} />
     </div>
   );
 }

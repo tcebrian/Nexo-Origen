@@ -720,6 +720,7 @@ export function ConversationsView() {
   const [newContactOpen, setNewContactOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const contact = useContactDetail(selectedId);
 
@@ -778,6 +779,16 @@ export function ConversationsView() {
     setPermissionsOpen(false);
   }
 
+  /** Tras eliminar un contacto: cierra la ficha y la conversación, refresca la lista y confirma. */
+  function contactDeleted() {
+    const deletedId = selectedRef.current;
+    back();
+    setConversations((current) => current?.filter((item) => item.id !== deletedId) ?? current);
+    void loadList();
+    setNotice("Contacto eliminado");
+    window.setTimeout(() => setNotice(null), 5000);
+  }
+
   const visible = useMemo(
     () => (conversations ? filterConversations(conversations, query) : []),
     [conversations, query]
@@ -805,6 +816,7 @@ export function ConversationsView() {
         onActivationError={contact.setActivationError}
         onChanged={() => void loadList()}
         onEditPermissions={() => setPermissionsOpen(true)}
+        onDeleted={contactDeleted}
       />
     ) : null;
 
@@ -816,6 +828,12 @@ export function ConversationsView() {
         </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">Conversaciones</h1>
       </header>
+
+      {notice ? (
+        <p role="status" className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.07] px-3 py-2 text-xs font-medium text-emerald-100">
+          {notice}
+        </p>
+      ) : null}
 
       <div className="flex h-[calc(100vh-14rem)] min-h-[460px] overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.025] lg:h-[calc(100vh-11rem)]">
         {/* Lista de contactos */}

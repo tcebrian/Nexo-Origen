@@ -3,6 +3,7 @@ import { requireApiAuth } from "@/lib/auth/api-auth";
 import { authorizeConversationsAccess } from "@/lib/conversations/access";
 import {
   ContactError,
+  deleteConversationContact,
   getConversationContactDetail,
   setConversationContactUser,
   updateConversationContact,
@@ -57,6 +58,28 @@ export async function PATCH(request: Request, { params }: Context) {
     if (error instanceof ContactError) return NextResponse.json({ error: error.message }, { status: error.status });
     console.error("[conversations] contact update failed", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "No se pudo guardar el contacto" }, { status: 500 });
+  }
+}
+
+/**
+ * Elimina el contacto de la conversación y todo lo suyo en Conversations (permisos, conversaciones,
+ * mensajes, alertas e informes), en una transacción. Solo super_admin. Sin cuerpo: el contacto sale de la
+ * ruta. No borra la cuenta web vinculada ni perfiles.
+ */
+export async function DELETE(request: Request, { params }: Context) {
+  const result = await authorize(request, params);
+  if ("response" in result) return result.response;
+
+  try {
+    const outcome = await deleteConversationContact(result.conversationId);
+    if (outcome === "not_found") return NextResponse.json({ error: "Contacto no encontrado" }, { status: 404 });
+    return NextResponse.json({ deleted: true }, { headers: { "Cache-Control": "private, no-store" } });
+  } catch (error) {
+    console.error("[conversations] contact delete failed", error instanceof Error ? error.message : "unknown");
+    return NextResponse.json(
+      { error: "No se pudo eliminar el contacto. No se ha borrado nada; inténtalo de nuevo." },
+      { status: 500 }
+    );
   }
 }
 
