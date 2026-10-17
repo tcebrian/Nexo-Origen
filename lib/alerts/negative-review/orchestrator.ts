@@ -2,7 +2,7 @@
  * Alertas de reseñas negativas por WhatsApp (Conversations). Núcleo sin Next, Supabase ni Meta:
  * persistencia, permisos y envío se inyectan (ver `process.server.ts`).
  *
- * Entra una reseña ≤ 2★ → para cada contacto CON ACCESO al restaurante (deny by default):
+ * Entra una reseña ≤ 3★ (1★, 2★ o 3★) → para cada contacto CON ACCESO al restaurante (deny by default):
  *
  *   · No activado            → fila `pending`. No se envía nada. Queda lista para cuando pulse "Ver alerta".
  *   · Activado, ventana ABIERTA (≤ 24 h desde su último mensaje) → imagen y después texto con el enlace.
@@ -12,7 +12,8 @@
  * duplica nada. Un fallo queda registrado y no se reintenta solo.
  */
 
-export const NEGATIVE_ALERT_MAX_STARS = 2;
+/** Alertable = estrellas ≤ 3 (1★, 2★ y 3★). Debe coincidir con el trigger `nexo_negative_review_alert_webhook`. */
+export const NEGATIVE_ALERT_MAX_STARS = 3;
 /** Alertas que se entregan por pulsación de "Ver alerta" (el resto queda pendiente). */
 export const ALERTS_PER_VIEW = 10;
 

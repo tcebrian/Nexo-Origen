@@ -115,6 +115,34 @@ describe("el interruptor manda sobre el flujo de la alerta", () => {
     expect(t.reserved).toEqual(["c-asignado"]);
   });
 
+  it.each([1, 2, 3])("%i★ con toggle activo y restaurante permitido → recibe; toggle apagado o restaurante ajeno → no", async (stars) => {
+    const reviewOf = (restauranteId: number): AlertReview => ({ ...review, restauranteId, stars });
+    const outcomesFor = async (restauranteId: number, rows: AlertContactRow[]) => {
+      const reserved: string[] = [];
+      const deps: NegativeAlertDeps = {
+        loadReview: async () => reviewOf(restauranteId),
+        findRecipients: async () => selectAlertRecipients({ restaurantId: restauranteId, contacts: rows, access: accessOf() }),
+        async reserve({ contactId }) {
+          reserved.push(contactId);
+          return { id: `a-${contactId}` };
+        },
+        update: async () => undefined,
+        conversationFor: async (contactId) => `conv-${contactId}`,
+        isWindowOpen: async () => true,
+        countOutstanding: async () => 1,
+        deliverContent: vi.fn(async () => ({ status: "sent" as const })),
+        sendTemplate: vi.fn(async () => ({ status: "sent" as const, wamid: null })),
+      };
+      await processNegativeReviewAlert({ resenaId: 501 }, deps);
+      return reserved;
+    };
+    const byId = (...ids: string[]) => contacts.filter((contact) => ids.includes(contact.id));
+
+    expect(await outcomesFor(10, byId("c-asignado"))).toEqual(["c-asignado"]);
+    expect(await outcomesFor(10, byId("c-apagado", "c-apagado-todos"))).toEqual([]); // toggle apagado
+    expect(await outcomesFor(10, byId("c-otro-local"))).toEqual([]); // restaurante no permitido
+  });
+
   it("activado pero no activado en WhatsApp: sigue quedando pendiente, como antes", async () => {
     const t = run([{ id: "c-asignado", name: null, activated: false, alertsEnabled: true }]);
     expect(await t.done).toMatchObject({ outcomes: [{ outcome: "pending_not_activated" }] });
@@ -215,7 +243,8 @@ describe("interfaz del interruptor", () => {
 
   it("tarjeta 'Reseñas negativas' con su descripción, estados Activado/Desactivado y un switch accesible", () => {
     expect(panel).toContain('title="Reseñas negativas"');
-    expect(panel).toContain("Recibir automáticamente por WhatsApp las reseñas de 1⭐ y 2⭐ de sus restaurantes.");
+    expect(panel).toContain("Recibir automáticamente por WhatsApp las reseñas de 1⭐, 2⭐ y 3⭐ de sus restaurantes.");
+    expect(panel).not.toContain("1⭐ y 2⭐");
     expect(panel).toContain('"Activado" : "Desactivado"');
     expect(panel).toContain('role="switch"');
     expect(panel).toContain("/negative-alerts");

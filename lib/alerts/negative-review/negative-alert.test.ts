@@ -5,6 +5,7 @@ import { alertImagePreview, buildAlertText } from "./message";
 import { isReviewUrl, resolveMapsLink } from "./maps-link";
 import {
   ALERTS_PER_VIEW,
+  NEGATIVE_ALERT_MAX_STARS,
   deliverPendingAlerts,
   processNegativeReviewAlert,
   type AlertPatch,
@@ -171,11 +172,30 @@ describe("alerta negativa: ventana, activación y permisos", () => {
     expect(t.calls).toEqual([]);
   });
 
-  it("solo ≤ 2★ y reseña existente", async () => {
-    expect(await processNegativeReviewAlert({ resenaId: 1 }, setup({ review: { ...REVIEW, stars: 3 } }).deps)).toEqual({ status: "skipped", reason: "not_negative" });
-    expect(await processNegativeReviewAlert({ resenaId: 1 }, setup({ review: { ...REVIEW, stars: 5 } }).deps)).toEqual({ status: "skipped", reason: "not_negative" });
+  it.each([1, 2, 3])("%i★ genera alerta", async (stars) => {
+    const t = setup({ review: { ...REVIEW, stars }, windowOpen: true });
+    const result = await processNegativeReviewAlert({ resenaId: 1 }, t.deps);
+    expect(result).toMatchObject({ status: "processed", outcomes: [{ outcome: "delivered_direct" }] });
+    expect(t.calls).toEqual(["content"]);
+  });
+
+  it.each([4, 5])("%i★ no genera alerta: no se reserva ni se envía nada", async (stars) => {
+    const t = setup({ review: { ...REVIEW, stars }, windowOpen: true });
+    expect(await processNegativeReviewAlert({ resenaId: 1 }, t.deps)).toEqual({ status: "skipped", reason: "not_negative" });
+    expect(t.rows.size).toBe(0);
+    expect(t.calls).toEqual([]);
+    expect(t.deps.findRecipients).not.toHaveBeenCalled();
+  });
+
+  it("estrellas fuera de rango (0, null, 6) tampoco alertan; reseña inexistente se ignora", async () => {
+    for (const stars of [0, -1, 6, Number.NaN]) {
+      expect(await processNegativeReviewAlert({ resenaId: 1 }, setup({ review: { ...REVIEW, stars } }).deps)).toEqual({ status: "skipped", reason: "not_negative" });
+    }
     expect(await processNegativeReviewAlert({ resenaId: 1 }, setup({ review: null }).deps)).toEqual({ status: "skipped", reason: "review_not_found" });
-    expect((await processNegativeReviewAlert({ resenaId: 1 }, setup({ review: { ...REVIEW, stars: 2 }, windowOpen: true }).deps)).status).toBe("processed");
+  });
+
+  it("la regla alertable es estrellas ≤ 3", () => {
+    expect(NEGATIVE_ALERT_MAX_STARS).toBe(3);
   });
 
   it("varios contactos: cada uno según su estado; el fallo de uno no frena a los demás", async () => {

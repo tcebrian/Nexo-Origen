@@ -12,7 +12,7 @@ export const maxDuration = 60;
  * insertar en `resenas` (`x-webhook-secret` = WHATSAPP_WEBHOOK_SECRET, el mismo secreto de los avisos
  * existentes). Acepta el cuerpo de Supabase `{ type, record: { id } }` o `{ resena_id }`.
  *
- * Solo se usa el id: estrellas, restaurante y destinatarios se leen de la base de datos (nunca del cuerpo).
+ * Solo se usa el id (alertable = 1★, 2★ o 3★): estrellas, restaurante y destinatarios se leen de la base de datos (nunca del cuerpo).
  * Los destinatarios salen de los permisos de contacto (deny by default). Idempotente por (reseña, contacto).
  * La respuesta solo lleva contadores: nunca teléfonos, nombres ni contenido.
  */

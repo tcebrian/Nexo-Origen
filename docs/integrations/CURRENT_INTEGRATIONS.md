@@ -532,7 +532,7 @@ Nexo:
 ```
 INSERT en resenas (Database Webhook de Supabase, x-webhook-secret = WHATSAPP_WEBHOOK_SECRET)
    ↓
-POST /api/webhooks/negative-review-alert        (solo ≤ 2★; todo se relee de la base de datos)
+POST /api/webhooks/negative-review-alert        (solo 1★, 2★ y 3★; todo se relee de la base de datos)
    ↓
 destinatarios = contactos con acceso al restaurante (conv_contacto_empresas / conv_contacto_restaurantes, deny by default)
    ↓

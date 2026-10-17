@@ -302,7 +302,7 @@ function LinkedAccountCard({
 }
 
 /**
- * Interruptor "Reseñas negativas": si el contacto recibe automáticamente por WhatsApp las reseñas de 1⭐ y 2⭐
+ * Interruptor "Reseñas negativas": si el contacto recibe automáticamente por WhatsApp las reseñas de 1⭐, 2⭐ y 3⭐
  * de SUS restaurantes. No concede acceso: el alcance sigue saliendo de empresa y restaurantes asignados.
  */
 function NegativeAlertsCard({
@@ -355,7 +355,7 @@ function NegativeAlertsCard({
     >
       <div className="flex items-start gap-3">
         <p className="min-w-0 flex-1 text-xs text-gray-400">
-          Recibir automáticamente por WhatsApp las reseñas de 1⭐ y 2⭐ de sus restaurantes.
+          Recibir automáticamente por WhatsApp las reseñas de 1⭐, 2⭐ y 3⭐ de sus restaurantes.
         </p>
         <button
           type="button"
