@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendWhatsAppImageAlert } from "@/lib/notifications/whatsapp";
+import { createMediaToken, secretsMatch } from "@/lib/auth/signed-media-token";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ type SupabaseWebhookPayload = {
 export async function POST(request: Request) {
   const secret = process.env.WHATSAPP_WEBHOOK_SECRET;
   const incomingSecret = request.headers.get("x-webhook-secret");
-  if (!secret || incomingSecret !== secret) {
+  if (!secret || !secretsMatch(incomingSecret, secret)) {
     return new Response("No autorizado", { status: 401 });
   }
 
@@ -58,17 +59,24 @@ export async function POST(request: Request) {
   }
 
   // Deduplicación: no reenviar la misma reseña dos veces (reintentos del webhook, etc.).
-  const { data: yaEnviado } = await supabase
+  const { data: yaEnviado, error: dedupeError } = await supabase
     .from("whatsapp_alertas_enviadas")
     .select("resena_id")
     .eq("resena_id", record.id)
     .maybeSingle();
+  // Si no se puede comprobar (p. ej. la tabla no existe), NO se envía: sin deduplicación habría un envío por reintento.
+  if (dedupeError) {
+    console.error("[new-resena-whatsapp] dedupe check failed", dedupeError.code ?? "unknown");
+    return Response.json({ ok: false, error: "No se pudo comprobar la deduplicación" }, { status: 503 });
+  }
   if (yaEnviado) {
     return Response.json({ ok: true, skipped: "ya-enviado" });
   }
 
   const origin = new URL(request.url).origin;
-  const imageUrl = `${origin}/api/notifications/whatsapp-alert-image?resena_id=${record.id}&token=${secret}`;
+  // URL firmada, ligada a esta reseña y con caducidad: el secreto compartido no viaja en la URL.
+  const token = createMediaToken({ secret, scope: "whatsapp-alert-image", resourceId: record.id });
+  const imageUrl = `${origin}/api/notifications/whatsapp-alert-image?resena_id=${record.id}&sig=${token}`;
   const caption = "⚠️ Nueva reseña negativa detectada — Nexo Origen";
 
   const results = await Promise.all(
