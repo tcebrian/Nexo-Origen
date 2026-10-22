@@ -1,4 +1,5 @@
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { assertRestauranteInScope } from "@/lib/auth/data-scope";
 import { computeWeeklyContext } from "@/lib/reports/negative-reviews/weekly-context";
 import { NextResponse } from "next/server";
 
@@ -18,6 +19,10 @@ export async function GET(request: Request) {
       { error: "Parámetros restauranteId y reviewDate requeridos" },
       { status: 400 }
     );
+  }
+
+  if (!assertRestauranteInScope(auth.session.scope, restauranteId)) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
   try {
