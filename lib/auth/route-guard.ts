@@ -60,6 +60,8 @@ export function isSuperAdminApiPath(pathname: string): boolean {
     pathname.startsWith("/api/informes") ||
     pathname.startsWith("/api/reports/") ||
     pathname.startsWith("/api/conversations") ||
-    pathname.startsWith("/api/platform/")
+    pathname.startsWith("/api/platform/") ||
+    // Resumen de red por grupo/empresa: función administrativa (SEC-002). Nunca por scope de usuario.
+    pathname.startsWith("/api/generate-network-summary-image")
   );
 }

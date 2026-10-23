@@ -1,4 +1,5 @@
 import { requireApiAuth } from "@/lib/auth/api-auth";
+import { isSuperAdmin, normalizeRole } from "@/lib/auth/permissions";
 import { isReportPeriodSlug, REPORT_PERIOD_LABELS } from "@/lib/reports/period-ranges";
 import { isNetworkReportGroupId, NETWORK_REPORT_GROUPS } from "@/lib/reports/network-summary/brand-groups";
 import { renderViaInternal } from "@/lib/render/internal-render-client";
@@ -10,6 +11,12 @@ export const maxDuration = 60;
 export async function GET(request: Request) {
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
+  // SEC-002: el resumen de red agrega TODOS los locales del grupo (sin scope de usuario), así que es solo
+  // super_admin. Se comprueba aquí aunque el middleware y `requireApiAuth` ya lo exijan (defensa en
+  // profundidad) y ANTES de leer `grupo`: ningún parámetro del cliente decide qué datos se cargan.
+  if (!isSuperAdmin(normalizeRole(auth.session.perfil.rol))) {
+    return Response.json({ error: "No autorizado" }, { status: 403 });
+  }
 
   const { searchParams } = new URL(request.url);
   const periodo = searchParams.get("periodo") ?? "";
