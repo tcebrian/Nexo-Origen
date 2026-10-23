@@ -530,7 +530,7 @@ Nexo:
 ## Flujo
 
 ```
-INSERT en resenas (Database Webhook de Supabase, x-webhook-secret = WHATSAPP_WEBHOOK_SECRET)
+INSERT en resenas (Database Webhook de Supabase, x-webhook-secret = NEGATIVE_REVIEW_WEBHOOK_SECRET en Vercel; en Vault: negative_review_webhook_secret)
    ↓
 POST /api/webhooks/negative-review-alert        (solo 1★, 2★ y 3★; todo se relee de la base de datos)
    ↓

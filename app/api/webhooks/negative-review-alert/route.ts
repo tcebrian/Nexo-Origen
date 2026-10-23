@@ -9,8 +9,8 @@ export const maxDuration = 60;
 
 /**
  * Alerta de reseña negativa por WhatsApp (Conversations). La llama un Database Webhook de Supabase al
- * insertar en `resenas` (`x-webhook-secret` = WHATSAPP_WEBHOOK_SECRET, el mismo secreto de los avisos
- * existentes). Acepta el cuerpo de Supabase `{ type, record: { id } }` o `{ resena_id }`.
+ * insertar en `resenas` (`x-webhook-secret` = NEGATIVE_REVIEW_WEBHOOK_SECRET, secreto dedicado que en
+ * Supabase Vault se llama `negative_review_webhook_secret`; sin él la ruta falla cerrada). Acepta el cuerpo de Supabase `{ type, record: { id } }` o `{ resena_id }`.
  *
  * Solo se usa el id (alertable = 1★, 2★ o 3★): estrellas, restaurante y destinatarios se leen de la base de datos (nunca del cuerpo).
  * Los destinatarios salen de los permisos de contacto (deny by default). Idempotente por (reseña, contacto).
@@ -24,7 +24,7 @@ function secretMatches(received: string | null, expected: string | undefined): b
 }
 
 export async function POST(request: Request) {
-  if (!secretMatches(request.headers.get("x-webhook-secret"), process.env.WHATSAPP_WEBHOOK_SECRET)) {
+  if (!secretMatches(request.headers.get("x-webhook-secret"), process.env.NEGATIVE_REVIEW_WEBHOOK_SECRET)) {
     return new Response("No autorizado", { status: 401 });
   }
 
