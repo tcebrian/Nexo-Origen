@@ -106,7 +106,9 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**.supabase.co",
+        // Host EXACTO de nuestro proyecto (SEC-004): un comodín dejaría al optimizador descargar archivos de
+        // cualquier proyecto Supabase ajeno.
+        hostname: "tsbkcaxbgzfnpqmihabb.supabase.co",
         pathname: "/storage/v1/object/public/**",
       },
     ],
