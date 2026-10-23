@@ -277,13 +277,34 @@ Una parte relevante del aislamiento multiempresa depende actualmente de la capa 
 - `lib/auth/scopes.ts`
 - `lib/auth/data-scope.ts`
 
-Varias tablas tienen políticas SELECT permisivas en los SQL actuales.
+Varias tablas tuvieron políticas SELECT permisivas para `anon` (SEC-001). La migración
+`supabase/sec_001_revoke_anon_data_access.sql` las elimina (ver más abajo); hasta aplicarla en producción siguen abiertas.
 
 Por tanto:
 
 > el filtrado de scope es hoy parte de la frontera de seguridad y no puede eliminarse o saltarse casualmente.
 
 En el futuro se puede reforzar RLS, pero debe hacerse como migración controlada.
+
+## SEC-001 — sin acceso directo de `anon`/`authenticated` a datos de negocio
+
+Regla: **el navegador solo usa Supabase Auth y lee su propia fila de `perfiles`** (`perfiles_select_own`). Todo dato
+de negocio (reseñas, restaurantes, marcas, KPIs, vistas, RPC de métricas) se lee en el servidor con service role,
+aplicando `session.scope`. Los clientes de navegador permitidos son solo `login-form.tsx` y `use-logout.ts`
+(vigilado por `lib/auth/sec-001-anon-access.test.ts`).
+
+La migración `supabase/sec_001_revoke_anon_data_access.sql` (rollback: `..._rollback.sql`; comprobación en la base
+real: `sec_001_verify.sql`):
+
+- elimina las políticas `Allow anon read` de `resenas`, `restaurantes`, `marcas`, `kpi_diario`, `kpi_semanal`, `kpi_mensual`;
+- revoca todos los privilegios de esas tablas y de las vistas `dashboard_kpis`, `dashboard_restaurantes`, `kpi_marcas`,
+  `kpi_restaurantes`, `resumen_restaurantes`, `v_motivos_base`, `motivos_diarios|semanales|mensuales` a `public`, `anon` y `authenticated`;
+- pone esas vistas en `security_invoker = true` (antes corrían como `postgres` y saltaban RLS);
+- revoca EXECUTE de `get_kpis_periodo`, `nexo_window_reviews` y `nexo_reputation_window_metrics` a `public`, `anon` y `authenticated`.
+
+Una integración externa (p. ej. Make) que lea estas tablas debe usar una clave de servidor, nunca la clave `anon`.
+Quedan fuera de SEC-001: `nexo_call_daily_report_cron` y `nexo_notify_negative_review_alert` (SEC-005) y el resto de
+privilegios de escritura excesivos sobre otras tablas (hardening).
 
 ---
 
@@ -304,7 +325,7 @@ Esto significa que el esquema actual no representa todavía todo el pipeline de 
 - La relación empresa ↔ marca se deriva indirectamente.
 - Los KPIs actuales están muy orientados a reputación.
 - La base para ventas, tiempos, personal y costes existe (área `OPERACIONES`, §15) pero está vacía: aún no hay ninguna fuente conectada.
-- La seguridad en base de datos puede reforzarse: 9 vistas legacy son `SECURITY DEFINER` y varias tablas de reputación tienen lectura `anon` permisiva (ver advisors de Supabase).
+- La seguridad en base de datos puede reforzarse: las 9 vistas legacy `SECURITY DEFINER` y la lectura `anon` permisiva se corrigen en la migración SEC-001 (§11); pendiente aplicarla en producción. Siguen pendientes los privilegios de escritura excesivos sobre otras tablas (ver advisors de Supabase).
 - `nexo_reputation_period_motives` (web) y `nexo_reputation_motives_period` (bot) calculan la misma distribución con reglas de fecha/deduplicación distintas y pueden diferir en unas pocas reseñas.
 - `nexo_bot_memoria_limpiar` no está programada en la base (no hay `pg_cron`); depende de un flujo externo.
 
