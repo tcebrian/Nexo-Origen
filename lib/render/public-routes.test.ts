@@ -10,7 +10,18 @@ const buildAlertDataForResena = vi.fn();
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/api-auth", () => ({ requireApiAuth }));
 vi.mock("@/lib/reports/monthly/data", () => ({ loadMonthlyReport }));
-vi.mock("@/lib/render/internal-render-client", () => ({ renderViaInternal }));
+vi.mock("@/lib/render/internal-render-client", () => ({
+  renderViaInternal,
+  RenderError: class RenderError extends Error {
+    constructor(
+      message: string,
+      readonly status: number
+    ) {
+      super(message);
+      this.name = "RenderError";
+    }
+  },
+}));
 vi.mock("@/lib/notifications/build-alert-for-resena", () => ({ buildAlertDataForResena }));
 
 const pdfRoute = await import("@/app/api/informes/mensual/[id]/route");
@@ -27,7 +38,7 @@ const get = (path: string) => new Request(`https://nexo.example${path}`);
 
 beforeEach(() => {
   vi.resetAllMocks();
-  requireApiAuth.mockResolvedValue({ ok: true, session: { scope, perfil: { rol: "super_admin" } } });
+  requireApiAuth.mockResolvedValue({ ok: true, session: { userId: "super-1", scope, perfil: { rol: "super_admin" } } });
   loadMonthlyReport.mockResolvedValue(sampleMonthlyReport());
   renderViaInternal.mockResolvedValue(PNG);
 });
@@ -78,7 +89,13 @@ describe("GET /api/informes/mensual/[id]/imagen", () => {
 
 describe("POST /api/generate-negative-review-image", () => {
   const post = (body: unknown) =>
-    negativeRoute.POST(new Request("https://nexo.example/api/generate-negative-review-image", { method: "POST", body: JSON.stringify(body) }));
+    negativeRoute.POST(
+      new Request("https://nexo.example/api/generate-negative-review-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+    );
 
   it("PNG inline con nombre nexo-alerta-…; los datos normalizados van al renderer", async () => {
     const res = await post(sampleAlert({ restaurant_name: "BK Utebo", review_date: "12 Mar 2026" }));
@@ -89,12 +106,17 @@ describe("POST /api/generate-negative-review-image", () => {
     expect(renderViaInternal.mock.calls[0]![0]).toMatchObject({ op: "negative_review_image", data: { restaurant_name: "BK Utebo" } });
   });
 
-  it("si el renderer falla devuelve su mensaje en 500 (como antes)", async () => {
+  it("si el renderer falla devuelve un mensaje genérico en 500 (SEC-006: nunca error.message)", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     renderViaInternal.mockRejectedValue(new Error("Chromium no arrancó"));
-    const res = await post({});
+    const res = await post(sampleAlert());
     expect(res.status).toBe(500);
-    expect(await res.json()).toEqual({ error: "Chromium no arrancó" });
+    expect(await res.json()).toEqual({ error: "No se pudo generar la imagen de alerta." });
+  });
+
+  it("un payload incompleto ya no se completa con el ejemplo: 400 sin renderizar", async () => {
+    expect((await post({})).status).toBe(400);
+    expect(renderViaInternal).not.toHaveBeenCalled();
   });
 });
 

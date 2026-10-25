@@ -311,6 +311,15 @@ trigger `nexo_negative_review_alert_webhook`) son `SECURITY DEFINER` y leen secr
 `supabase/sec_005_revoke_cron_alert_function_execute.sql` (rollback y `sec_005_verify.sql` incluidos) les quita EXECUTE a
 `PUBLIC`, `anon`, `authenticated` y `service_role`: solo las ejecuta su propietario `postgres`. No cambia cuerpos, Vault,
 pg_cron ni el trigger; ninguna parte de la aplicación las llama por RPC.
+
+## SEC-006 — contador de frecuencia (`api_rate_limits`)
+
+`POST /api/generate-negative-review-image` (cada llamada arranca Chromium) limita a 10 generaciones por usuario y minuto
+con `lib/security/rate-limit.server.ts`. El contador vive en Postgres para que valga entre instancias serverless:
+tabla `api_rate_limits` (RLS sin políticas, solo `service_role`) y función `nexo_rate_limit_hit(bucket, límite, ventana)`
+(ventana fija, incremento atómico). Migración `supabase/sec_006_rate_limit.sql` (rollback y `sec_006_verify.sql` incluidos).
+**Hasta aplicarla** la aplicación usa un contador en memoria por instancia como respaldo. El cubo lo construye siempre el
+servidor con el id del usuario autenticado; reutilizable por otras rutas costosas.
 Quedan fuera de SEC-001: `nexo_call_daily_report_cron` y `nexo_notify_negative_review_alert` (SEC-005) y el resto de
 privilegios de escritura excesivos sobre otras tablas (hardening).
 
