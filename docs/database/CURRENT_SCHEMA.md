@@ -303,6 +303,14 @@ real: `sec_001_verify.sql`):
 - revoca EXECUTE de `get_kpis_periodo`, `nexo_window_reviews` y `nexo_reputation_window_metrics` a `public`, `anon` y `authenticated`.
 
 Una integración externa (p. ej. Make) que lea estas tablas debe usar una clave de servidor, nunca la clave `anon`.
+
+## SEC-005 — funciones del cron y del trigger de alertas
+
+`nexo_call_daily_report_cron()` (la ejecuta pg_cron como `postgres`) y `nexo_notify_negative_review_alert()` (función del
+trigger `nexo_negative_review_alert_webhook`) son `SECURITY DEFINER` y leen secretos de Vault. La migración
+`supabase/sec_005_revoke_cron_alert_function_execute.sql` (rollback y `sec_005_verify.sql` incluidos) les quita EXECUTE a
+`PUBLIC`, `anon`, `authenticated` y `service_role`: solo las ejecuta su propietario `postgres`. No cambia cuerpos, Vault,
+pg_cron ni el trigger; ninguna parte de la aplicación las llama por RPC.
 Quedan fuera de SEC-001: `nexo_call_daily_report_cron` y `nexo_notify_negative_review_alert` (SEC-005) y el resto de
 privilegios de escritura excesivos sobre otras tablas (hardening).
 
