@@ -494,6 +494,15 @@ incrusta en un iframe del mismo origen. HSTS lo envía Vercel en producción (`m
 `preload`; no se duplica aquí. `frame-ancestors` solo limita quién embebe la página: Chromium abre las plantillas como
 documento principal y no se ve afectado. Una CSP completa queda pendiente de un estudio aparte (Next.js, Supabase, renderer).
 
+## Dependencias de producción (SEC-012A)
+
+Las vulnerabilidades de producción se corrigen actualizando SOLO el nodo vulnerable dentro del rango que ya permite su
+dependencia raíz (`npm update <paquete>`, sin tocar `package.json`; nunca `npm audit fix --force`): `dompurify` (opcional de
+`jspdf`), `axios`/`follow-redirects`/`qs` (de `twilio`), `nanoid`/`source-map-js`/`baseline-browser-mapping` (de `next`) y
+`brace-expansion` (de `exceljs`). Pendiente y aceptado: `uuid@8` dentro de `exceljs@4.4.0` (última versión de exceljs; npm solo
+propone bajar a 3.4.0). El aviso es de `uuid` v3/v5/v6 con `buf`; exceljs solo llama a `v4()` sin búfer
+(`cf-rule-ext-xform.js`), así que no es alcanzable. Revisar cuando exceljs publique una versión con `uuid` ≥ 11.1.1.
+
 ---
 
 # 18. Procesos pesados
