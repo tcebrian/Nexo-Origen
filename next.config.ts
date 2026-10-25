@@ -74,6 +74,37 @@ const MONTHLY_UNUSED_PUBLIC = [
   "./public/fonts/playfair-display-400-normal.woff2",
 ];
 
+/**
+ * Cabeceras defensivas del navegador (SEC-010), para TODAS las rutas.
+ *
+ * - `frame-ancestors 'none'` (+ `X-Frame-Options: DENY` como respaldo heredado): ninguna web puede incrustar Nexo en
+ *   un iframe (clickjacking sobre usuarios, permisos, contactos, Conversations...). Es una CSP MÍNIMA a propósito:
+ *   NO se define `default-src`, `script-src`, `style-src`, `img-src`, `connect-src` ni `font-src`, porque una CSP
+ *   completa puede romper Next.js, Supabase o el renderer y se estudiará aparte.
+ * - `frame-ancestors` solo controla quién EMBEBE la página: Chromium (renderer interno) abre las plantillas como
+ *   documento principal, así que no le afecta.
+ * - Camera/micrófono/geolocalización/Topics: Nexo no usa esas APIs del navegador (se comprobó en el código).
+ * - HSTS no se añade aquí: Vercel ya lo envía en el dominio de producción (`max-age=63072000`). Sin `includeSubDomains`
+ *   ni `preload` a propósito: afectarían a otros subdominios de nexoorigen.com.
+ */
+const SECURITY_HEADERS = [
+  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), browsing-topics=()" },
+];
+
+/**
+ * Única excepción demostrada: `/preview/network-summary` incrusta en un iframe la plantilla
+ * `/templates/network-summary/...` del MISMO origen para previsualizarla. Esa plantilla solo se puede enmarcar desde
+ * Nexo mismo (`'self'` / SAMEORIGIN); desde cualquier otro origen sigue bloqueada.
+ */
+const SAME_ORIGIN_FRAME_HEADERS = [
+  { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+];
+
 const nextConfig: NextConfig = {
   // El indicador de dev de Next (el badge "N" flotante) no existe en
   // producción (next start), pero en local se solapa con las plantillas de
@@ -112,6 +143,13 @@ const nextConfig: NextConfig = {
         pathname: "/storage/v1/object/public/**",
       },
     ],
+  },
+  // Si dos reglas coinciden y fijan la misma cabecera, gana la ÚLTIMA (por eso la excepción va después).
+  async headers() {
+    return [
+      { source: "/:path*", headers: SECURITY_HEADERS },
+      { source: "/templates/network-summary/:path*", headers: SAME_ORIGIN_FRAME_HEADERS },
+    ];
   },
   async redirects() {
     return [

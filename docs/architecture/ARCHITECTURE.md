@@ -484,6 +484,16 @@ Reglas:
 
 En el futuro podremos reforzar RLS, pero no debemos romper el aislamiento actual durante la transición.
 
+## Cabeceras del navegador (SEC-010)
+
+`next.config.ts → headers()` aplica a TODAS las rutas: `Content-Security-Policy: frame-ancestors 'none'` (CSP mínima a
+propósito; no hay `default-src`/`script-src`… todavía), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin` y `Permissions-Policy` sin cámara, micrófono, geolocalización ni Topics.
+Única excepción: `/templates/network-summary/*` admite `frame-ancestors 'self'` (SAMEORIGIN) porque `/preview/network-summary` la
+incrusta en un iframe del mismo origen. HSTS lo envía Vercel en producción (`max-age=63072000`), sin `includeSubDomains` ni
+`preload`; no se duplica aquí. `frame-ancestors` solo limita quién embebe la página: Chromium abre las plantillas como
+documento principal y no se ve afectado. Una CSP completa queda pendiente de un estudio aparte (Next.js, Supabase, renderer).
+
 ---
 
 # 18. Procesos pesados
