@@ -503,6 +503,11 @@ dependencia raíz (`npm update <paquete>`, sin tocar `package.json`; nunca `npm 
 propone bajar a 3.4.0). El aviso es de `uuid` v3/v5/v6 con `buf`; exceljs solo llama a `v4()` sin búfer
 (`cf-rule-ext-xform.js`), así que no es alcanzable. Revisar cuando exceljs publique una versión con `uuid` ≥ 11.1.1.
 
+Herramientas de desarrollo (SEC-012B): `vitest` 3 → 4.1.12 (única forma de cerrar `tinypool`, `@vitest/mocker` y `vite`; vitest 4 ya no usa
+`tinypool`), `vite` fijado por lockfile en 7.3.7 (no es dependencia directa; vitest admite 6/7/8), y `browserslist`,
+`js-yaml` y `zod` por lockfile (vienen de `eslint-config-next`/`eslint`). Con esto `npm audit` queda solo con las 2 moderadas
+aceptadas de `exceljs`/`uuid`.
+
 ---
 
 # 18. Procesos pesados
