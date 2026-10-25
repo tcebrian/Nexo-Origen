@@ -79,10 +79,10 @@ export type EffectiveAccess = {
   restaurants: { id: number; name: string; brand: string; city: string }[];
 };
 
-/** Acceso efectivo según `fetchUserScope` (alcance forzado). `restauranteIds === null` = todos. */
+/** Acceso efectivo según `fetchUserScope`. `restauranteIds === null` = todos (solo super_admin). */
 export async function effectiveAccessFor(perfil: Perfil, catalog?: Catalog): Promise<EffectiveAccess> {
   const data = catalog ?? (await loadCatalog());
-  const scope = await fetchUserScope(perfil.id, perfil, { enforceScoping: true });
+  const scope = await fetchUserScope(perfil.id, perfil);
   const allowed = scope.restauranteIds === null ? null : new Set(scope.restauranteIds);
   const brandName = new Map(data.marcas.map((marca) => [Number(marca.id), marca.nombre]));
 

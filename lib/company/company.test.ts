@@ -380,12 +380,12 @@ describe("resolveCompanyContext", () => {
     expect(fetchUserScope).not.toHaveBeenCalled();
   });
 
-  it("filtrado de datos desactivado (alcance sin restricción) → se usa el alcance REAL por rol para las empresas", async () => {
+  it("alcance base sin restricción para un rol no super_admin → se usa el alcance REAL por rol para las empresas", async () => {
     fetchUserScope.mockResolvedValue({ ...superScope, rol: "empresa_admin", restauranteIds: [20] });
     const ctx = await resolveCompanyContext({
       userId: "u-1", perfil: perfil("empresa_admin", "2"), baseScope: { ...superScope, rol: "empresa_admin" }, cookieValue: "1",
     });
-    expect(fetchUserScope).toHaveBeenCalledWith("u-1", expect.anything(), { enforceScoping: true });
+    expect(fetchUserScope).toHaveBeenCalledWith("u-1", expect.anything());
     expect(ctx.companies).toEqual([{ id: 2, name: "Vault" }]);
     expect(ctx.activeCompany).toEqual({ id: 2, name: "Vault" }); // la cookie de la 1 se ignora
     expect(ctx.scope.restauranteIds).toEqual([20]);

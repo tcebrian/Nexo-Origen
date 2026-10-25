@@ -1,6 +1,5 @@
 export type { AssignedRestaurant, AuthSession, DashboardSection, Perfil, UserRole, UserScope } from "@/lib/auth/types";
 export { USER_ROLES } from "@/lib/auth/types";
-export { DATA_SCOPING_ENABLED } from "@/lib/auth/config";
 export { fetchPerfilByUserId, fetchPerfilForAuth } from "@/lib/auth/perfiles";
 export { requireApiAuth } from "@/lib/auth/api-auth";
 export {

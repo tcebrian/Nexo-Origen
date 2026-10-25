@@ -1,5 +1,4 @@
 import type { DashboardSection, Perfil, UserRole, UserScope } from "@/lib/auth/types";
-import { DATA_SCOPING_ENABLED } from "@/lib/auth/config";
 
 const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: "Super administrador",
@@ -179,13 +178,14 @@ export function resolveProfileEmpresaLabel(
   return "Sin empresa asignada";
 }
 
-/** true si el scope no restringe datos (super_admin o fase 1 sin filtrado) */
+/**
+ * true si el scope no restringe datos. SOLO super_admin sin lista de restaurantes: el aislamiento entre
+ * empresas no depende de ningún interruptor ni variable de entorno.
+ */
 export function isUnrestrictedScope(scope: UserScope): boolean {
   // Un alcance con lista de restaurantes (por rol o por empresa activa) SIEMPRE acota, también a super_admin.
   if (scope.restauranteIds !== null) return false;
-  if (isSuperAdmin(scope.rol)) return true;
-  if (!DATA_SCOPING_ENABLED) return true;
-  return false;
+  return isSuperAdmin(scope.rol);
 }
 
 export function canAccessRestaurante(scope: UserScope, restauranteId: number): boolean {

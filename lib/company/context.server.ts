@@ -46,10 +46,10 @@ export async function resolveCompanyContext(input: {
   if (!rol) return denied();
 
   try {
-    // Alcance REAL por rol, aunque el filtrado de datos esté desactivado en esta fase: define qué empresas existen para él.
+    // Alcance REAL por rol: define qué empresas existen para él.
     const permitted = isSuperAdmin(rol)
       ? null
-      : (baseScope.restauranteIds ?? (await fetchUserScope(userId, perfil, { enforceScoping: true })).restauranteIds ?? []);
+      : (baseScope.restauranteIds ?? (await fetchUserScope(userId, perfil)).restauranteIds ?? []);
 
     const directory = await loadCompanyDirectory();
     const access = resolveCompanyAccess({
