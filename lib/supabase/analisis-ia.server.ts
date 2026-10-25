@@ -246,83 +246,34 @@ export async function fetchAnalisisIaForResenas(resenas: ResenaRow[]): Promise<A
 
 
 
-/** Consulta directa: `analisis_ia.review_id = resenas.review_id`. */
-
+/**
+ * Consulta directa: `analisis_ia.review_id = resenas.review_id`.
+ * Coincidencia EXACTA con el id recibido (SEC-007): quien llama ya demostró que esa reseña existe y es suya; no se
+ * prueban variantes (p. ej. la forma numérica de "1e3") que podrían apuntar a la reseña de otra empresa.
+ */
 export async function fetchAnalisisIaByReviewId(
-
   reviewId: string
-
 ): Promise<{ analisis: AnalisisIaRow | null; error: string | null }> {
-
   const id = reviewId.trim();
-
   if (!id) {
-
     return { analisis: null, error: "review_id vacío" };
-
   }
-
-
 
   const client = await getSupabaseDataClientForServer();
+  const { data, error } = await client.from(SUPABASE_TABLES.analisis_ia).select("*").eq("review_id", id).limit(1);
 
-  const variants = expandReviewIdVariants([id]);
-
-
-
-  for (const value of variants) {
-
-    const { data, error } = await client
-
-      .from(SUPABASE_TABLES.analisis_ia)
-
-      .select("*")
-
-      .eq("review_id", value)
-
-      .limit(1);
-
-
-
-    if (error) {
-
-      console.error("[fetchAnalisisIaByReviewId] Supabase error:", {
-
-        message: error.message,
-
-        code: error.code,
-
-        details: error.details,
-
-        hint: error.hint,
-
-        review_id: id,
-
-        variant: value,
-
-      });
-
-      return { analisis: null, error: error.message };
-
-    }
-
-
-
-    const row = data?.[0];
-
-    if (!row) continue;
-
-
-
-    const normalized = normalizeAnalisisRow(row as Record<string, unknown>);
-
-    if (normalized) {
-      return { analisis: normalized, error: null };
-    }
+  if (error) {
+    console.error("[fetchAnalisisIaByReviewId] Supabase error:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      review_id: id,
+    });
+    return { analisis: null, error: error.message };
   }
 
-  return { analisis: null, error: null };
-
+  const row = data?.[0];
+  const normalized = row ? normalizeAnalisisRow(row as Record<string, unknown>) : null;
+  return { analisis: normalized, error: null };
 }
-
-

@@ -175,34 +175,53 @@ export async function fetchResenasForPeriodServer(
   return queryResenasForPeriod(client, queryBounds, options);
 }
 
-/** Resuelve restaurante_id de una reseña por review_id (sin filtro de periodo). */
-export async function fetchResenaRestauranteIdByReviewId(
-  reviewId: string
-): Promise<number | null> {
-  const client = await getSupabaseDataClientForServer();
-  const trimmed = reviewId.trim();
-  if (!client || !trimmed) return null;
+/**
+ * Resultado de demostrar `review_id → reseña real → restaurante`. Cualquier cosa distinta de `ok` significa que NO
+ * se puede demostrar y quien llame debe denegar (nunca tratarlo como "sin restricción").
+ */
+export type ReviewRestaurantResolution =
+  | { ok: true; restauranteId: number }
+  | { ok: false; reason: "not_found" | "no_restaurant" | "ambiguous" | "db_error" };
 
-  async function lookup(column: string, value: string | number): Promise<number | null> {
-    const { data, error } = await client
-      .from(SUPABASE_TABLES.resenas)
-      .select("restaurante_id")
-      .eq(column, value)
-      .maybeSingle();
+type ResenaLookupClient = {
+  from: (table: string) => {
+    select: (columns: string) => {
+      eq: (column: string, value: string) => {
+        limit: (count: number) => PromiseLike<{ data: unknown[] | null; error: unknown }>;
+      };
+    };
+  };
+};
 
-    if (error || !data) return null;
-    const id = Number((data as { restaurante_id: unknown }).restaurante_id);
-    return Number.isFinite(id) ? id : null;
+/**
+ * Resuelve de forma INEQUÍVOCA el restaurante de una reseña por su `review_id` (coincidencia exacta, sin
+ * variantes numéricas ni alternativas por `id`: el frontend siempre envía `resenas.review_id`).
+ *  - 0 filas → `not_found`; error de base de datos → `db_error`.
+ *  - más de una fila (review_id duplicado) → `ambiguous`: no se elige ninguna.
+ *  - `restaurante_id` nulo o no válido → `no_restaurant`.
+ */
+export async function resolveReviewRestaurant(
+  reviewId: string,
+  client?: ResenaLookupClient
+): Promise<ReviewRestaurantResolution> {
+  const id = reviewId.trim();
+  if (!id) return { ok: false, reason: "not_found" };
+
+  let rows: unknown[] | null;
+  try {
+    const db = client ?? ((await getSupabaseDataClientForServer()) as unknown as ResenaLookupClient);
+    const { data, error } = await db.from(SUPABASE_TABLES.resenas).select("id,restaurante_id").eq("review_id", id).limit(2);
+    if (error) return { ok: false, reason: "db_error" };
+    rows = data;
+  } catch {
+    return { ok: false, reason: "db_error" };
   }
 
-  const byReviewId = await lookup("review_id", trimmed);
-  if (byReviewId != null) return byReviewId;
+  if (!rows || rows.length === 0) return { ok: false, reason: "not_found" };
+  if (rows.length > 1) return { ok: false, reason: "ambiguous" };
 
-  const numeric = Number(trimmed);
-  if (Number.isFinite(numeric)) {
-    const byNumeric = await lookup("review_id", numeric);
-    if (byNumeric != null) return byNumeric;
-  }
-
-  return lookup("id", trimmed);
+  const restaurante = (rows[0] as { restaurante_id?: unknown }).restaurante_id;
+  const restauranteId = restaurante === null || restaurante === undefined || restaurante === "" ? NaN : Number(restaurante);
+  if (!Number.isSafeInteger(restauranteId) || restauranteId <= 0) return { ok: false, reason: "no_restaurant" };
+  return { ok: true, restauranteId };
 }
