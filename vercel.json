@@ -8,9 +8,6 @@
     "app/api/generate-negative-review-image/route.ts": {
       "maxDuration": 60
     },
-    "app/api/notifications/whatsapp-alert-image/route.ts": {
-      "maxDuration": 60
-    },
     "app/api/generate-network-summary-image/route.ts": {
       "maxDuration": 60
     },

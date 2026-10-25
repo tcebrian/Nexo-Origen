@@ -36,13 +36,12 @@ export const RENDER_OPERATIONS = [
   "monthly_image",
   "negative_review_image",
   "network_summary_image",
-  "whatsapp_alert_image",
 ] as const;
 export type RenderOperation = (typeof RENDER_OPERATIONS)[number];
 
 export type RenderRequest =
   | { op: "monthly_pdf" | "monthly_image"; report: MonthlyReportData }
-  | { op: "negative_review_image" | "whatsapp_alert_image"; data: NegativeReviewAlertData }
+  | { op: "negative_review_image"; data: NegativeReviewAlertData }
   | { op: "network_summary_image"; periodo: ReportPeriodSlug; grupo: NetworkReportGroupId; offset: number };
 
 export const RENDER_CONTENT_TYPES: Record<RenderOperation, "application/pdf" | "image/png"> = {
@@ -50,7 +49,6 @@ export const RENDER_CONTENT_TYPES: Record<RenderOperation, "application/pdf" | "
   monthly_image: "image/png",
   negative_review_image: "image/png",
   network_summary_image: "image/png",
-  whatsapp_alert_image: "image/png",
 };
 
 // Credencial y firma -------------------------------------------------------------------------
@@ -221,9 +219,8 @@ export function parseRenderRequest(body: unknown): Parsed {
       return { ok: true, request: { op: op as "monthly_pdf" | "monthly_image", report: body.report } };
 
     case "negative_review_image":
-    case "whatsapp_alert_image":
       if (!validAlertData(body.data)) return { ok: false, error: "Datos de la alerta no válidos" };
-      return { ok: true, request: { op: op as "negative_review_image" | "whatsapp_alert_image", data: body.data } };
+      return { ok: true, request: { op: "negative_review_image", data: body.data } };
 
     case "network_summary_image": {
       const { periodo, grupo, offset } = body;

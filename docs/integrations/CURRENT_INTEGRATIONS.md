@@ -97,57 +97,35 @@ La futura capa de ingesta debe convertir estas reglas en un pipeline explícito 
 
 ---
 
-# 3. Twilio / WhatsApp — envío de alertas
+# 3. Twilio / WhatsApp — envío por Twilio
 
 ## Estado
 
-**IMPLEMENTADO EN EL REPOSITORIO**
+**SOLO FALLBACK DE TEXTO.** El sistema antiguo de alertas negativas por imagen (webhook `new-resena-whatsapp`,
+ruta `whatsapp-alert-image`, `sendWhatsAppImageAlert`, tabla `whatsapp_alertas_enviadas` y secreto
+`WHATSAPP_WEBHOOK_SECRET`) **se retiró en SEC-009**. Las alertas negativas vigentes van por Conversations
+(`/api/webhooks/negative-review-alert`, sección 5).
 
-El proyecto incluye la dependencia `twilio` y código para enviar alertas de WhatsApp.
+Lo que queda de Twilio: `lib/notifications/whatsapp.ts` → `sendWhatsAppText`, que usan los resúmenes diarios de
+agentes (`lib/agents/daily-summary-delivery.ts`): primero Make (`MAKE_DAILY_SUMMARY_WEBHOOK_URL`) y, si no está
+configurado, Twilio.
 
-Archivos principales actuales:
-
-- `lib/notifications/whatsapp.ts`
-- `app/api/webhooks/new-resena-whatsapp/route.ts`
-- `app/api/notifications/whatsapp-alert-image/route.ts`
-- `lib/notifications/build-alert-for-resena.ts`
-
-Variables de entorno documentadas:
+Variables de entorno de este fallback:
 
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_WHATSAPP_FROM`
-- `WHATSAPP_WEBHOOK_SECRET`
 
+`WHATSAPP_WEBHOOK_SECRET` ya no lo usa ningún código activo (pendiente de decidir si se elimina del entorno).
 Los valores reales nunca deben estar en Git.
 
 ---
 
-# 4. Flujo actual de alerta WhatsApp
+# 4. Flujo anterior de alerta por Twilio (RETIRADO)
 
-Flujo aproximado actual:
-
-```
-nueva reseña
-   ↓
-Supabase / evento externo
-   ↓
-POST /api/webhooks/new-resena-whatsapp
-   ↓
-validación de secreto
-   ↓
-consulta restaurante/empresa
-   ↓
-deduplicación de envío
-   ↓
-generación de imagen
-   ↓
-Twilio
-   ↓
-WhatsApp
-```
-
-El endpoint de imagen genera un PNG accesible temporalmente para que Twilio pueda descargarlo.
+Eliminado en SEC-009. Se conserva solo como referencia histórica: reseña nueva → `POST /api/webhooks/new-resena-whatsapp`
+→ imagen en `/api/notifications/whatsapp-alert-image?...&token=<secreto>` → Twilio → WhatsApp. No debe recrearse: el
+token en la URL y los destinatarios en código eran riesgos de seguridad.
 
 ---
 
@@ -180,9 +158,8 @@ La futura migración debe hacer que el webhook consuma la regla canónica del do
 
 # 6. Deuda conocida — destinatarios de WhatsApp
 
-El webhook actual contiene configuración de destinatarios en código.
-
-Esto no debe escalar así.
+El sistema antiguo (retirado en SEC-009) tenía los destinatarios en código. El vigente los saca de los permisos de contacto
+(`conv_contacto_*`), no del código.
 
 Dirección futura:
 
@@ -494,7 +471,7 @@ La semántica externa deberá mapearse al vocabulario interno de Nexo.
 |---|---|---|
 | Supabase | Activa | Backend / base operativa |
 | Ingesta reseñas | Activa, externa | Fuente reputación |
-| Twilio WhatsApp | Implementada | Canal de salida |
+| Twilio WhatsApp | Solo fallback de texto | Resúmenes de agentes cuando Make no está configurado |
 | WhatsApp conversacional | Parcial/externo | Interfaz |
 | Vercel | Configurado | Hosting/runtime |
 | IA | Activa/parcial | Interpretación |
@@ -525,7 +502,7 @@ Nexo:
 
 ## Estado
 
-**IMPLEMENTADO** (sustituye en la práctica al aviso Twilio de la sección 4; ese flujo legado sigue en el repo sin cambios).
+**IMPLEMENTADO** (sustituyó al aviso Twilio de la sección 4, ya retirado).
 
 ## Flujo
 

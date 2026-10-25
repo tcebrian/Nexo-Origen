@@ -5,7 +5,6 @@ import { sampleAlert, sampleMonthlyReport } from "@/lib/render/fixtures.test-hel
 const requireApiAuth = vi.fn();
 const loadMonthlyReport = vi.fn();
 const renderViaInternal = vi.fn();
-const buildAlertDataForResena = vi.fn();
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/api-auth", () => ({ requireApiAuth }));
@@ -22,13 +21,11 @@ vi.mock("@/lib/render/internal-render-client", () => ({
     }
   },
 }));
-vi.mock("@/lib/notifications/build-alert-for-resena", () => ({ buildAlertDataForResena }));
 
 const pdfRoute = await import("@/app/api/informes/mensual/[id]/route");
 const imageRoute = await import("@/app/api/informes/mensual/[id]/imagen/route");
 const negativeRoute = await import("@/app/api/generate-negative-review-image/route");
 const networkRoute = await import("@/app/api/generate-network-summary-image/route");
-const alertRoute = await import("@/app/api/notifications/whatsapp-alert-image/route");
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2]);
 const PDF = Buffer.from("%PDF-1.7");
@@ -135,40 +132,5 @@ describe("GET /api/generate-network-summary-image", () => {
     requireApiAuth.mockResolvedValueOnce({ ok: false, response: NextResponse.json({ error: "No autenticado" }, { status: 401 }) });
     expect((await networkRoute.GET(get("/api/generate-network-summary-image?periodo=semanal&grupo=bk"))).status).toBe(401);
     expect(renderViaInternal).not.toHaveBeenCalled();
-  });
-});
-
-describe("GET /api/notifications/whatsapp-alert-image", () => {
-  const path = (token: string, id = "55") => `/api/notifications/whatsapp-alert-image?resena_id=${id}&token=${token}`;
-
-  it("token incorrecto → 401 y no se consulta nada", async () => {
-    process.env.WHATSAPP_WEBHOOK_SECRET = "secreto-whatsapp";
-    expect((await alertRoute.GET(get(path("otro")))).status).toBe(401);
-    expect(buildAlertDataForResena).not.toHaveBeenCalled();
-    expect(renderViaInternal).not.toHaveBeenCalled();
-  });
-
-  it("con token válido devuelve el PNG de la alerta", async () => {
-    process.env.WHATSAPP_WEBHOOK_SECRET = "secreto-whatsapp";
-    buildAlertDataForResena.mockResolvedValue(sampleAlert());
-    const res = await alertRoute.GET(get(path("secreto-whatsapp")));
-    expect(res.status).toBe(200);
-    expect(res.headers.get("Content-Type")).toBe("image/png");
-    expect(res.headers.get("Cache-Control")).toBe("no-store");
-    expect(buildAlertDataForResena).toHaveBeenCalledWith(55);
-    expect(renderViaInternal.mock.calls[0]![0]).toMatchObject({ op: "whatsapp_alert_image" });
-  });
-
-  it("reseña inexistente → 404; fallo de render → 500 genérico", async () => {
-    process.env.WHATSAPP_WEBHOOK_SECRET = "secreto-whatsapp";
-    buildAlertDataForResena.mockResolvedValueOnce(null);
-    expect((await alertRoute.GET(get(path("secreto-whatsapp")))).status).toBe(404);
-
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    buildAlertDataForResena.mockResolvedValue(sampleAlert());
-    renderViaInternal.mockRejectedValue(new Error("boom"));
-    const res = await alertRoute.GET(get(path("secreto-whatsapp")));
-    expect(res.status).toBe(500);
-    expect(await res.text()).toBe("No se pudo generar la imagen");
   });
 });

@@ -24,8 +24,7 @@ export async function executeRender(request: RenderRequest): Promise<{ contentTy
     case "monthly_image":
       return { contentType, body: await generateMonthlyPng(request.report) };
 
-    case "negative_review_image":
-    case "whatsapp_alert_image": {
+    case "negative_review_image": {
       const origin = resolveInternalOrigin();
       return {
         contentType,

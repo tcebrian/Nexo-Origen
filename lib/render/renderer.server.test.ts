@@ -43,13 +43,10 @@ describe("executeRender: cada operación usa el generador de siempre", () => {
     expect(generateMonthlyPng).toHaveBeenCalledWith(report);
   });
 
-  it("negative_review_image y whatsapp_alert_image → captura de la alerta con el origen del servidor", async () => {
+  it("negative_review_image → captura de la alerta con el origen del servidor", async () => {
     const data = sampleAlert();
-    for (const op of ["negative_review_image", "whatsapp_alert_image"] as const) {
-      captureNegativeReviewAlertPng.mockClear();
-      expect(await executeRender({ op, data })).toEqual({ contentType: "image/png", body: PNG });
-      expect(captureNegativeReviewAlertPng).toHaveBeenCalledWith(data, { assetBaseUrl: ORIGIN, allowedOrigin: ORIGIN });
-    }
+    expect(await executeRender({ op: "negative_review_image", data })).toEqual({ contentType: "image/png", body: PNG });
+    expect(captureNegativeReviewAlertPng).toHaveBeenCalledWith(data, { assetBaseUrl: ORIGIN, allowedOrigin: ORIGIN });
   });
 
   it("network_summary_image → captura de la plantilla de red con el origen del servidor", async () => {

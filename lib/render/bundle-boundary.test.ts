@@ -29,7 +29,6 @@ const PUBLIC_ROUTES = [
   "app/api/informes/mensual/route.ts",
   "app/api/generate-negative-review-image/route.ts",
   "app/api/generate-network-summary-image/route.ts",
-  "app/api/notifications/whatsapp-alert-image/route.ts",
   "app/api/conversations/[conversationId]/reports/route.ts",
   "app/api/conversations/report-options/route.ts",
 ];

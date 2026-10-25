@@ -41,7 +41,7 @@ export function isProtectedApiPath(pathname: string): boolean {
   if (!pathname.startsWith("/api/")) return false;
   // Rutas que se autentican por su cuenta (token compartido en vez de sesión
   // de usuario) porque las llaman servicios externos sin cookies: Supabase
-  // Database Webhooks y Twilio pidiendo la imagen del aviso de WhatsApp.
+  // Database Webhooks, cron, WhatsApp Cloud (Meta) y el renderer interno.
   const publicPrefixes = [
     "/api/auth/",
     "/api/webhooks/",
@@ -49,7 +49,6 @@ export function isProtectedApiPath(pathname: string): boolean {
     "/api/integrations/make/",
     // Renderer interno: lo llama el servidor sin sesión; se autentica con firma HMAC (lib/render/protocol.ts).
     "/api/internal/render",
-    "/api/notifications/whatsapp-alert-image",
   ];
   return !publicPrefixes.some((prefix) => pathname.startsWith(prefix));
 }

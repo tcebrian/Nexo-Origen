@@ -90,7 +90,7 @@ Definidos en `lib/supabase/tables.ts`.
 El código actual también referencia directamente:
 
 - `resenas_traducciones` — caché de traducciones DeepL (`lib/translate/resena-translations.ts`). Restaurada en producción; RLS activo sin políticas (solo service role).
-- `whatsapp_alertas_enviadas` — la usa `app/api/webhooks/new-resena-whatsapp/route.ts`, pero **la tabla ya no existe en producción**. Las alertas vigentes van por el Asistente Nexo (`nexo_bot_alertas_pendientes` / `nexo_bot_alertas_envios`). La ruta está inactiva y debe retirarse o migrarse antes de reactivarla.
+- `whatsapp_alertas_enviadas` — **ya no existe en producción ni en el código** (el webhook que la usaba se retiró en SEC-009). Las alertas vigentes van por Conversations (`conv_alertas_negativas`) y el Asistente Nexo (`nexo_bot_alertas_pendientes` / `nexo_bot_alertas_envios`).
 
 Estas tablas no están centralizadas en `lib/supabase/tables.ts`, pero son dependencias reales del código.
 

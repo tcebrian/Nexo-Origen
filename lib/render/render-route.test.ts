@@ -141,7 +141,6 @@ describe("POST /api/internal/render — operaciones", () => {
   it.each([
     ["monthly_image", { report: sampleMonthlyReport() }],
     ["negative_review_image", { data: sampleAlert() }],
-    ["whatsapp_alert_image", { data: sampleAlert() }],
     ["network_summary_image", { periodo: "trimestral", grupo: "sg-es", offset: 2 }],
   ])("%s → image/png con los bytes del generador", async (op, rest) => {
     const res = await route.POST(signed({ op, ...rest }));

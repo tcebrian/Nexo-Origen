@@ -15,8 +15,8 @@ import { SECRET, sampleAlert, sampleMonthlyReport } from "@/lib/render/fixtures.
 const bytes = (value: string) => new TextEncoder().encode(value);
 
 describe("operaciones permitidas", () => {
-  it("solo las cinco operaciones cerradas", () => {
-    expect([...RENDER_OPERATIONS]).toEqual(["monthly_pdf", "monthly_image", "negative_review_image", "network_summary_image", "whatsapp_alert_image"]);
+  it("solo las cuatro operaciones cerradas", () => {
+    expect([...RENDER_OPERATIONS]).toEqual(["monthly_pdf", "monthly_image", "negative_review_image", "network_summary_image"]);
   });
 
   it("monthly_pdf y monthly_image aceptan un informe válido", () => {
@@ -26,10 +26,12 @@ describe("operaciones permitidas", () => {
     }
   });
 
-  it("negative_review_image y whatsapp_alert_image aceptan datos de alerta válidos", () => {
-    for (const op of ["negative_review_image", "whatsapp_alert_image"]) {
-      expect(parseRenderRequest({ op, data: sampleAlert() })).toMatchObject({ ok: true, request: { op } });
-    }
+  it("negative_review_image acepta datos de alerta válidos", () => {
+    expect(parseRenderRequest({ op: "negative_review_image", data: sampleAlert() })).toMatchObject({ ok: true, request: { op: "negative_review_image" } });
+  });
+
+  it("la operación whatsapp_alert_image (sistema antiguo de alertas por Twilio) ya no existe", () => {
+    expect(parseRenderRequest({ op: "whatsapp_alert_image", data: sampleAlert() })).toMatchObject({ ok: false });
   });
 
   it("network_summary_image acepta periodo, grupo y desplazamiento", () => {
@@ -105,7 +107,7 @@ describe("URL arbitraria y SSRF", () => {
     for (const url of ["http://169.254.169.254/x.png", "https://evil.example/logo.png", "//evil.example/logo.png", "file:///etc/passwd", "javascript:alert(1)", "/\\evil.example"]) {
       expect(isSafeAssetUrl(url)).toBe(false);
       expect(parseRenderRequest({ op: "negative_review_image", data: sampleAlert({ brand_logo_url: url }) }).ok).toBe(false);
-      expect(parseRenderRequest({ op: "whatsapp_alert_image", data: sampleAlert({ nexo_logo_url: url }) }).ok).toBe(false);
+      expect(parseRenderRequest({ op: "negative_review_image", data: sampleAlert({ nexo_logo_url: url }) }).ok).toBe(false);
     }
     for (const url of ["/brands/burger-king.png", "", "data:image/png;base64,AAAA"]) expect(isSafeAssetUrl(url)).toBe(true);
     expect(parseRenderRequest({ op: "negative_review_image", data: sampleAlert({ brand_logo_url: "/brands/burger-king.png" }) }).ok).toBe(true);
