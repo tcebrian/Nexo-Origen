@@ -320,6 +320,21 @@ tabla `api_rate_limits` (RLS sin políticas, solo `service_role`) y función `ne
 (ventana fija, incremento atómico). Migración `supabase/sec_006_rate_limit.sql` (rollback y `sec_006_verify.sql` incluidos).
 **Hasta aplicarla** la aplicación usa un contador en memoria por instancia como respaldo. El cubo lo construye siempre el
 servidor con el id del usuario autenticado; reutilizable por otras rutas costosas.
+
+## SEC-011 — sin escritura directa de `anon`/`authenticated`
+
+En 16 tablas con RLS (`alertas_enviadas`, `analisis_ia`, `conv_alertas_negativas`, `conv_informe_envios`, `empresas`,
+`kpi_semana_actual`, `nexo_bot_resumenes_envios`, `nexo_metric_validation_events`, `perfiles`, `resena_motivos`,
+`resenas_historial`, `restaurante_fuente_aliases`, `restaurante_integraciones`, `review_identity_shadow_events`,
+`usuario_marcas`, `usuario_restaurantes`) `anon` y `authenticated` tenían INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES,
+TRIGGER y MAINTAIN, y las tablas nuevas de `public` nacían igual por los default privileges. La migración
+`supabase/sec_011_revoke_write_privileges.sql` (rollback y `sec_011_verify.sql` incluidos) retira exactamente esos siete
+privilegios de esas 16 tablas y de los default privileges de tablas de `postgres` en `public`; no retira SELECT
+(`authenticated` conserva `SELECT` en `perfiles` con `perfiles_select_own`), ni toca `service_role`, RLS, políticas o datos.
+Los default privileges de `supabase_admin` solo se pueden cambiar si el rol que aplica la migración es miembro de
+`supabase_admin` (`postgres` no lo es): en ese caso se avisa y no afecta a las tablas de Nexo, que crea `postgres`.
+Queda fuera de SEC-011 el SELECT sobrante de `anon`/`authenticated` (denegado por RLS) y los permisos de funciones y secuencias.
+Antes de aplicarla hay que confirmar que Make y la ingesta externa escriben con clave de servidor.
 Quedan fuera de SEC-001: `nexo_call_daily_report_cron` y `nexo_notify_negative_review_alert` (SEC-005) y el resto de
 privilegios de escritura excesivos sobre otras tablas (hardening).
 
