@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { UserAccessError } from "@/lib/auth/user-access.server";
 import { changeOwnPassword } from "@/lib/auth/user-creation.server";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,9 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+
+  const limited = await rateLimitAuthenticatedUser("auth-change-password", user.id);
+  if (limited) return limited;
 
   const body = (await request.json().catch(() => null)) as { password?: unknown } | null;
 

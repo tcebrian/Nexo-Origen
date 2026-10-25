@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { findReportById } from "@/lib/reports/find-report";
 import { buildPdfResponse } from "@/lib/reports/pdf-response";
+import { requireApiAuth } from "@/lib/auth/api-auth";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export const runtime = "nodejs";
 
@@ -8,7 +10,13 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
+  const auth = await requireApiAuth(request);
+  if (!auth.ok) return auth.response;
+
+  const limited = await rateLimitAuthenticatedUser("report-pdf", auth.session.userId);
+  if (limited) return limited;
+
   try {
     const { id } = await context.params;
     const report = await findReportById(decodeURIComponent(id));

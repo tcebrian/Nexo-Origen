@@ -9,6 +9,7 @@ import { isTestTemplateKind } from "@/lib/conversations/template-test";
 import { runManualNegativeAlertForConversation } from "@/lib/alerts/negative-review/process.server";
 import { runManualDailyReportForConversation } from "@/lib/reports/daily/process.server";
 import { describeTemplateRejection } from "@/lib/whatsapp/provider-error";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +27,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ con
 
   const access = authorizeConversationsAccess(auth.session);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+
+  const limited = await rateLimitAuthenticatedUser("conversation-template-test", auth.session.userId);
+  if (limited) return limited;
 
   const { conversationId } = await params;
   if (!isValidConversationId(conversationId)) {

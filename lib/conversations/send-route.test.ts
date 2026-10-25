@@ -13,6 +13,8 @@ const uploadMedia = vi.fn();
 const sendDocumentMessage = vi.fn();
 let fake = createFakeOutboundRepo();
 
+// SEC-013: estas pruebas no son de límites (están en lib/security/sensitive-routes-rate-limit.test.ts): el limitador no interviene.
+vi.mock("@/lib/security/rate-limit.server", () => ({ rateLimitAuthenticatedUser: async () => null }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/api-auth", () => ({ requireApiAuth }));
 vi.mock("@/lib/conversations/read.server", () => ({

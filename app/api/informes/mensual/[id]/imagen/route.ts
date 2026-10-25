@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { loadMonthlyReport } from "@/lib/reports/monthly/data";
 import { renderViaInternal } from "@/lib/render/internal-render-client";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +11,10 @@ export const maxDuration = 60;
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const auth = await requireApiAuth(request);
   if (!auth.ok) return auth.response;
+
+  const limited = await rateLimitAuthenticatedUser("monthly-report-render", auth.session.userId);
+  if (limited) return limited;
+
   const { id } = await context.params;
   const restaurantId = Number(id);
   const offset = Number(new URL(request.url).searchParams.get("offset") ?? "0");

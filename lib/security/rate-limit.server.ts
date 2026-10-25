@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { SENSITIVE_RATE_LIMITS, type SensitiveOperation } from "./rate-limits";
 
 /**
  * Límite de frecuencia compartido entre instancias (SEC-006).
@@ -81,4 +82,22 @@ export async function consumeRateLimit(
   }
 
   return consumeInMemory(key, options, nowMs);
+}
+
+/**
+ * Límite de una operación sensible (SEC-013) para el usuario YA AUTENTICADO. Devuelve `null` si puede continuar o la
+ * respuesta 429 lista para devolver. Se llama DESPUÉS de comprobar sesión y rol y ANTES de leer el cuerpo o ejecutar la
+ * operación. La operación es una constante de `SENSITIVE_RATE_LIMITS` y `userId` sale de la sesión del servidor: el
+ * cliente no puede elegir la clave.
+ */
+export async function rateLimitAuthenticatedUser(operation: SensitiveOperation, userId: string): Promise<Response | null> {
+  if (!userId) return Response.json({ error: "No autenticado" }, { status: 401, headers: { "Cache-Control": "no-store" } });
+
+  const result = await consumeRateLimit(`${operation}:${userId}`, SENSITIVE_RATE_LIMITS[operation]);
+  if (result.allowed) return null;
+
+  return Response.json(
+    { error: "Demasiadas solicitudes. Espera un momento e inténtalo de nuevo." },
+    { status: 429, headers: { "Retry-After": String(result.retryAfterSeconds), "Cache-Control": "no-store" } }
+  );
 }

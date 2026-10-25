@@ -13,6 +13,7 @@ import {
   sendTextMessage,
   uploadMedia,
 } from "@/lib/whatsapp/cloud-api.server";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,9 @@ export async function POST(
   if (!access.ok) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
+
+  const limited = await rateLimitAuthenticatedUser("conversation-send", auth.session.userId);
+  if (limited) return limited;
 
   const { conversationId } = await params;
   if (!isValidConversationId(conversationId)) {

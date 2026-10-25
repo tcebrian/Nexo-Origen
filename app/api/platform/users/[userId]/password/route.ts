@@ -4,6 +4,7 @@ import { isSuperAdmin, normalizeRole } from "@/lib/auth/permissions";
 import { UserAccessError } from "@/lib/auth/user-access.server";
 import { setManagedUserPassword } from "@/lib/auth/user-creation.server";
 import { isValidConversationId } from "@/lib/conversations/read-model";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ use
   if (!isSuperAdmin(normalizeRole(auth.session.perfil.rol))) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
+
+  const limited = await rateLimitAuthenticatedUser("platform-user-password", auth.session.userId);
+  if (limited) return limited;
 
   const { userId } = await params;
   if (!isValidConversationId(userId)) return NextResponse.json({ error: "Usuario no válido" }, { status: 400 });

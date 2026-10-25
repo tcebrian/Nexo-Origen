@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { buildPdfResponse } from "@/lib/reports/pdf-response";
 import type { ReportRecord } from "@/lib/reports/types";
+import { requireApiAuth } from "@/lib/auth/api-auth";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export const runtime = "nodejs";
 
@@ -14,6 +16,12 @@ function parseReportFromFormBody(body: string): ReportRecord {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireApiAuth(request);
+  if (!auth.ok) return auth.response;
+
+  const limited = await rateLimitAuthenticatedUser("report-pdf", auth.session.userId);
+  if (limited) return limited;
+
   try {
     const contentType = request.headers.get("content-type") ?? "";
     let report: ReportRecord;

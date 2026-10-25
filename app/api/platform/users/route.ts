@@ -3,6 +3,7 @@ import { requireApiAuth } from "@/lib/auth/api-auth";
 import { isSuperAdmin, normalizeRole } from "@/lib/auth/permissions";
 import { UserAccessError, listManagedUsers } from "@/lib/auth/user-access.server";
 import { createManagedUser } from "@/lib/auth/user-creation.server";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,9 @@ export async function POST(request: Request) {
   if (!isSuperAdmin(normalizeRole(auth.session.perfil.rol))) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
+
+  const limited = await rateLimitAuthenticatedUser("platform-user-create", auth.session.userId);
+  if (limited) return limited;
 
   const body = await request.json().catch(() => null);
 

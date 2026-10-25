@@ -508,6 +508,18 @@ Herramientas de desarrollo (SEC-012B): `vitest` 3 → 4.1.12 (única forma de ce
 `js-yaml` y `zod` por lockfile (vienen de `eslint-config-next`/`eslint`). Con esto `npm audit` queda solo con las 2 moderadas
 aceptadas de `exceljs`/`uuid`.
 
+## Límites de frecuencia de operaciones sensibles (SEC-013)
+
+Reutilizan el contador de SEC-006 (`consumeRateLimit`: Postgres compartido entre instancias, con respaldo en memoria si falla).
+La lista explícita y los límites están en `lib/security/rate-limits.ts` y se aplican con `rateLimitAuthenticatedUser(operación, session.userId)`
+(`lib/security/rate-limit.server.ts`): clave `<operación>:<id del usuario autenticado>`, nunca un dato del cliente ni la IP. Orden
+fijo: sesión → rol → límite → cuerpo/parámetros → operación; el exceso responde 429 con `Retry-After`. Cubre cambio de contraseña propia,
+administración de usuarios, agentes, alta de restaurantes, envíos y mutaciones de Conversations y el trabajo pesado con Chromium/PDF.
+No se limitan las lecturas del dashboard ni los webhooks, el cron, Make y el renderer interno (autenticación propia y reintentos
+legítimos). `generate-negative-review-image` conserva su límite propio de SEC-006 (no se duplica). Las rutas que encadenan el trabajo pesado
+desde la interfaz (ZIP de una marca, "descargar todo" del resumen de red) tienen un límite más alto a propósito. Añadir una ruta nueva
+a la lista es una decisión consciente: `lib/security/sensitive-routes-coverage.test.ts` fija el inventario.
+
 ---
 
 # 18. Procesos pesados

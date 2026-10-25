@@ -9,16 +9,24 @@ import {
   updateConversationContact,
 } from "@/lib/conversations/contact-link.server";
 import { isValidConversationId } from "@/lib/conversations/read-model";
+import type { SensitiveOperation } from "@/lib/security/rate-limits";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export const dynamic = "force-dynamic";
 
 type Context = { params: Promise<{ conversationId: string }> };
 
-async function authorize(request: Request, params: Context["params"]) {
+async function authorize(request: Request, params: Context["params"], operation?: SensitiveOperation) {
   const auth = await requireApiAuth(request);
   if (!auth.ok) return { response: auth.response } as const;
   const access = authorizeConversationsAccess(auth.session);
   if (!access.ok) return { response: NextResponse.json({ error: access.error }, { status: access.status }) } as const;
+
+  // SEC-013: solo las mutaciones llevan límite; va tras sesión y rol y antes de leer la ruta o el cuerpo.
+  if (operation) {
+    const limited = await rateLimitAuthenticatedUser(operation, auth.session.userId);
+    if (limited) return { response: limited } as const;
+  }
 
   const { conversationId } = await params;
   if (!isValidConversationId(conversationId)) {
@@ -48,7 +56,7 @@ export async function GET(request: Request, { params }: Context) {
  * sus permisos; no dependen de ninguna cuenta web.
  */
 export async function PATCH(request: Request, { params }: Context) {
-  const result = await authorize(request, params);
+  const result = await authorize(request, params, "conversation-contact-update");
   if ("response" in result) return result.response;
 
   try {
@@ -67,7 +75,7 @@ export async function PATCH(request: Request, { params }: Context) {
  * ruta. No borra la cuenta web vinculada ni perfiles.
  */
 export async function DELETE(request: Request, { params }: Context) {
-  const result = await authorize(request, params);
+  const result = await authorize(request, params, "conversation-contact-delete");
   if ("response" in result) return result.response;
 
   try {
@@ -85,7 +93,7 @@ export async function DELETE(request: Request, { params }: Context) {
 
 /** Vincula (`usuarioId`) o desvincula (`null`) una cuenta web. Opcional e informativo: no cambia permisos. */
 export async function PUT(request: Request, { params }: Context) {
-  const result = await authorize(request, params);
+  const result = await authorize(request, params, "conversation-contact-update");
   if ("response" in result) return result.response;
 
   const body = (await request.json().catch(() => null)) as { usuarioId?: unknown } | null;

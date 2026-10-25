@@ -6,6 +6,7 @@ import { CONTACT_TYPES } from "@/lib/conversations/contact-access";
 import { ContactError } from "@/lib/conversations/contact-link.server";
 import { parseManualContactBody } from "@/lib/conversations/manual-contact";
 import { createManualContact } from "@/lib/conversations/manual-contact.server";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,9 @@ export async function POST(request: Request) {
   if (!auth.ok) return auth.response;
   const access = authorizeConversationsAccess(auth.session);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+
+  const limited = await rateLimitAuthenticatedUser("conversation-contact-create", auth.session.userId);
+  if (limited) return limited;
 
   const parsed = parseManualContactBody(await request.json().catch(() => null));
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });

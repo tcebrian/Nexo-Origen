@@ -3,6 +3,7 @@ import { requireApiAuth } from "@/lib/auth/api-auth";
 import { isSuperAdmin, normalizeRole } from "@/lib/auth/permissions";
 import { UserAccessError, getManagedUserDetail, setManagedUserAccess } from "@/lib/auth/user-access.server";
 import { isValidConversationId } from "@/lib/conversations/read-model";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,9 @@ export async function GET(request: Request, { params }: Context) {
 export async function PUT(request: Request, { params }: Context) {
   const result = await authorize(request);
   if ("response" in result) return result.response;
+
+  const limited = await rateLimitAuthenticatedUser("platform-user-access", result.session.userId);
+  if (limited) return limited;
 
   const { userId } = await params;
   if (!isValidConversationId(userId)) return NextResponse.json({ error: "Usuario no válido" }, { status: 400 });

@@ -1,6 +1,7 @@
 import { getAuthSession } from "@/lib/auth/session";
 import { isSuperAdmin } from "@/lib/auth/permissions";
 import { buildAgentDailySummaryPreview } from "@/lib/agents/daily-summary";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export async function POST(request: Request) {
   const session = await getAuthSession();
@@ -8,6 +9,9 @@ export async function POST(request: Request) {
   if (!session || !isSuperAdmin(session.perfil.rol)) {
     return Response.json({ error: "No autorizado." }, { status: 403 });
   }
+
+  const limited = await rateLimitAuthenticatedUser("agents-summary-preview", session.userId);
+  if (limited) return limited;
 
   try {
     const body = (await request.json()) as { agentId?: string };

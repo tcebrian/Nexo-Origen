@@ -6,6 +6,8 @@ import { NextResponse } from "next/server";
 const requireApiAuth = vi.fn();
 const sendManualActivation = vi.fn();
 
+// SEC-013: estas pruebas no son de límites (están en lib/security/sensitive-routes-rate-limit.test.ts): el limitador no interviene.
+vi.mock("@/lib/security/rate-limit.server", () => ({ rateLimitAuthenticatedUser: async () => null }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/api-auth", () => ({ requireApiAuth }));
 vi.mock("@/lib/conversations/contact-activation.server", () => ({ sendManualActivation }));

@@ -3,6 +3,7 @@ import { requireApiAuth } from "@/lib/auth/api-auth";
 import { authorizeConversationsAccess } from "@/lib/conversations/access";
 import { setConversationNegativeAlerts } from "@/lib/conversations/contact-link.server";
 import { isValidConversationId } from "@/lib/conversations/read-model";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ conv
 
   const access = authorizeConversationsAccess(auth.session);
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+
+  const limited = await rateLimitAuthenticatedUser("conversation-negative-alerts", auth.session.userId);
+  if (limited) return limited;
 
   const { conversationId } = await params;
   if (!isValidConversationId(conversationId)) {

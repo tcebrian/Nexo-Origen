@@ -5,6 +5,7 @@ import {
   getAgentControlSnapshot,
 } from "@/lib/agents/control";
 import type { AgentCreateInput } from "@/lib/agents/types";
+import { rateLimitAuthenticatedUser } from "@/lib/security/rate-limit.server";
 
 export async function POST(request: Request) {
   const session = await getAuthSession();
@@ -12,6 +13,9 @@ export async function POST(request: Request) {
   if (!session || !isSuperAdmin(session.perfil.rol)) {
     return Response.json({ error: "No autorizado." }, { status: 403 });
   }
+
+  const limited = await rateLimitAuthenticatedUser("agents-create", session.userId);
+  if (limited) return limited;
 
   try {
     const body = (await request.json()) as AgentCreateInput;

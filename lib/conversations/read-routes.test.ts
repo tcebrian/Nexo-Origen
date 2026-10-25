@@ -5,6 +5,8 @@ const requireApiAuth = vi.fn();
 const listConversations = vi.fn();
 const getConversationMessages = vi.fn();
 
+// SEC-013: estas pruebas no son de límites (están en lib/security/sensitive-routes-rate-limit.test.ts): el limitador no interviene.
+vi.mock("@/lib/security/rate-limit.server", () => ({ rateLimitAuthenticatedUser: async () => null }));
 vi.mock("@/lib/auth/api-auth", () => ({ requireApiAuth }));
 // El route también importa el envío (POST); aquí solo se prueba la lectura (GET).
 vi.mock("@/lib/conversations/outbound.server", () => ({ outboundRepository: {} }));
