@@ -323,28 +323,3 @@ export async function processDueDailySummaries(
 
   return result;
 }
-
-
-export async function sendAgentDailySummaryTest(agentId: string) {
-  const client = requireAdminClient();
-  const { data, error } = await client
-    .from(SUPABASE_TABLES.nexo_bot_accesos)
-    .select("id,telefono,nombre,modo,resumen_hora,timezone")
-    .eq("id", agentId)
-    .eq("activo", true)
-    .maybeSingle();
-
-  if (error) throw error;
-  if (!data) throw new Error("Agente no encontrado o inactivo.");
-
-  const agent = data as DueAgentRow;
-  const summary = await buildAgentDailySummaryPreview(agent.id);
-  const localDate = localClock(new Date(), agent.timezone || "Europe/Madrid").dateKey;
-  const result = await sendMessageParts(agent, summary.message, localDate);
-
-  return {
-    ...result,
-    preview: summary.message,
-    length: summary.message.length,
-  };
-}
