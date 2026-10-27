@@ -4,7 +4,7 @@ import { resolveCanvasSize, resolveDesignCanvasSize } from "@/lib/templates/nega
 const defaultDesign = resolveDesignCanvasSize("4:3");
 const defaultDelivery = resolveCanvasSize("4:3");
 
-/** Tamaño de entrega final del PNG (1402×1122). */
+/** Tamaño de entrega final del PNG (1600×1200, misma proporción que el diseño). */
 export const NEGATIVE_REVIEW_CARD_WIDTH = defaultDelivery.width;
 export const NEGATIVE_REVIEW_CARD_HEIGHT = defaultDelivery.height;
 

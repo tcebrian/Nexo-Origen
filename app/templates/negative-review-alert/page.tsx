@@ -28,7 +28,27 @@ export default async function NegativeReviewAlertTemplatePage({ searchParams }: 
     }
   }
 
-  const data = parseAlertFromSearchParams(urlParams, SAMPLE_NEGATIVE_REVIEW_ALERT);
+  // Con datos reales en la URL (los pone `buildAlertTemplateUrl`, que omite los valores nulos) un campo ausente
+  // significa "no existe", no "usa el ejemplo": así ningún dato de muestra se cuela en una alerta real.
+  const isRealPayload = urlParams.has("review_author");
+  const fallback = isRealPayload
+    ? {
+        ...SAMPLE_NEGATIVE_REVIEW_ALERT,
+        ai_summary: null,
+        main_motive: null,
+        detected_impact: null,
+        employee_mentioned: null,
+        period_label: null,
+        review_count: null,
+        lifetime_rating: null,
+        weekly_period_label: null,
+        weekly_reviews_before: null,
+        weekly_reviews_after: null,
+        weekly_media_before: null,
+        weekly_media_after: null,
+      }
+    : SAMPLE_NEGATIVE_REVIEW_ALERT;
+  const data = parseAlertFromSearchParams(urlParams, fallback);
   const AlertTemplate =
     data.brand === "bk"
       ? BurgerKingAlertTemplate

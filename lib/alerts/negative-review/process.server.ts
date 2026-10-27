@@ -11,6 +11,7 @@ import { findOrCreateConversation } from "@/lib/supabase/conversations.server";
 import { SUPABASE_TABLES } from "@/lib/supabase/tables";
 import { sendTemplateMessage } from "@/lib/whatsapp/cloud-api.server";
 import { buildAlertDataForResena } from "@/lib/notifications/build-alert-for-resena";
+import { AlertNotReadyError, assertValidAlertPng } from "./alert-readiness";
 import { alertImagePreview, buildAlertText } from "./message";
 import { selectAlertRecipients } from "./recipients";
 import { resolveMapsLink, type MapsLinkInput } from "./maps-link";
@@ -143,9 +144,19 @@ function createRuntime() {
     let cached = images.get(resenaId);
     if (!cached) {
       cached = (async () => {
-        const data = await buildAlertDataForResena(resenaId);
-        if (!data) throw new Error("negative-alert: sin datos para generar la imagen");
-        return renderViaInternal({ op: "negative_review_image", data });
+        try {
+          // Espera al análisis IA y valida los datos: una alerta incompleta NO se genera (queda reintentable).
+          const data = await buildAlertDataForResena(resenaId);
+          if (!data) throw new Error("negative-alert: sin datos para generar la imagen");
+          const png = await renderViaInternal({ op: "negative_review_image", data });
+          assertValidAlertPng(png, data.aspect_ratio ?? "4:3");
+          return png;
+        } catch (error) {
+          // La causa queda registrada (solo código y nombres de campo, nunca contenido de la reseña).
+          const detail = error instanceof AlertNotReadyError ? `${error.code}:${error.fields.join(",")}` : error instanceof Error ? error.name : "unknown";
+          console.error(`[negative-alert] image_not_generated resenaId=${resenaId} reason=${detail}`);
+          throw error;
+        }
       })();
       images.set(resenaId, cached);
     }

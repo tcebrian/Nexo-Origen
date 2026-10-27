@@ -6,18 +6,72 @@ import type { AnalisisIaRow } from "@/lib/supabase/analisis-ia";
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
 import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
 import { getMediaImpactForReview } from "@/lib/reviews/media-impact";
+import {
+  AlertNotReadyError,
+  assertAlertDataComplete,
+  waitForCompleteAnalysis,
+  type WaitForAnalysisOptions,
+} from "@/lib/alerts/negative-review/alert-readiness";
 import { mapReportRowToAlertData } from "@/lib/templates/negative-review-alert/map-from-report-row";
 import type { NegativeReviewAlertData } from "@/lib/templates/negative-review-alert/types";
 import type { NegativeReviewReportRow } from "@/lib/reports/negative-reviews/types";
+
+type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
+
+/** Espera por defecto al análisis IA: la imagen se genera dentro de la función del webhook (`maxDuration` 60 s). */
+export const DEFAULT_ANALYSIS_WAIT: WaitForAnalysisOptions = { timeoutMs: 25_000, intervalMs: 2_500 };
+
+const HISTORY_PAGE_SIZE = 1000;
+/** Tope de seguridad (50.000 reseñas por restaurante); si se alcanzara, es un error, no una media recortada. */
+const HISTORY_MAX_PAGES = 50;
+
+/**
+ * Todas las reseñas (solo estrellas y fechas) del restaurante: la media "antes/después" de una alerta se
+ * calcula sobre TODO su historial, igual que el resto de Nexo (`buildMediaImpactIndex`, orden cronológico).
+ * Paginado, y SIEMPRE filtrado por `restaurante_id`: nunca mezcla datos de otro local.
+ */
+async function loadRestaurantHistory(client: AdminClient, restauranteId: number): Promise<ResenaRow[]> {
+  const rows: ResenaRow[] = [];
+  for (let page = 0; page < HISTORY_MAX_PAGES; page += 1) {
+    const from = page * HISTORY_PAGE_SIZE;
+    const { data, error } = await client
+      .from("resenas")
+      .select("id, review_id, restaurante_id, estrellas, fecha_resena, created_at")
+      .eq("restaurante_id", restauranteId)
+      .order("id", { ascending: true })
+      .range(from, from + HISTORY_PAGE_SIZE - 1);
+    if (error) throw new Error(`negative-alert history failed (${error.code ?? "unknown"})`);
+    const batch = (data ?? []) as ResenaRow[];
+    rows.push(...batch);
+    if (batch.length < HISTORY_PAGE_SIZE) return rows;
+  }
+  throw new Error("negative-alert history too large");
+}
+
+/** Lectura única del análisis. Un error de consulta NO se confunde con "todavía no existe". */
+async function loadAnalysis(client: AdminClient, reviewId: string): Promise<AnalisisIaRow | null> {
+  const { data, error } = await client
+    .from("analisis_ia")
+    .select("review_id, resumen, motivo, impacto, recomendacion, riesgo, empleado_mencionado, sentimiento, created_at")
+    .eq("review_id", reviewId)
+    .order("created_at", { ascending: false, nullsFirst: false })
+    .limit(1);
+  if (error) throw new Error(`negative-alert analysis failed (${error.code ?? "unknown"})`);
+  return ((data ?? [])[0] as AnalisisIaRow | undefined) ?? null;
+}
 
 /**
  * Construye el payload de la alerta PNG a partir de una única fila de
  * `resenas`, sin pasar por el pipeline de informes (pensado para rangos de
  * fechas con muchos restaurantes) — aquí ya sabemos el restaurante exacto
  * porque viene del webhook de inserción.
+ *
+ * Devuelve `null` si la reseña o su restaurante no existen. Lanza `AlertNotReadyError` si el análisis IA
+ * no está completo tras la espera o falta cualquier dato obligatorio: una alerta incompleta no se genera.
  */
 export async function buildAlertDataForResena(
-  resenaId: number
+  resenaId: number,
+  options: { analysisWait?: WaitForAnalysisOptions } = {}
 ): Promise<NegativeReviewAlertData | null> {
   const supabase = getSupabaseAdmin();
   if (!supabase) throw new Error("Supabase admin client no configurado (falta SUPABASE_SERVICE_ROLE_KEY)");
@@ -30,62 +84,74 @@ export async function buildAlertDataForResena(
     .eq("id", resenaId)
     .maybeSingle();
 
-  if (resenaError || !resena || resena.restaurante_id == null) return null;
+  if (resenaError) throw new Error(`negative-alert review failed (${resenaError.code ?? "unknown"})`);
+  if (!resena || resena.restaurante_id == null) return null;
 
-  const { data: restaurante } = await supabase
+  const { data: restaurante, error: restauranteError } = await supabase
     .from("restaurantes")
     .select("id, nombre, direccion, ciudad, empresa_id, marca_id")
     .eq("id", resena.restaurante_id)
     .maybeSingle();
 
+  if (restauranteError) throw new Error(`negative-alert restaurant failed (${restauranteError.code ?? "unknown"})`);
   if (!restaurante) return null;
 
-  let marcaNombre: string | undefined;
+  // La marca sale SIEMPRE del restaurante de la reseña. Sin marca no hay plantilla correcta: `marcaToBrandId("")`
+  // caería en Burger King, así que aquí se rechaza en vez de enviar una alerta con la marca equivocada.
+  let marca = "";
   if (restaurante.marca_id != null) {
-    const { data: marcaRow } = await supabase
+    const { data: marcaRow, error: marcaError } = await supabase
       .from("marcas")
       .select("nombre")
       .eq("id", restaurante.marca_id)
       .maybeSingle();
-    marcaNombre = marcaRow?.nombre ?? undefined;
+    if (marcaError) throw new Error(`negative-alert brand failed (${marcaError.code ?? "unknown"})`);
+    marca = marcaRow?.nombre?.trim() ?? "";
   }
+  if (!marca || marca.toLowerCase() === "otros") throw new AlertNotReadyError("invalid_scope", ["brand"]);
+  const brand = marcaToBrandId(marca);
 
-  const { data: recentResenas } = await supabase
+  // El análisis se une por review_id. Si ese identificador lo comparte otra reseña (otro local), el análisis
+  // podría ser de otro restaurante: se rechaza (misma regla que SEC-007).
+  if (resena.review_id == null || String(resena.review_id).trim() === "") {
+    throw new AlertNotReadyError("invalid_scope", ["review_id"]);
+  }
+  const reviewId = String(resena.review_id);
+  const { data: sameReviewId, error: sameReviewIdError } = await supabase
     .from("resenas")
-    .select("id, review_id, restaurante_id, estrellas, fecha_resena, created_at")
-    .eq("restaurante_id", resena.restaurante_id)
-    .order("fecha_resena", { ascending: false })
-    .limit(300);
+    .select("id")
+    .eq("review_id", reviewId)
+    .limit(2);
+  if (sameReviewIdError) throw new Error(`negative-alert scope failed (${sameReviewIdError.code ?? "unknown"})`);
+  if ((sameReviewId ?? []).length > 1) throw new AlertNotReadyError("invalid_scope", ["review_id"]);
 
   const resenaRow = resena as ResenaRow;
-  const impact = getMediaImpactForReview((recentResenas as ResenaRow[]) ?? [resenaRow], resenaRow);
-
-  let analisis: AnalisisIaRow | null = null;
-  if (resena.review_id != null) {
-    const { data: analisisRow } = await supabase
-      .from("analisis_ia")
-      .select(
-        "review_id, resumen, motivo, impacto, recomendacion, riesgo, empleado_mencionado, sentimiento, created_at"
-      )
-      .eq("review_id", String(resena.review_id))
-      .maybeSingle();
-    analisis = analisisRow ?? null;
+  const history = await loadRestaurantHistory(supabase, resena.restaurante_id);
+  if (history.some((row) => row.restaurante_id !== resena.restaurante_id)) {
+    throw new AlertNotReadyError("invalid_scope", ["restaurante_id"]);
   }
+  const impact = getMediaImpactForReview(history, resenaRow);
+  if (!impact) throw new AlertNotReadyError("incomplete_data", ["media"]);
 
-  const marca = marcaNombre?.trim() || "";
-  const brand = marcaToBrandId(marca);
+  // Reseña con texto: la alerta exige el análisis IA completo (se espera a que Make lo escriba). Reseña solo con
+  // estrellas: no hay nada que analizar, se usa el análisis si existe y no se bloquea la alerta por su ausencia.
+  const hasComment = Boolean(resena.comentario?.trim());
+  const analisis = hasComment
+    ? await waitForCompleteAnalysis(() => loadAnalysis(supabase, reviewId), options.analysisWait ?? DEFAULT_ANALYSIS_WAIT)
+    : await loadAnalysis(supabase, reviewId);
+
   const restaurantName = restaurante.nombre?.trim() || resena.restaurante_nombre?.trim() || "Restaurante";
   const dateRaw = resena.fecha_resena ?? resena.created_at;
   const date = dateRaw ? new Date(dateRaw) : new Date();
   const motive = classifyReviewReason(resenaRow, analisis);
 
   const row: NegativeReviewReportRow = {
-    id: String(resena.review_id ?? resena.id),
+    id: reviewId,
     restauranteId: restaurante.id,
     restaurant: restaurantName,
     restaurantSlug: restaurantSlug(restaurantName),
     brand,
-    brandLabel: marca || "Burger King",
+    brandLabel: marca,
     city: restaurante.ciudad?.trim() || "",
     address: restaurante.direccion?.trim() || resena.direccion?.trim() || "—",
     author: resena.autor?.trim() || "Anónimo",
@@ -98,21 +164,20 @@ export async function buildAlertDataForResena(
     sentiment: analisis?.sentimiento?.trim() || IA_NO_DATA,
     riskLevel: analisis?.riesgo?.trim() || IA_NO_DATA,
     aiSummary: analisis?.resumen?.trim() || null,
-    analisisPending: !analisis,
-    mediaBefore: impact?.mediaBefore ?? null,
-    mediaAfter: impact?.mediaAfter ?? null,
-    impact: impact?.impact ?? null,
-    impactText:
-      analisis?.impacto?.trim() ||
-      (impact
-        ? `${impact.mediaBefore?.toFixed(2) ?? "—"} → ${impact.mediaAfter.toFixed(2)}`
-        : IA_NO_DATA),
+    analisisPending: false,
+    mediaBefore: impact.mediaBefore,
+    mediaAfter: impact.mediaAfter,
+    impact: impact.impact,
+    // Texto del análisis; nunca se sustituye por el delta numérico (eso ya lo muestra "Impacto en la media").
+    impactText: analisis?.impacto?.trim() || IA_NO_DATA,
     recommendation: analisis?.recomendacion?.trim() || IA_NO_DATA,
     employeeMentioned: analisis?.empleado_mencionado?.trim() || null,
-    reviewCountAfter: impact?.reviewCountAfter ?? null,
+    reviewCountAfter: impact.reviewCountAfter,
     totalReviews: null,
     lifetimeMedia: null,
   };
 
-  return mapReportRowToAlertData(row);
+  const data = mapReportRowToAlertData(row);
+  assertAlertDataComplete(data, { requireAnalysis: hasComment });
+  return data;
 }

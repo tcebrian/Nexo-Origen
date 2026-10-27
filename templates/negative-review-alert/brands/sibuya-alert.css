@@ -490,8 +490,10 @@
   font-size: 19px;
 }
 
+/* 901–1300 caracteres: 18px (antes 20px, mayor que el tramo anterior de 19px, y un comentario de ~1300
+   caracteres desbordaba la tarjeta y empujaba "Impacto en la media" fuera del lienzo). */
 .sba-quote__text--xs {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .sba-quote__text--xxs {

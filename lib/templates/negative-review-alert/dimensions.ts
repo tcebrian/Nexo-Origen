@@ -17,10 +17,14 @@ export const DESIGN_CANVAS_SIZES: Record<AlertAspectRatio, AlertCanvasSize> = {
   "9:16": { width: 1080, height: 1920, aspectRatio: "9:16" },
 };
 
-/** Tamaño final de imagen exportada. */
+/**
+ * Tamaño final de imagen exportada. Debe conservar la proporción del diseño (4:3 → 1600×1200, 9:16 → 1080×1920):
+ * el reescalado usa `fit: "fill"`, así que una proporción distinta deformaría el texto (antes 1402×1122 comprimía
+ * la imagen un ~6 % en vertical). 1600×1200 sigue siendo legible en WhatsApp y cabe en el límite de 5 MB.
+ */
 export const ALERT_CANVAS_SIZES: Record<AlertAspectRatio, AlertCanvasSize> = {
-  "4:3": { width: 1402, height: 1122, aspectRatio: "4:3" },
-  "9:16": { width: 946, height: 1795, aspectRatio: "9:16" },
+  "4:3": { width: 1600, height: 1200, aspectRatio: "4:3" },
+  "9:16": { width: 1080, height: 1920, aspectRatio: "9:16" },
 };
 
 export function resolveCanvasSize(aspectRatio: AlertAspectRatio = "4:3"): AlertCanvasSize {
