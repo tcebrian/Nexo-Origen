@@ -67,7 +67,7 @@ async function loadWindowData(restaurantIds: number[], slot: DailySlot): Promise
   const previousWindow = { p_start: slot.periodStart, p_end: previousEnd, p_restaurant_ids: restaurantIds };
 
   const [restaurants, brands, companies, metricRows, previousRows, reviewRows] = await Promise.all([
-    client.from(SUPABASE_TABLES.restaurantes).select("id,nombre,marca_id,empresa_id").in("id", restaurantIds),
+    client.from(SUPABASE_TABLES.restaurantes).select("id,nombre,marca_id,empresa_id,activo").in("id", restaurantIds),
     client.from(SUPABASE_TABLES.marcas).select("id,nombre,objetivo_media"),
     client.from(SUPABASE_TABLES.empresas).select("id,nombre"),
     client.rpc("nexo_reputation_window_metrics", window),
@@ -87,7 +87,9 @@ async function loadWindowData(restaurantIds: number[], slot: DailySlot): Promise
   const companyName = new Map(((companies.data ?? []) as { id: number; nombre: string }[]).map((row) => [Number(row.id), String(row.nombre)]));
 
   const info = new Map<number, RestaurantInfo>();
-  for (const row of (restaurants.data ?? []) as { id: number; nombre: string; marca_id: number | null; empresa_id: number | null }[]) {
+  for (const row of (restaurants.data ?? []) as { id: number; nombre: string; marca_id: number | null; empresa_id: number | null; activo: boolean | null }[]) {
+    // Un restaurante dado de baja (`activo = false`) no aparece en el informe, aunque el contacto aún tenga acceso.
+    if (row.activo === false) continue;
     const brandRow = row.marca_id === null ? undefined : brandRows.get(Number(row.marca_id));
     const brand = brandRow ? String(brandRow.nombre) : "";
     const name = brand && !row.nombre.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${row.nombre}` : row.nombre;

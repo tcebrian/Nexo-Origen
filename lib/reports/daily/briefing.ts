@@ -141,7 +141,11 @@ function displayNameOf(name: string, brand: string): string {
   const short = BRAND_SHORT[normalizeBrand(brand)];
   const trimmed = brand.trim();
   if (short && trimmed && name.toLowerCase().startsWith(trimmed.toLowerCase())) {
-    const rest = name.slice(trimmed.length).trim();
+    // El nombre puede venir ya con la abreviatura ("Burger King BK Soria"): no se repite ("BK BK Soria").
+    const rest = name
+      .slice(trimmed.length)
+      .trim()
+      .replace(new RegExp(`^${short}(?=\\s|$)\\s*`, "i"), "");
     return plainText(`${short}${rest ? ` ${rest}` : ""}`);
   }
   return plainText(name);
