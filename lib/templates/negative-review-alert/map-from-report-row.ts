@@ -76,14 +76,15 @@ function resolveShortLocation(row: NegativeReviewReportRow): string {
   return label.charAt(0) + label.slice(1).toLowerCase();
 }
 
+/**
+ * Burger King: el título es "BK {local}" y el local sale del NOMBRE del restaurante en el catálogo ("BK Illa
+ * Carlemany" → "ILLA CARLEMANY"), no de la ciudad (`restaurantes.ciudad` puede ser una zona más amplia: "Escaldes"
+ * para ese local). Misma regla que `mapReviewToAlertData`.
+ */
 function resolveRestaurantTitle(row: NegativeReviewReportRow): string {
-  const city = resolveCityLabel(row);
   if (row.brand === "bk") {
-    const label = city
-      .split(" ")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-      .join(" ");
-    return `BK ${label}`.toUpperCase();
+    const local = row.restaurant.replace(/^\s*(bk|burger\s*king)\s+/i, "").trim();
+    return local ? `BK ${local}`.toUpperCase() : row.restaurant.toUpperCase();
   }
   return row.restaurant.toUpperCase();
 }

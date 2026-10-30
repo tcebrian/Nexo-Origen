@@ -228,6 +228,8 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
     const conclusion = cleanValue(data.ai_summary) ?? cleanValue(data.recommendation);
     const brandLabel = (cleanValue(data.brand_name) ?? "Burger King").toUpperCase();
     const locationLabel = stripBrandPrefix(data.restaurant_name) || data.restaurant_name;
+    // El nombre del local se encoge para caber entero (los nombres largos, p. ej. "Illa Carlemany", se cortaban con "…").
+    const locationFontSize = Math.max(24, Math.min(44, Math.floor(300 / (locationLabel.length * 0.68))));
 
     return (
       <div ref={ref} className="bka-canvas" style={{ width: design.width, height: design.height }}>
@@ -292,7 +294,9 @@ export const BurgerKingAlertTemplate = forwardRef<HTMLDivElement, BurgerKingAler
                 <BkIconPin />
                 {brandLabel}
               </p>
-              <p className="bka-header__restaurant-location">{locationLabel}</p>
+              <p className="bka-header__restaurant-location" style={{ fontSize: locationFontSize }}>
+                {locationLabel}
+              </p>
               <p className="bka-header__restaurant-address">{location}</p>
             </div>
           </header>
