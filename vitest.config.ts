@@ -19,6 +19,7 @@ export default defineConfig({
       "lib/reports/daily/**/*.test.ts",
       "lib/alerts/**/*.test.ts",
       "lib/notifications/**/*.test.ts",
+      "lib/reviews/weekly-media.test.ts",
       "lib/company/**/*.test.ts",
       "lib/http/**/*.test.ts",
       "lib/security/**/*.test.ts",

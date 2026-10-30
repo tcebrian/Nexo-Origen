@@ -6,6 +6,7 @@ import type { AnalisisIaRow } from "@/lib/supabase/analisis-ia";
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
 import { IA_NO_DATA } from "@/lib/reviews/analisis-ia-constants";
 import { getMediaImpactForReview } from "@/lib/reviews/media-impact";
+import { naturalWeekBounds } from "@/lib/reviews/weekly-media";
 import {
   AlertNotReadyError,
   assertAlertDataComplete,
@@ -21,31 +22,22 @@ type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdmin>>;
 /** Espera por defecto al análisis IA: la imagen se genera dentro de la función del webhook (`maxDuration` 60 s). */
 export const DEFAULT_ANALYSIS_WAIT: WaitForAnalysisOptions = { timeoutMs: 25_000, intervalMs: 2_500 };
 
-const HISTORY_PAGE_SIZE = 1000;
-/** Tope de seguridad (50.000 reseñas por restaurante); si se alcanzara, es un error, no una media recortada. */
-const HISTORY_MAX_PAGES = 50;
-
 /**
- * Todas las reseñas (solo estrellas y fechas) del restaurante: la media "antes/después" de una alerta se
- * calcula sobre TODO su historial, igual que el resto de Nexo (`buildMediaImpactIndex`, orden cronológico).
- * Paginado, y SIEMPRE filtrado por `restaurante_id`: nunca mezcla datos de otro local.
+ * Reseñas del restaurante en la semana natural (lunes–domingo) de la reseña. La media "antes → después" de la
+ * alerta es la de ESA semana, acumulada hasta la reseña (mismo criterio que el periodo semanal del panel).
+ * SIEMPRE filtrado por `restaurante_id`: nunca mezcla datos de otro local.
  */
-async function loadRestaurantHistory(client: AdminClient, restauranteId: number): Promise<ResenaRow[]> {
-  const rows: ResenaRow[] = [];
-  for (let page = 0; page < HISTORY_MAX_PAGES; page += 1) {
-    const from = page * HISTORY_PAGE_SIZE;
-    const { data, error } = await client
-      .from("resenas")
-      .select("id, review_id, restaurante_id, estrellas, fecha_resena, created_at")
-      .eq("restaurante_id", restauranteId)
-      .order("id", { ascending: true })
-      .range(from, from + HISTORY_PAGE_SIZE - 1);
-    if (error) throw new Error(`negative-alert history failed (${error.code ?? "unknown"})`);
-    const batch = (data ?? []) as ResenaRow[];
-    rows.push(...batch);
-    if (batch.length < HISTORY_PAGE_SIZE) return rows;
-  }
-  throw new Error("negative-alert history too large");
+async function loadWeekReviews(client: AdminClient, restauranteId: number, week: { start: string; end: string }): Promise<ResenaRow[]> {
+  const { data, error } = await client
+    .from("resenas")
+    .select("id, review_id, restaurante_id, estrellas, fecha_resena, created_at")
+    .eq("restaurante_id", restauranteId)
+    .gte("fecha_resena", week.start)
+    .lt("fecha_resena", week.end)
+    .order("fecha_resena", { ascending: true })
+    .limit(5000);
+  if (error) throw new Error(`negative-alert week failed (${error.code ?? "unknown"})`);
+  return (data ?? []) as ResenaRow[];
 }
 
 /** Lectura única del análisis. Un error de consulta NO se confunde con "todavía no existe". */
@@ -126,11 +118,15 @@ export async function buildAlertDataForResena(
   if ((sameReviewId ?? []).length > 1) throw new AlertNotReadyError("invalid_scope", ["review_id"]);
 
   const resenaRow = resena as ResenaRow;
-  const history = await loadRestaurantHistory(supabase, resena.restaurante_id);
-  if (history.some((row) => row.restaurante_id !== resena.restaurante_id)) {
+  const week = naturalWeekBounds(String(resena.fecha_resena ?? resena.created_at ?? ""));
+  if (!week) throw new AlertNotReadyError("incomplete_data", ["fecha"]);
+  const weekRows = await loadWeekReviews(supabase, resena.restaurante_id, week);
+  if (weekRows.some((row) => row.restaurante_id !== resena.restaurante_id)) {
     throw new AlertNotReadyError("invalid_scope", ["restaurante_id"]);
   }
-  const impact = getMediaImpactForReview(history, resenaRow);
+  // Si la reseña no trae `fecha_resena` (usa `created_at`) puede no salir del filtro: se añade a mano.
+  if (!weekRows.some((row) => row.id === resenaRow.id)) weekRows.push(resenaRow);
+  const impact = getMediaImpactForReview(weekRows, resenaRow);
   if (!impact) throw new AlertNotReadyError("incomplete_data", ["media"]);
 
   // Reseña con texto: la alerta exige el análisis IA completo (se espera a que Make lo escriba). Reseña solo con

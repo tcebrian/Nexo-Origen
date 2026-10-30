@@ -25,6 +25,14 @@ function fakeClient() {
           });
           return builder;
         },
+        gte(column: string, value: string) {
+          rows = rows.filter((row) => String(row[column] ?? "") >= value);
+          return builder;
+        },
+        lt(column: string, value: string) {
+          rows = rows.filter((row) => row[column] != null && String(row[column]) < value);
+          return builder;
+        },
         range(from: number, to: number) {
           rows = rows.slice(from, to + 1);
           return builder;
@@ -85,7 +93,17 @@ function seed() {
       created_at: null,
     });
   }
-  // La reseña negativa, la más reciente.
+  // Semana de la reseña (lunes 26 oct – domingo 1 nov 2026): dos reseñas ANTES de la negativa (5★ y 4★) y una
+  // DESPUÉS (5★, no debe contar). La del domingo 25 (semana anterior, 1★) tampoco cuenta.
+  for (const [id, stars, date] of [
+    [4001, 5, "2026-10-26T09:00:00Z"],
+    [4002, 4, "2026-10-26T11:00:00Z"],
+    [4003, 5, "2026-10-27T10:00:00Z"],
+    [4004, 1, "2026-10-25T20:00:00Z"],
+  ] as const) {
+    history.push({ id, review_id: `wk-${id}`, restaurante_id: 10, estrellas: stars, fecha_resena: date, created_at: null });
+  }
+  // La reseña negativa.
   history.push({
     id: 5000,
     review_id: "g-1",
@@ -129,10 +147,19 @@ describe("buildAlertDataForResena", () => {
       recommendation: ANALYSIS.recomendacion,
       main_motive: "Atención al cliente",
     });
-    // Media previa sobre las 1.200 reseñas (4,50), no sobre las últimas 300; las del otro local (1★) no cuentan.
-    expect(data!.previous_rating).toBeCloseTo(4.5, 5);
-    expect(data!.current_rating).toBeCloseTo((1200 * 4.5 + 1) / 1201, 5);
-    expect(data!.rating_impact).toBeCloseTo(data!.current_rating - data!.previous_rating, 8);
+    // Media de la SEMANA natural de la reseña, acumulada hasta ella: antes (5★,4★) = 4,50; después (5★,4★,1★) = 3,33.
+    // No cuentan ni las 1.200 reseñas de otras semanas, ni las del otro local, ni la posterior ni la semana anterior.
+    expect(data!.previous_rating).toBeCloseTo(4.5, 8);
+    expect(data!.current_rating).toBeCloseTo(10 / 3, 8);
+    expect(data!.rating_impact).toBeCloseTo(10 / 3 - 4.5, 8);
+  });
+
+  it("primera reseña de la semana: sin media anterior; la media actual es la suya", async () => {
+    db.resenas = db.resenas!.filter((row) => ![4001, 4002].includes(row.id as number));
+    const data = await buildAlertDataForResena(5000, { analysisWait: FAST });
+    expect(data!.previous_rating).toBe(1);
+    expect(data!.current_rating).toBe(1);
+    expect(data!.rating_impact).toBe(0);
   });
 
   it("sin análisis IA NO genera la alerta: analysis_pending (queda reintentable) y no inventa texto", async () => {
@@ -174,7 +201,7 @@ describe("buildAlertDataForResena", () => {
     Object.assign(db.resenas!.find((row) => row.id === 6000)!, { autor: "Luis", comentario: "Tardaron mucho", restaurante_nombre: "BK Utebo" });
     const data = await buildAlertDataForResena(6000, { analysisWait: FAST });
     expect(data).toMatchObject({ brand: "bk", brand_name: "Burger King" });
-    // Solo cuenta el historial del restaurante 20 (50 reseñas de 1★): ninguna del restaurante 10.
+    // Solo cuenta la semana del restaurante 20 (reseñas de 1★): ninguna del restaurante 10.
     expect(data!.current_rating).toBe(1);
   });
 

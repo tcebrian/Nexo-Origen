@@ -150,6 +150,9 @@ async function handleRecipient(
   const windowOpen = !options.forceTemplate && (await deps.isWindowOpen(conversationId, now()));
   const requestSeed = seedOf(review.resenaId, recipient.contactId, alertId);
 
+  // Por qué se cae a la plantilla estando la ventana abierta (queda en la fila para poder auditarlo).
+  let directFailureCode: string | null = null;
+
   // CASO 1: ventana abierta → imagen y texto directamente.
   if (windowOpen) {
     await deps.update(alertId, { status: "delivering", conversationId });
@@ -164,10 +167,16 @@ async function handleRecipient(
     }
     // Rechazado (p. ej. la ventana ya se había cerrado): nada salió, así que se avisa con la plantilla.
     deps.log?.(`[negative-alert] direct_rejected resenaId=${review.resenaId} code=${delivered.code}`);
+    directFailureCode = delivered.code;
   }
 
   // CASO 2: ventana cerrada → plantilla; el contenido real sale al pulsar "Ver alerta".
-  await deps.update(alertId, { status: "pending", conversationId, errorCode: null });
+  await deps.update(alertId, {
+    status: "pending",
+    conversationId,
+    errorCode: directFailureCode ? directFailureCode.slice(0, 40) : null,
+    errorReason: directFailureCode ? "direct_rejected" : null,
+  });
   const count = Math.max(1, await deps.countOutstanding(recipient.contactId));
   const template = await deps.sendTemplate({ conversationId, contactName: recipient.name, count, requestSeed });
   if (template.status === "sent") {
