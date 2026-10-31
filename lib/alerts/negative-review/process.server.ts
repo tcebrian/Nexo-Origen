@@ -5,18 +5,23 @@ import { deriveStableRequestId } from "@/lib/conversations/request-ids";
 import { productionSendDeps } from "@/lib/conversations/send-deps.server";
 import { sendConversationOperation, type SendFailureStatus } from "@/lib/conversations/send-text";
 import { WHATSAPP_TEMPLATES, buildTemplateRequest } from "@/lib/conversations/whatsapp-templates";
-import { renderViaInternal } from "@/lib/render/internal-render-client";
+import { RenderError, renderViaInternal } from "@/lib/render/internal-render-client";
+import { qualifyRestaurantName } from "@/lib/restaurants/qualified-name";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { findOrCreateConversation } from "@/lib/supabase/conversations.server";
 import { SUPABASE_TABLES } from "@/lib/supabase/tables";
 import { sendTemplateMessage } from "@/lib/whatsapp/cloud-api.server";
 import { buildAlertDataForResena } from "@/lib/notifications/build-alert-for-resena";
 import { AlertNotReadyError, assertValidAlertPng } from "./alert-readiness";
-import { alertImagePreview, buildAlertText } from "./message";
+import { alertImagePreview, buildAlertText, buildImageFailedText } from "./message";
 import { selectAlertRecipients } from "./recipients";
 import { resolveMapsLink, type MapsLinkInput } from "./maps-link";
 import {
   deliverPendingAlerts,
+  retryFailedImageAlerts,
+  IMAGE_FAILED_PREFIX,
+  type ImageRetryDeps,
+  type ImageRetryResult,
   processNegativeReviewAlert,
   NEGATIVE_ALERT_MAX_STARS,
   type AlertPatch,
@@ -70,6 +75,22 @@ function toDeliverResult(status: SendFailureStatus, code: string): DeliverResult
   return REJECTED_STATUSES.has(status) ? { status: "rejected", code } : { status: "uncertain", code };
 }
 
+/**
+ * El renderer (Chromium en una función serverless) falla a veces en frío o bajo carga. Un fallo rápido y
+ * transitorio se reintenta una vez; un timeout (504) no, porque ya no queda tiempo en la función.
+ */
+const RENDER_RETRY_DELAY_MS = 1_500;
+async function renderWithRetry(request: Parameters<typeof renderViaInternal>[0]): Promise<Buffer> {
+  try {
+    return await renderViaInternal(request);
+  } catch (error) {
+    const transient = error instanceof RenderError && (error.status === 429 || error.status === 502 || error.status === 503 || error.status === 500);
+    if (!transient) throw error;
+    await new Promise((resolve) => setTimeout(resolve, RENDER_RETRY_DELAY_MS));
+    return renderViaInternal(request);
+  }
+}
+
 /** Dependencias de producción. Se crea una por ejecución: cachea lo que se reutiliza entre contactos. */
 function createRuntime() {
   const details = new Map<number, Promise<ReviewDetails | null>>();
@@ -120,7 +141,7 @@ function createRuntime() {
           brand = (marca as { nombre: string } | null)?.nombre?.trim() ?? "";
         }
         const baseName = rest.nombre?.trim() || row.restaurante_nombre?.trim() || "Restaurante";
-        const restaurantName = brand && !baseName.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${baseName}` : baseName;
+        const restaurantName = qualifyRestaurantName(brand, baseName);
 
         return {
           empresaId: rest.empresa_id === null ? null : Number(rest.empresa_id),
@@ -148,12 +169,19 @@ function createRuntime() {
           // Espera al análisis IA y valida los datos: una alerta incompleta NO se genera (queda reintentable).
           const data = await buildAlertDataForResena(resenaId);
           if (!data) throw new Error("negative-alert: sin datos para generar la imagen");
-          const png = await renderViaInternal({ op: "negative_review_image", data });
+          const png = await renderWithRetry({ op: "negative_review_image", data });
           assertValidAlertPng(png, data.aspect_ratio ?? "4:3");
           return png;
         } catch (error) {
           // La causa queda registrada (solo código y nombres de campo, nunca contenido de la reseña).
-          const detail = error instanceof AlertNotReadyError ? `${error.code}:${error.fields.join(",")}` : error instanceof Error ? error.name : "unknown";
+          const detail =
+            error instanceof AlertNotReadyError
+              ? `${error.code}:${error.fields.join(",")}`
+              : error instanceof RenderError
+                ? `RenderError:${error.status}`
+                : error instanceof Error
+                  ? error.name
+                  : "unknown";
           console.error(`[negative-alert] image_not_generated resenaId=${resenaId} reason=${detail}`);
           throw error;
         }
@@ -215,6 +243,17 @@ function createRuntime() {
     return { status: "sent" };
   }
 
+  async function sendFailureNotice(input: { conversationId: string; review: AlertReview; contactId: string; requestSeed: string }): Promise<boolean> {
+    const info = await loadDetails(input.review.resenaId);
+    const link = info ? resolveMapsLink(info.link) : null;
+    const text = buildImageFailedText({ restaurantName: input.review.restaurantName, stars: input.review.stars, link: link?.url ?? null });
+    const outcome = await sendConversationOperation(
+      { conversationId: input.conversationId, requestId: deriveStableRequestId(`${input.requestSeed}:image-failed-notice`), text },
+      productionSendDeps()
+    );
+    return outcome.status === "sent";
+  }
+
   async function update(alertId: string, patch: AlertPatch): Promise<void> {
     const row: Record<string, unknown> = {};
     if (patch.status !== undefined) row.status = patch.status;
@@ -230,7 +269,27 @@ function createRuntime() {
     if (error) fail("update", error);
   }
 
-  return { loadDetails, conversationFor, deliverContent, update };
+  return { loadDetails, conversationFor, deliverContent, sendFailureNotice, update };
+}
+
+/** Último mensaje entrante de la conversación: inicio de la ventana de 24 h de WhatsApp. */
+async function readLastInbound(conversationId: string): Promise<Date | null> {
+  const { data, error } = await admin()
+    .from(SUPABASE_TABLES.conv_mensajes)
+    .select("received_at,provider_timestamp")
+    .eq("conversacion_id", conversationId)
+    .eq("direction", "inbound")
+    .order("received_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) fail("window", error);
+  if (!data) return null;
+  const row = data as { received_at: string | null; provider_timestamp: string | null };
+  const last = Math.max(
+    row.received_at ? Date.parse(row.received_at) : 0,
+    row.provider_timestamp ? Date.parse(row.provider_timestamp) : 0
+  );
+  return last > 0 ? new Date(last) : null;
 }
 
 export function negativeAlertDeps(): NegativeAlertDeps {
@@ -301,23 +360,21 @@ export function negativeAlertDeps(): NegativeAlertDeps {
     update: runtime.update,
     conversationFor: runtime.conversationFor,
 
+    lastInboundAt: readLastInbound,
+
     async isWindowOpen(conversationId, now) {
-      const { data, error } = await admin()
-        .from(SUPABASE_TABLES.conv_mensajes)
-        .select("received_at,provider_timestamp")
-        .eq("conversacion_id", conversationId)
-        .eq("direction", "inbound")
-        .order("received_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) fail("window", error);
-      if (!data) return false;
-      const row = data as { received_at: string | null; provider_timestamp: string | null };
-      const last = Math.max(
-        row.received_at ? Date.parse(row.received_at) : 0,
-        row.provider_timestamp ? Date.parse(row.provider_timestamp) : 0
-      );
-      return last > 0 && now.getTime() - last < WINDOW_MS;
+      const last = await readLastInbound(conversationId);
+      return last !== null && now.getTime() - last.getTime() < WINDOW_MS;
+    },
+
+    async hasNotifiedTemplate(contactId) {
+      const { count, error } = await admin()
+        .from(ALERTAS)
+        .select("id", { count: "exact", head: true })
+        .eq("contacto_id", contactId)
+        .eq("status", "notified");
+      if (error) fail("notified", error);
+      return (count ?? 0) > 0;
     },
 
     async countOutstanding(contactId) {
@@ -458,4 +515,81 @@ export function pendingAlertsDeps(): PendingAlertsDeps {
 
 export function resolvePendingAlerts(input: { contactId: string; conversationId: string }): Promise<PendingAlertsResult> {
   return deliverPendingAlerts(input, pendingAlertsDeps());
+}
+
+// Reintento de imágenes fallidas ---------------------------------------------------------------------
+
+export function imageRetryDeps(): ImageRetryDeps {
+  const runtime = createRuntime();
+  const base = negativeAlertDeps();
+  return {
+    async listImageFailed(olderThan) {
+      const { data, error } = await admin()
+        .from(ALERTAS)
+        .select("id,resena_id,restaurante_id,contacto_id,conversacion_id")
+        .eq("status", "pending")
+        .eq("origen", "real")
+        .like("error_reason", `${IMAGE_FAILED_PREFIX}%`)
+        .not("conversacion_id", "is", null)
+        .lte("created_at", olderThan.toISOString())
+        .order("created_at", { ascending: true })
+        .limit(20);
+      if (error) fail("image_failed_list", error);
+      const rows = (data ?? []) as { id: string; resena_id: number; restaurante_id: number; contacto_id: string; conversacion_id: string }[];
+      if (rows.length === 0) return [];
+
+      const contactIds = [...new Set(rows.map((row) => row.contacto_id))];
+      const { data: contacts, error: contactsError } = await admin()
+        .from(SUPABASE_TABLES.conv_contactos)
+        .select("id,nombre,nombre_perfil")
+        .in("id", contactIds);
+      if (contactsError) fail("image_failed_contacts", contactsError);
+      const names = new Map(
+        ((contacts ?? []) as { id: string; nombre: string | null; nombre_perfil: string | null }[]).map((row) => [
+          row.id,
+          row.nombre?.trim() || row.nombre_perfil?.trim() || null,
+        ])
+      );
+
+      // Los permisos de HOY mandan también en el reintento (deny by default).
+      const access = await resolveContactsRestaurantIds(contactIds);
+      return rows
+        .filter((row) => (access.get(row.contacto_id) ?? []).includes(Number(row.restaurante_id)))
+        .map((row) => ({
+          id: row.id,
+          resenaId: Number(row.resena_id),
+          restauranteId: Number(row.restaurante_id),
+          contactId: row.contacto_id,
+          contactName: names.get(row.contacto_id) ?? null,
+          conversationId: row.conversacion_id,
+        }));
+    },
+
+    async claim(alertId) {
+      const { data, error } = await admin()
+        .from(ALERTAS)
+        .update({ status: "delivering" })
+        .eq("id", alertId)
+        .eq("status", "pending")
+        .like("error_reason", `${IMAGE_FAILED_PREFIX}%`)
+        .select("id");
+      if (error) fail("image_failed_claim", error);
+      return (data?.length ?? 0) > 0;
+    },
+
+    loadReview: base.loadReview,
+    update: runtime.update,
+    isWindowOpen: base.isWindowOpen,
+    lastInboundAt: base.lastInboundAt,
+    deliverContent: runtime.deliverContent,
+    sendFailureNotice: runtime.sendFailureNotice,
+    hasNotifiedTemplate: base.hasNotifiedTemplate,
+    countOutstanding: base.countOutstanding,
+    sendTemplate: base.sendTemplate,
+    log: base.log,
+  };
+}
+
+export function retryNegativeAlertImages(): Promise<ImageRetryResult> {
+  return retryFailedImageAlerts(imageRetryDeps());
 }

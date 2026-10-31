@@ -520,6 +520,9 @@ por contacto:
 ```
 
 - Código: `lib/alerts/negative-review/` (`orchestrator.ts` núcleo, `process.server.ts` cableado, `maps-link.ts`, `message.ts`).
+- Una sola plantilla por contacto: mientras tenga una alerta en `notified` (plantilla sin atender), las alertas nuevas quedan `pending` sin enviar otra.
+- Con la ventana abierta, un fallo propio (generación/subida de imagen) NO cae a plantilla: la alerta queda `pending` con `error_reason = image_failed;last_inbound=<ISO>;window_until=<ISO>`. Solo el código de Meta 131047 (ventana cerrada) cae a plantilla.
+- Reintento: `/api/cron/retry-negative-alerts` (Bearer `CRON_SECRET`, lo dispara pg_cron cada 5 min; SQL en `supabase/conv_alertas_reintento_cron.sql`, pendiente de aplicar) reintenta UNA vez, a los ≥5 min, las alertas `image_failed;…`. Si vuelve a fallar envía un aviso por texto con el enlace de Maps y deja `image_failed_final;…` (no se reintenta más sola; sigue pendiente para "Ver alerta"). Si la ventana se cerró entretanto, plantilla (una sola por contacto).
 - "Ver alerta" lo resuelve `VIEW_PENDING_ALERTS` en `lib/conversations/inbound-actions.ts` (comprueba permisos de hoy, entrega hasta 10 pendientes).
 - Idempotencia: una fila por (reseña, contacto) reservada antes de enviar; ids de envío estables.
 - Enlace de Google Maps: `resenas.url` solo si es de una reseña (`/maps/reviews/…`; el ~99 % es el perfil del autor y se descarta) → `restaurantes.google_maps_url` → `place_id` → búsqueda por nombre y dirección.

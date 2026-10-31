@@ -100,7 +100,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ con
         return NextResponse.json({ error: "La reseña no es válida para alerta", code: run.result.reason }, { status: 409 });
       }
       const outcome = run.result.outcomes[0]?.outcome ?? "failed";
-      if (outcome === "failed" || outcome === "pending_template_failed") {
+      if (outcome === "failed" || outcome === "pending_template_failed" || outcome === "pending_image_failed") {
         console.error(`[conversations] negative_alert_test_failed conversationId=${conversationId} outcome=${outcome}`);
         return NextResponse.json({ error: "No se pudo enviar la alerta de prueba", code: outcome }, { status: 502 });
       }

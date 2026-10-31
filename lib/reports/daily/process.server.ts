@@ -5,6 +5,7 @@ import { resolveContactRestaurantIds, resolveContactsRestaurantIds } from "@/lib
 import { sendConversationOperation } from "@/lib/conversations/send-text";
 import { WHATSAPP_TEMPLATES, buildTemplateRequest } from "@/lib/conversations/whatsapp-templates";
 import { deriveStableRequestId } from "@/lib/conversations/request-ids";
+import { qualifyRestaurantName } from "@/lib/restaurants/qualified-name";
 import { classifyReviewReason } from "@/lib/reviews/classify-reason";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { findOrCreateConversation } from "@/lib/supabase/conversations.server";
@@ -92,7 +93,7 @@ async function loadWindowData(restaurantIds: number[], slot: DailySlot): Promise
     if (row.activo === false) continue;
     const brandRow = row.marca_id === null ? undefined : brandRows.get(Number(row.marca_id));
     const brand = brandRow ? String(brandRow.nombre) : "";
-    const name = brand && !row.nombre.toLowerCase().includes(brand.toLowerCase()) ? `${brand} ${row.nombre}` : row.nombre;
+    const name = qualifyRestaurantName(brand, row.nombre);
     const target = Number(brandRow?.objetivo_media);
     info.set(Number(row.id), {
       id: Number(row.id),

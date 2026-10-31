@@ -87,6 +87,8 @@ type SetupOptions = {
   template?: { status: "sent"; wamid: string | null } | { status: "failed"; code: string };
   outstanding?: number;
   existing?: string[];
+  notifiedTemplate?: boolean;
+  lastInbound?: Date | null;
 };
 
 function setup(over: SetupOptions = {}) {
@@ -110,6 +112,8 @@ function setup(over: SetupOptions = {}) {
       rows.get(id)!.patches.push(patch);
     },
     conversationFor: vi.fn(async (contactId: string) => `conv-${contactId}`),
+    lastInboundAt: vi.fn(async () => (over.lastInbound === undefined ? new Date(NOW.getTime() - 3 * 3_600_000) : over.lastInbound)),
+    hasNotifiedTemplate: vi.fn(async () => over.notifiedTemplate ?? false),
     isWindowOpen: vi.fn(async () => over.windowOpen ?? false),
     countOutstanding: vi.fn(async () => over.outstanding ?? 1),
     deliverContent: vi.fn(async () => {
@@ -210,6 +214,31 @@ describe("alerta negativa: ventana, activación y permisos", () => {
     vi.mocked(t.deps.deliverContent).mockRejectedValueOnce(new Error("boom"));
     const result = await processNegativeReviewAlert({ resenaId: 501 }, t.deps);
     expect(result.status === "processed" && result.outcomes.map((o) => o.outcome)).toEqual(["failed", "pending_not_activated", "delivered_direct"]);
+  });
+
+  it("ventana abierta + fallo nuestro (imagen): NO se manda plantilla; queda pendiente con motivo, última hora y fin de ventana", async () => {
+    const last = new Date(NOW.getTime() - 3 * 3_600_000);
+    const t = setup({ windowOpen: true, deliver: { status: "rejected", code: "generation_failed" }, lastInbound: last });
+    expect(await processNegativeReviewAlert({ resenaId: 501 }, t.deps)).toMatchObject({ outcomes: [{ outcome: "pending_image_failed" }] });
+    expect(t.calls).toEqual(["content"]);
+    expect(t.deps.sendTemplate).not.toHaveBeenCalled();
+    const row = t.rows.get("alert-1")!;
+    expect(lastStatus(row)).toBe("pending");
+    const patch = [...row.patches].reverse().find((p) => p.errorReason)!;
+    expect(patch.errorCode).toBe("generation_failed");
+    expect(patch.errorReason).toBe(`image_failed;last_inbound=${last.toISOString()};window_until=${new Date(last.getTime() + 24 * 3_600_000).toISOString()}`);
+  });
+
+  it("ventana cerrada y ya hay una plantilla sin atender: no se envía otra (10 reseñas → 1 plantilla)", async () => {
+    const t = setup({ windowOpen: false, notifiedTemplate: true });
+    expect(await processNegativeReviewAlert({ resenaId: 501 }, t.deps)).toMatchObject({ outcomes: [{ outcome: "pending_template_already_sent" }] });
+    expect(t.deps.sendTemplate).not.toHaveBeenCalled();
+    expect(lastStatus(t.rows.get("alert-1")!)).toBe("pending");
+  });
+
+  it("la prueba manual fuerza la plantilla aunque ya haya una sin atender", async () => {
+    const t = setup({ notifiedTemplate: true });
+    expect(await processNegativeReviewAlert({ resenaId: 501, origin: "prueba", forceTemplate: true }, t.deps)).toMatchObject({ outcomes: [{ outcome: "template_sent" }] });
   });
 
   it("directo rechazado (ventana recién cerrada) → plantilla; incierto → no se cae a plantilla", async () => {

@@ -20,6 +20,7 @@ export default defineConfig({
       "lib/alerts/**/*.test.ts",
       "lib/notifications/**/*.test.ts",
       "lib/reviews/weekly-media.test.ts",
+      "lib/restaurants/qualified-name.test.ts",
       "lib/company/**/*.test.ts",
       "lib/http/**/*.test.ts",
       "lib/security/**/*.test.ts",
