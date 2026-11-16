@@ -6,7 +6,7 @@ import { getSupabaseDataClientForServer } from "@/lib/supabase/data-client";
 import { marcaToBrandId } from "@/lib/supabase/kpi-mappers";
 import { fetchAllKpiRows } from "@/lib/supabase/kpi-restaurantes";
 import { buildNetworkSummaryFromPayload } from "./build";
-import { NETWORK_REPORT_GROUPS, type NetworkReportGroupId } from "./brand-groups";
+import { NETWORK_REPORT_GROUPS, selectNetworkReportRestaurantIds, type NetworkReportGroupId } from "./brand-groups";
 import type { NetworkSummaryData, NetworkSummaryPayload } from "./types";
 
 /**
@@ -14,8 +14,9 @@ import type { NetworkSummaryData, NetworkSummaryPayload } from "./types";
  *
  * Todo el cálculo (medias, porcentajes, objetivo por marca, estados, motivos)
  * lo hace Supabase en public.nexo_network_summary_payload. Aquí solo se decide
- * QUÉ restaurantes componen el grupo (marcas + filtro de ciudad de
- * brand-groups.ts) y se pide el resultado. Sin plan B: si Supabase falla, se
+ * QUÉ restaurantes componen el grupo (empresa + marcas + filtro de ciudad de
+ * brand-groups.ts) y se pide el resultado. La empresa es obligatoria: el
+ * informe de una marca nunca mezcla restaurantes de otro cliente. Sin plan B: si Supabase falla, se
  * lanza el error en vez de servir cifras calculadas por otro camino.
  */
 export async function fetchNetworkSummaryReport(
@@ -24,14 +25,10 @@ export async function fetchNetworkSummaryReport(
   scope?: UserScope
 ): Promise<NetworkSummaryData> {
   const group = NETWORK_REPORT_GROUPS[groupId];
-  const brandIds = new Set(group.brandIds);
 
   const catalog = await fetchAllKpiRows();
   const scoped = scope ? filterKpiRowsByScope(catalog, scope) : catalog;
-  const restaurantIds = scoped
-    .filter((row) => brandIds.has(marcaToBrandId(row.marca)))
-    .filter((row) => !group.restaurantFilter || group.restaurantFilter(row))
-    .map((row) => row.restaurante_id);
+  const restaurantIds = selectNetworkReportRestaurantIds(group, scoped, marcaToBrandId);
 
   const client = await getSupabaseDataClientForServer();
   const { data, error } = await client.rpc("nexo_network_summary_payload", {

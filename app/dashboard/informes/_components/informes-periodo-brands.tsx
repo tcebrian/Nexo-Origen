@@ -4,7 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import type { ReportPeriodSlug } from "@/lib/reports/period-ranges";
 import { REPORT_PERIOD_LABELS } from "@/lib/reports/period-ranges";
-import type { NetworkReportGroupId } from "@/lib/reports/network-summary/brand-groups";
+import {
+  NETWORK_REPORT_EMPRESA_IDS,
+  NETWORK_REPORT_GROUPS,
+  type NetworkReportGroupId,
+} from "@/lib/reports/network-summary/brand-groups";
 import { card, shell, textKicker, textTitle } from "./ui/informes-styles";
 import { NetworkSummaryImageModal } from "./network-summary-image-modal";
 import { DownloadAllImagesButton } from "./download-all-images-button";
@@ -177,7 +181,13 @@ export function InformesPeriodoBrands({ periodo, offset, rangeLabel, fileLabel }
                   ))}
                 </div>
                 {periodo === "mensual" && group.monthlyBrands.map((brandName) => (
-                  <MonthlyBrandReports key={`${brandName}-${offset}`} brand={brandName} offset={offset} />
+                  <MonthlyBrandReports
+                    key={`${brandName}-${offset}`}
+                    brand={brandName}
+                    // Misma empresa que su PNG: los PDF de una marca no mezclan clientes.
+                    empresaId={NETWORK_REPORT_EMPRESA_IDS[NETWORK_REPORT_GROUPS[group.pngGroups[0]!.id].empresa]}
+                    offset={offset}
+                  />
                 ))}
               </div>
             ))}

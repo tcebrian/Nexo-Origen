@@ -67,6 +67,7 @@ type CatalogRow = {
   ciudad: string;
   direccion: string;
   empresa: string;
+  empresa_id: number | string | null;
   objetivo_media: number | string;
 };
 
@@ -100,13 +101,21 @@ async function catalog(ids: number[] | null): Promise<CatalogRow[]> {
   return (data ?? []) as CatalogRow[];
 }
 
-export async function listMonthlyRestaurants(brand: string, offset: number, scope: UserScope): Promise<{
+/**
+ * Restaurantes de una marca para los PDF mensuales. Con `empresaId`, solo los de esa empresa: dos clientes
+ * pueden tener una marca con el mismo nombre (Sibuya en Grupo Hámbar y en Grupo Crealia) y sus informes no se
+ * mezclan.
+ */
+export async function listMonthlyRestaurants(brand: string, offset: number, scope: UserScope, empresaId?: number): Promise<{
   period: ReturnType<typeof monthlyPeriod>;
   restaurants: MonthlyRestaurant[];
 }> {
   const period = monthlyPeriod(offset);
   const rows = (await catalog(null)).filter(
-    (r) => norm(r.marca) === norm(brand) && assertRestauranteInScope(scope, n(r.restaurante_id))
+    (r) =>
+      norm(r.marca) === norm(brand) &&
+      (empresaId === undefined || (r.empresa_id != null && n(r.empresa_id) === empresaId)) &&
+      assertRestauranteInScope(scope, n(r.restaurante_id))
   );
   const ids = rows.map((r) => n(r.restaurante_id));
   const metrics = await fetchSupabaseCanonicalReputationMetrics(period.startKey, period.endKey, ids);

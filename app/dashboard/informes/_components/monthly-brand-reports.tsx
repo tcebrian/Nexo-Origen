@@ -25,7 +25,7 @@ function saveBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(href), 60_000);
 }
 
-export function MonthlyBrandReports({ brand, offset }: { brand: string; offset: number }) {
+export function MonthlyBrandReports({ brand, empresaId, offset }: { brand: string; empresaId: number; offset: number }) {
   const [expanded, setExpanded] = useState(false);
   const [restaurants, setRestaurants] = useState<Restaurant[] | null>(null);
   const [period, setPeriod] = useState("");
@@ -39,7 +39,7 @@ export function MonthlyBrandReports({ brand, offset }: { brand: string; offset: 
     if (restaurants) return;
     setBusy(true); setError("");
     try {
-      const response = await fetch(`/api/informes/mensual?brand=${encodeURIComponent(brand)}&offset=${offset}`, { cache: "no-store" });
+      const response = await fetch(`/api/informes/mensual?brand=${encodeURIComponent(brand)}&empresa=${empresaId}&offset=${offset}`, { cache: "no-store" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "No se pudieron cargar los locales");
       setRestaurants(payload.restaurants);

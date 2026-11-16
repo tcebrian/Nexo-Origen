@@ -7,6 +7,11 @@ export type KpiRestaurantRow = {
   restaurante: string;
   ciudad: string;
   marca: string;
+  /**
+   * Empresa propietaria (`restaurantes.empresa_id`). Opcional para no romper filas
+   * antiguas; `null`/ausente = desconocida (los informes por empresa la excluyen).
+   */
+  empresa_id?: number | null;
   total_resenas: number;
   media_total: number;
   resenas_negativas: number;
@@ -44,6 +49,7 @@ export function normalizeKpiRow(row: Record<string, unknown>): KpiRestaurantRow 
     restaurante: String(row.restaurante ?? ""),
     ciudad: String(row.ciudad ?? ""),
     marca: String(row.marca ?? ""),
+    empresa_id: nullableNumber(row.empresa_id),
     total_resenas: toNumber(row.total_resenas),
     media_total: toNumber(row.media_total),
     resenas_negativas: toNumber(row.resenas_negativas),

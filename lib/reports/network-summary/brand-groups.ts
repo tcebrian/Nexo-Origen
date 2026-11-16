@@ -24,6 +24,18 @@ export function isNetworkReportGroupId(value: string): value is NetworkReportGro
  */
 export type NetworkReportEmpresa = "grupo-hambar" | "vault";
 
+/**
+ * `empresas.id` en Supabase de cada empresa con informes de red. El informe solo
+ * incluye restaurantes de SU empresa: otra empresa puede tener una marca con el
+ * mismo nombre (Grupo Crealia también tiene un Sibuya) o una marca que la
+ * heurística de marcas confunde (p. ej. "Chata's Burger" se resuelve como
+ * Burger King), y nunca debe colarse en el informe de otro cliente.
+ */
+export const NETWORK_REPORT_EMPRESA_IDS: Record<NetworkReportEmpresa, number> = {
+  "grupo-hambar": 1,
+  vault: 2,
+};
+
 export type NetworkReportGroup = {
   id: NetworkReportGroupId;
   /** Empresa a la que pertenece (ver NetworkReportEmpresa). */
@@ -109,3 +121,22 @@ export const NETWORK_REPORT_GROUPS: Record<NetworkReportGroupId, NetworkReportGr
   },
   vault: { id: "vault", empresa: "vault", folder: "Vault", label: "Vault", brandIds: ["vault"] },
 };
+
+/**
+ * Restaurantes que componen el informe de un grupo: SOLO los de la empresa del
+ * grupo (deny by default: una fila sin empresa no entra), de sus marcas y que
+ * pasen su filtro extra (España / Andorra).
+ */
+export function selectNetworkReportRestaurantIds(
+  group: NetworkReportGroup,
+  rows: readonly KpiRestaurantRow[],
+  toBrandId: (marca: string) => BrandId
+): number[] {
+  const empresaId = NETWORK_REPORT_EMPRESA_IDS[group.empresa];
+  const brandIds = new Set(group.brandIds);
+  return rows
+    .filter((row) => row.empresa_id != null && row.empresa_id === empresaId)
+    .filter((row) => brandIds.has(toBrandId(row.marca)))
+    .filter((row) => !group.restaurantFilter || group.restaurantFilter(row))
+    .map((row) => row.restaurante_id);
+}

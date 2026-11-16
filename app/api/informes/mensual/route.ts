@@ -14,8 +14,14 @@ export async function GET(request: Request) {
   if (!brand || brand.length > 100 || !Number.isInteger(offset) || offset < 0 || offset > 35) {
     return NextResponse.json({ error: "Marca o mes no válido" }, { status: 400 });
   }
+  // Empresa opcional: limita la marca a los restaurantes de ese cliente (no mezcla empresas).
+  const empresaParam = url.searchParams.get("empresa");
+  const empresaId = empresaParam === null ? undefined : Number(empresaParam);
+  if (empresaId !== undefined && (!Number.isInteger(empresaId) || empresaId <= 0)) {
+    return NextResponse.json({ error: "Empresa no válida" }, { status: 400 });
+  }
   try {
-    const result = await listMonthlyRestaurants(brand, offset, auth.session.scope);
+    const result = await listMonthlyRestaurants(brand, offset, auth.session.scope, empresaId);
     if (!result.restaurants.length) return NextResponse.json({ error: "Marca no disponible" }, { status: 404 });
     return NextResponse.json(result, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
