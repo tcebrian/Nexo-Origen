@@ -41,6 +41,7 @@ export const SENSITIVE_RATE_LIMITS = {
   "conversation-contact-update": { limit: 30, windowSeconds: TEN_MINUTES },
   "conversation-contact-delete": { limit: 10, windowSeconds: TEN_MINUTES },
   "conversation-negative-alerts": { limit: 30, windowSeconds: TEN_MINUTES },
+  "conversation-alert-resend": { limit: 20, windowSeconds: MINUTE }, // reenvío manual desde "Fallos de envío"
 
   // Trabajo pesado (Chromium / PDF)
   "network-summary-image": { limit: 30, windowSeconds: MINUTE }, // "descargar todo" = 6 marcas x 2 intentos

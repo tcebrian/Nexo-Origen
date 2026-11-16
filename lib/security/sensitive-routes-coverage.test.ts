@@ -39,6 +39,7 @@ const SENSITIVE: Sensitive[] = [
   { route: "conversations/[conversationId]/activation", method: "POST", operation: "conversation-activation", class: "C" },
   { route: "conversations/contacts", method: "POST", operation: "conversation-contact-create", class: "B" },
   { route: "conversations/[conversationId]/negative-alerts", method: "PUT", operation: "conversation-negative-alerts", class: "B" },
+  { route: "conversations/alert-failures/[alertId]/resend", method: "POST", operation: "conversation-alert-resend", class: "C" },
   { route: "generate-network-summary-image", method: "GET", operation: "network-summary-image", class: "D" },
   { route: "informes/mensual/[id]", method: "GET", operation: "monthly-report-render", class: "D" },
   { route: "informes/mensual/[id]/imagen", method: "GET", operation: "monthly-report-render", class: "D" },

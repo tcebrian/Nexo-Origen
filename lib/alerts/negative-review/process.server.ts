@@ -13,12 +13,16 @@ import { SUPABASE_TABLES } from "@/lib/supabase/tables";
 import { sendTemplateMessage } from "@/lib/whatsapp/cloud-api.server";
 import { buildAlertDataForResena } from "@/lib/notifications/build-alert-for-resena";
 import { AlertNotReadyError, assertValidAlertPng } from "./alert-readiness";
+import { imageFailureCode } from "./failures";
 import { alertImagePreview, buildAlertText, buildImageFailedText } from "./message";
 import { selectAlertRecipients } from "./recipients";
 import { resolveMapsLink, type MapsLinkInput } from "./maps-link";
 import {
   deliverPendingAlerts,
+  resendAlertManually,
   retryFailedImageAlerts,
+  type ManualResendDeps,
+  type ManualResendResult,
   IMAGE_FAILED_PREFIX,
   type ImageRetryDeps,
   type ImageRetryResult,
@@ -95,6 +99,8 @@ async function renderWithRetry(request: Parameters<typeof renderViaInternal>[0])
 function createRuntime() {
   const details = new Map<number, Promise<ReviewDetails | null>>();
   const images = new Map<number, Promise<Buffer>>();
+  // Causa real de cada imagen no generada (código compacto): se guarda en la alerta en vez de `generation_failed`.
+  const imageCauses = new Map<number, string>();
 
   function loadDetails(resenaId: number): Promise<ReviewDetails | null> {
     let cached = details.get(resenaId);
@@ -183,6 +189,14 @@ function createRuntime() {
                   ? error.name
                   : "unknown";
           console.error(`[negative-alert] image_not_generated resenaId=${resenaId} reason=${detail}`);
+          imageCauses.set(
+            resenaId,
+            error instanceof AlertNotReadyError
+              ? imageFailureCode(error.code, error.fields)
+              : error instanceof RenderError
+                ? imageFailureCode(`RenderError:${error.status}`)
+                : imageFailureCode(error instanceof Error ? error.name : "unknown")
+          );
           throw error;
         }
       })();
@@ -227,7 +241,12 @@ function createRuntime() {
       deps
     );
     if (image.status !== "sent") {
-      const code = image.providerError?.code !== undefined ? String(image.providerError.code) : image.status;
+      const code =
+        image.providerError?.code !== undefined
+          ? String(image.providerError.code)
+          : image.status === "generation_failed"
+            ? (imageCauses.get(input.review.resenaId) ?? image.status)
+            : image.status;
       return toDeliverResult(image.status, code);
     }
 
@@ -592,4 +611,75 @@ export function imageRetryDeps(): ImageRetryDeps {
 
 export function retryNegativeAlertImages(): Promise<ImageRetryResult> {
   return retryFailedImageAlerts(imageRetryDeps());
+}
+
+// Reenvío manual desde "Fallos de envío" ------------------------------------------------------------
+
+export function manualResendDeps(): ManualResendDeps {
+  const runtime = createRuntime();
+  const base = negativeAlertDeps();
+  return {
+    async loadAlert(alertId) {
+      const { data, error } = await admin()
+        .from(ALERTAS)
+        .select("id,resena_id,restaurante_id,contacto_id,status")
+        .eq("id", alertId)
+        .maybeSingle();
+      if (error) fail("resend_alert", error);
+      const row = data as { id: string; resena_id: number; restaurante_id: number; contacto_id: string; status: string } | null;
+      return row
+        ? { id: row.id, resenaId: Number(row.resena_id), restauranteId: Number(row.restaurante_id), contactId: row.contacto_id, status: row.status }
+        : null;
+    },
+
+    async loadContact(contactId) {
+      const { data, error } = await admin()
+        .from(SUPABASE_TABLES.conv_contactos)
+        .select("nombre,nombre_perfil,whatsapp_activated_at,recibir_alertas_negativas")
+        .eq("id", contactId)
+        .maybeSingle();
+      if (error) fail("resend_contact", error);
+      const row = data as {
+        nombre: string | null;
+        nombre_perfil: string | null;
+        whatsapp_activated_at: string | null;
+        recibir_alertas_negativas: boolean | null;
+      } | null;
+      return row
+        ? {
+            name: row.nombre?.trim() || row.nombre_perfil?.trim() || null,
+            activated: row.whatsapp_activated_at !== null,
+            alertsEnabled: row.recibir_alertas_negativas === true,
+          }
+        : null;
+    },
+
+    resolveRestaurantIds: (contactId) => resolveContactRestaurantIds(contactId),
+
+    async claim(alertId) {
+      const { data, error } = await admin()
+        .from(ALERTAS)
+        .update({ status: "delivering" })
+        .eq("id", alertId)
+        .in("status", ["pending", "failed"])
+        .select("id");
+      if (error) fail("resend_claim", error);
+      return (data?.length ?? 0) > 0;
+    },
+
+    loadReview: base.loadReview,
+    update: runtime.update,
+    conversationFor: runtime.conversationFor,
+    isWindowOpen: base.isWindowOpen,
+    deliverContent: runtime.deliverContent,
+    hasNotifiedTemplate: (contactId) => base.hasNotifiedTemplate!(contactId),
+    countOutstanding: base.countOutstanding,
+    sendTemplate: base.sendTemplate,
+    log: base.log,
+  };
+}
+
+/** Reenvío manual de una alerta que no llegó (super_admin, página "Fallos de envío"). */
+export function resendNegativeAlert(alertId: string): Promise<ManualResendResult> {
+  return resendAlertManually({ alertId }, manualResendDeps());
 }

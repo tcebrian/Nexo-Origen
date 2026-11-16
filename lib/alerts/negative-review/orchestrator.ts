@@ -394,3 +394,148 @@ export async function retryFailedImageAlerts(deps: ImageRetryDeps): Promise<Imag
   }
   return result;
 }
+
+// Reenvío manual (página "Fallos de envío") ----------------------------------------------------------
+
+/** Marca de la fila cuando el reenvío manual tampoco consigue entregar la alerta. */
+export const MANUAL_RESEND_FAILED_PREFIX = "manual_resend_failed;";
+
+export type ManualResendAlert = { id: string; resenaId: number; restauranteId: number; contactId: string; status: string };
+export type ManualResendContact = { name: string | null; activated: boolean; alertsEnabled: boolean };
+
+export type ManualResendResult =
+  | { status: "delivered" }
+  | { status: "template_sent" }
+  /** Ventana cerrada y ya hay un aviso «Ver alerta» sin atender: llegará cuando lo pulse. */
+  | { status: "waiting_template" }
+  | { status: "not_found" }
+  | { status: "not_resendable"; current: string }
+  | { status: "busy" }
+  | { status: "no_access" }
+  | { status: "alerts_disabled" }
+  | { status: "not_activated" }
+  | { status: "failed"; code: string; uncertain: boolean };
+
+export interface ManualResendDeps {
+  now?: () => Date;
+  loadAlert(alertId: string): Promise<ManualResendAlert | null>;
+  loadContact(contactId: string): Promise<ManualResendContact | null>;
+  /** Restaurantes accesibles HOY por el contacto (deny by default). */
+  resolveRestaurantIds(contactId: string): Promise<number[]>;
+  /** `pending|failed → delivering` atómico; `false` si otro proceso la tomó. */
+  claim(alertId: string): Promise<boolean>;
+  loadReview(resenaId: number): Promise<AlertReview | null>;
+  update(alertId: string, patch: AlertPatch): Promise<void>;
+  conversationFor(contactId: string): Promise<string>;
+  isWindowOpen(conversationId: string, now: Date): Promise<boolean>;
+  deliverContent(input: { conversationId: string; review: AlertReview; contactId: string; requestSeed: string }): Promise<DeliverResult>;
+  hasNotifiedTemplate(contactId: string): Promise<boolean>;
+  countOutstanding(contactId: string): Promise<number>;
+  sendTemplate(input: { conversationId: string; contactName: string | null; count: number; requestSeed: string }): Promise<TemplateResult>;
+  log?: (message: string) => void;
+}
+
+/** Estados desde los que se puede reenviar a mano: la alerta sigue sin llegar. */
+const RESENDABLE = new Set(["pending", "failed"]);
+
+/**
+ * Reenvío manual de UNA alerta que no llegó (lo pide un super_admin desde "Fallos de envío"). Mismas reglas que
+ * el flujo automático: permisos de HOY, interruptor de alertas, contacto activado, ventana de 24 h. Reutiliza la
+ * semilla de envío de la alerta: lo que ya salió no se repite y un envío incierto no se reenvía a ciegas.
+ *   · Ventana abierta → imagen + texto.
+ *   · Ventana cerrada (o Meta lo confirma con 131047) → plantilla «Ver alerta» (una sola por contacto).
+ */
+export async function resendAlertManually(input: { alertId: string }, deps: ManualResendDeps): Promise<ManualResendResult> {
+  const now = deps.now ?? (() => new Date());
+
+  const alert = await deps.loadAlert(input.alertId);
+  if (!alert) return { status: "not_found" };
+  if (!RESENDABLE.has(alert.status)) return { status: "not_resendable", current: alert.status };
+
+  const contact = await deps.loadContact(alert.contactId);
+  if (!contact) return { status: "not_found" };
+  if (!contact.alertsEnabled) return { status: "alerts_disabled" };
+  if (!(await deps.resolveRestaurantIds(alert.contactId)).includes(alert.restauranteId)) return { status: "no_access" };
+  if (!contact.activated) return { status: "not_activated" };
+
+  if (!(await deps.claim(alert.id))) return { status: "busy" };
+  const seed = seedOf(alert.resenaId, alert.contactId, alert.id);
+
+  try {
+    const review = await deps.loadReview(alert.resenaId);
+    if (!review) {
+      await deps.update(alert.id, { status: "failed", errorCode: "review_not_found", errorReason: null });
+      return { status: "failed", code: "review_not_found", uncertain: false };
+    }
+
+    const conversationId = await deps.conversationFor(alert.contactId);
+    let windowClosedCode: string | null = null;
+
+    if (await deps.isWindowOpen(conversationId, now())) {
+      const delivered = await deps.deliverContent({ conversationId, review, contactId: alert.contactId, requestSeed: seed });
+      if (delivered.status === "sent") {
+        await deps.update(alert.id, {
+          status: "delivered",
+          via: "direct",
+          conversationId,
+          deliveredAt: now(),
+          errorCode: null,
+          errorReason: null,
+        });
+        return { status: "delivered" };
+      }
+      if (delivered.status === "uncertain") {
+        await deps.update(alert.id, { status: "failed", conversationId, errorCode: delivered.code.slice(0, 40), errorReason: "uncertain" });
+        return { status: "failed", code: delivered.code, uncertain: true };
+      }
+      if (!WINDOW_CLOSED_CODES.has(delivered.code)) {
+        await deps.update(alert.id, {
+          status: "pending",
+          conversationId,
+          errorCode: delivered.code.slice(0, 40),
+          errorReason: `${MANUAL_RESEND_FAILED_PREFIX}${now().toISOString()}`,
+        });
+        return { status: "failed", code: delivered.code, uncertain: false };
+      }
+      windowClosedCode = delivered.code;
+    }
+
+    // Ventana cerrada: solo cabe la plantilla, y solo una sin atender por contacto.
+    if (await deps.hasNotifiedTemplate(alert.contactId)) {
+      await deps.update(alert.id, {
+        status: "pending",
+        conversationId,
+        errorCode: windowClosedCode,
+        errorReason: "waiting_template",
+      });
+      return { status: "waiting_template" };
+    }
+    const count = Math.max(1, await deps.countOutstanding(alert.contactId));
+    const template = await deps.sendTemplate({ conversationId, contactName: contact.name, count, requestSeed: seed });
+    if (template.status === "sent") {
+      await deps.update(alert.id, {
+        status: "notified",
+        via: "template",
+        conversationId,
+        templateWamid: template.wamid,
+        notifiedAt: now(),
+        errorCode: null,
+        errorReason: null,
+      });
+      return { status: "template_sent" };
+    }
+    await deps.update(alert.id, { status: "pending", conversationId, errorCode: template.code.slice(0, 40), errorReason: "template" });
+    return { status: "failed", code: template.code, uncertain: false };
+  } catch (error) {
+    // Nunca se queda en `delivering`.
+    await deps
+      .update(alert.id, {
+        status: "pending",
+        errorCode: "exception",
+        errorReason: `${MANUAL_RESEND_FAILED_PREFIX}${error instanceof Error ? error.name : "Error"}`,
+      })
+      .catch(() => undefined);
+    deps.log?.(`[negative-alert] manual_resend_exception alertId=${alert.id}`);
+    return { status: "failed", code: "exception", uncertain: false };
+  }
+}

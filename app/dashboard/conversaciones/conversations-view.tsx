@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { canSubmitDraft } from "@/lib/conversations/compose";
 import { contactTypeLabel } from "@/lib/conversations/contact-access";
 import { describeDeliveryStatus, type DeliveryIndicator } from "@/lib/conversations/delivery-status";
@@ -943,7 +944,7 @@ function Composer({
   );
 }
 
-export function ConversationsView() {
+export function ConversationsView({ unresolvedFailures = null }: { unresolvedFailures?: number | null }) {
   const [conversations, setConversations] = useState<ConversationListItem[] | null>(null);
   const [listError, setListError] = useState(false);
   const [query, setQuery] = useState("");
@@ -1056,11 +1057,29 @@ export function ConversationsView() {
 
   return (
     <div className="space-y-4">
-      <header>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--nexo-text-tertiary)]">
-          Nexo Conversations
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">Conversaciones</h1>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--nexo-text-tertiary)]">
+            Nexo Conversations
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">Conversaciones</h1>
+        </div>
+        <Link
+          href="/dashboard/conversaciones/fallos"
+          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 ${
+            unresolvedFailures
+              ? "border-amber-400/30 bg-amber-400/10 text-amber-100 hover:bg-amber-400/20"
+              : "border-white/[0.08] bg-white/[0.03] text-gray-300 hover:text-white"
+          }`}
+        >
+          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+          </svg>
+          Fallos de envío
+          {unresolvedFailures ? (
+            <span className="rounded-full bg-amber-400/25 px-1.5 font-mono text-[11px] tabular-nums">{unresolvedFailures}</span>
+          ) : null}
+        </Link>
       </header>
 
       {notice ? (
