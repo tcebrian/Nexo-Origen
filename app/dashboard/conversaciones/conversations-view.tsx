@@ -11,6 +11,12 @@ import {
   textLength,
 } from "@/lib/conversations/text-chunks";
 import type { ReportFormat, ReportOptions, ReportTypeId } from "@/lib/conversations/report-catalog";
+import {
+  sendReportBatch,
+  type ReportBatchItem,
+  type ReportBatchProgress,
+  type ReportSendAttempt,
+} from "@/lib/conversations/report-batch";
 import { ContactInfoPanel } from "./_components/contact-info-panel";
 import { Drawer } from "./_components/drawer";
 import { NewContactDrawer } from "./_components/new-contact-drawer";
@@ -328,24 +334,75 @@ const numberFormat = new Intl.NumberFormat("es-ES");
 const selectClass =
   "w-full rounded-xl border border-white/[0.08] bg-[#0d0a14] px-3 py-2 text-[13px] text-white focus:border-violet-400/40 focus:outline-none disabled:opacity-50";
 
+/** Lo que el panel puede marcar: un restaurante o una red, según el tipo de informe. */
+type SubjectOption = { id: string; label: string; section: string };
+
+const normalizeSearch = (value: string) =>
+  value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+
+const reportCount = (count: number) => `${numberFormat.format(count)} ${count === 1 ? "informe" : "informes"}`;
+
+function SubjectCheckbox({
+  checked,
+  indeterminate = false,
+  disabled,
+  onChange,
+  children,
+  strong = false,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  disabled: boolean;
+  onChange: () => void;
+  children: React.ReactNode;
+  strong?: boolean;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <label
+      className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] transition hover:bg-white/[0.04] ${
+        strong ? "font-medium text-white" : "text-gray-200"
+      } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+    >
+      <input
+        ref={ref}
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={onChange}
+        className="h-3.5 w-3.5 shrink-0 accent-violet-500"
+      />
+      <span className="min-w-0 truncate">{children}</span>
+    </label>
+  );
+}
+
 /**
  * Panel "📊 Informe de Nexo". No conoce ningún informe concreto: tipos, formatos,
  * periodos, restaurantes y redes llegan de `/api/conversations/report-options`
  * (catálogo del servidor), así que un informe nuevo aparece sin tocar este componente.
+ * Se pueden marcar VARIOS restaurantes o redes: se envían uno detrás de otro.
  */
 function ReportPanel({
   sending,
+  progress,
   onCancel,
   onSend,
 }: {
   sending: boolean;
+  progress: ReportBatchProgress | null;
   onCancel: () => void;
-  onSend: (selection: ReportSelection) => void;
+  /** Envía los informes marcados; devuelve las claves enviadas para desmarcarlas. */
+  onSend: (items: ReportBatchItem<ReportSelection>[]) => Promise<string[]>;
 }) {
   const [options, setOptions] = useState<ReportOptions | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [typeId, setTypeId] = useState("");
-  const [subjectId, setSubjectId] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [search, setSearch] = useState("");
   const [period, setPeriod] = useState("0");
   const [formatChoice, setFormatChoice] = useState("");
 
@@ -367,26 +424,74 @@ function ReportPanel({
   const type = options?.types.find((item) => item.id === typeId) ?? options?.types[0] ?? null;
   const format = type?.formats.find((item) => item.id === formatChoice)?.id ?? type?.formats[0]?.id ?? null;
   const periodOffset = type?.periods.some((item) => String(item.offset) === period) ? period : "0";
+  const byRestaurant = type?.subject === "restaurant";
 
-  const brands = useMemo(() => {
-    const groups = new Map<string, ReportOptions["restaurants"]>();
-    for (const restaurant of options?.restaurants ?? []) {
-      groups.set(restaurant.brand, [...(groups.get(restaurant.brand) ?? []), restaurant]);
+  // Restaurantes agrupados por marca, o redes (una sola sección sin título).
+  const subjects = useMemo<SubjectOption[]>(() => {
+    if (!type) return [];
+    if (byRestaurant) {
+      return (options?.restaurants ?? []).map((restaurant) => ({
+        id: String(restaurant.id),
+        label: restaurant.name,
+        section: restaurant.brand,
+      }));
     }
-    return [...groups];
-  }, [options]);
+    return (options?.groups ?? []).map((group) => ({ id: group.id, label: group.label, section: "" }));
+  }, [options, type, byRestaurant]);
 
-  const ready = Boolean(type && format && subjectId !== "");
+  const query = normalizeSearch(search);
+  const visible = useMemo(
+    () => (query ? subjects.filter((item) => normalizeSearch(`${item.section} ${item.label}`).includes(query)) : subjects),
+    [subjects, query]
+  );
+  const sections = useMemo(() => {
+    const map = new Map<string, SubjectOption[]>();
+    for (const item of visible) map.set(item.section, [...(map.get(item.section) ?? []), item]);
+    return [...map];
+  }, [visible]);
 
-  function send() {
-    if (!type || !format || subjectId === "") return;
-    onSend({
-      reportType: type.id,
-      format,
-      period: Number(periodOffset),
-      ...(type.subject === "restaurant" ? { restaurantId: Number(subjectId) } : { groupId: subjectId }),
+  const selectedCount = subjects.filter((item) => selected.has(item.id)).length;
+  const ready = Boolean(type && format && selectedCount > 0);
+
+  function toggle(ids: string[], on: boolean) {
+    setSelected((current) => {
+      const next = new Set(current);
+      for (const id of ids) {
+        if (on) next.add(id);
+        else next.delete(id);
+      }
+      return next;
     });
   }
+
+  async function send() {
+    if (!type || !format || selectedCount === 0) return;
+    const marked = subjects.filter((item) => selected.has(item.id));
+    const items = marked.map((item): ReportBatchItem<ReportSelection> => {
+      const selection: ReportSelection = {
+        reportType: type.id,
+        format,
+        period: Number(periodOffset),
+        ...(byRestaurant ? { restaurantId: Number(item.id) } : { groupId: item.id }),
+      };
+      // La clave incluye tipo, formato y periodo: cambiar cualquiera es un informe distinto.
+      return { key: JSON.stringify(selection), label: item.label, selection };
+    });
+    const sentKeys = new Set(await onSend(items));
+    // Lo enviado se desmarca; lo que falló queda marcado para poder reintentarlo.
+    toggle(
+      marked.filter((_, index) => sentKeys.has(items[index]!.key)).map((item) => item.id),
+      false
+    );
+  }
+
+  const buttonLabel = sending
+    ? progress && progress.total > 1
+      ? `Enviando ${Math.min(progress.done + 1, progress.total)} de ${progress.total}…`
+      : "Enviando…"
+    : selectedCount > 1
+      ? `Enviar ${reportCount(selectedCount)}`
+      : "Enviar por WhatsApp";
 
   return (
     <div className="mb-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
@@ -397,85 +502,132 @@ function ReportPanel({
       ) : !options || !type ? (
         <p className="text-xs text-gray-500">Cargando…</p>
       ) : (
-        <div className="grid gap-2 sm:grid-cols-3">
-          <label className="block text-[11px] text-gray-500">
-            Tipo de informe
-            <select
-              className={`${selectClass} mt-1`}
-              value={type.id}
-              disabled={sending}
-              onChange={(event) => {
-                setTypeId(event.target.value);
-                // Sujeto y periodo dependen del tipo: se reinician.
-                setSubjectId("");
-                setPeriod("0");
-                setFormatChoice("");
-              }}
-            >
-              {options.types.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {type.subject === "restaurant" ? (
+        <>
+          <div className="grid gap-2 sm:grid-cols-2">
             <label className="block text-[11px] text-gray-500">
-              Restaurante
+              Tipo de informe
               <select
                 className={`${selectClass} mt-1`}
-                value={subjectId}
+                value={type.id}
                 disabled={sending}
-                onChange={(event) => setSubjectId(event.target.value)}
+                onChange={(event) => {
+                  setTypeId(event.target.value);
+                  // Sujeto y periodo dependen del tipo: se reinician.
+                  setSelected(new Set());
+                  setSearch("");
+                  setPeriod("0");
+                  setFormatChoice("");
+                }}
               >
-                <option value="">Selecciona…</option>
-                {brands.map(([brand, restaurants]) => (
-                  <optgroup key={brand} label={brand}>
-                    {restaurants.map((restaurant) => (
-                      <option key={restaurant.id} value={restaurant.id}>
-                        {restaurant.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </label>
-          ) : (
-            <label className="block text-[11px] text-gray-500">
-              Marca o red
-              <select
-                className={`${selectClass} mt-1`}
-                value={subjectId}
-                disabled={sending}
-                onChange={(event) => setSubjectId(event.target.value)}
-              >
-                <option value="">Selecciona…</option>
-                {options.groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.label}
+                {options.types.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
                   </option>
                 ))}
               </select>
             </label>
-          )}
 
-          <label className="block text-[11px] text-gray-500">
-            Periodo
-            <select
-              className={`${selectClass} mt-1`}
-              value={periodOffset}
-              disabled={sending}
-              onChange={(event) => setPeriod(event.target.value)}
-            >
-              {type.periods.map((item) => (
-                <option key={item.offset} value={item.offset}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+            <label className="block text-[11px] text-gray-500">
+              Periodo
+              <select
+                className={`${selectClass} mt-1`}
+                value={periodOffset}
+                disabled={sending}
+                onChange={(event) => setPeriod(event.target.value)}
+              >
+                {type.periods.map((item) => (
+                  <option key={item.offset} value={item.offset}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-3">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className="text-[11px] text-gray-500">
+                {byRestaurant ? "Restaurantes" : "Marcas o redes"}
+                <span className="ml-1.5 font-mono tabular-nums text-gray-400">
+                  {numberFormat.format(selectedCount)}/{numberFormat.format(subjects.length)}
+                </span>
+              </span>
+              <div className="flex items-center gap-3 text-[11px]">
+                <button
+                  type="button"
+                  disabled={sending || visible.length === 0}
+                  onClick={() => toggle(visible.map((item) => item.id), true)}
+                  className="text-violet-300 transition hover:text-white disabled:opacity-40"
+                >
+                  {query ? "Marcar resultados" : "Marcar todos"}
+                </button>
+                <button
+                  type="button"
+                  disabled={sending || selectedCount === 0}
+                  onClick={() => setSelected(new Set())}
+                  className="text-gray-400 transition hover:text-white disabled:opacity-40"
+                >
+                  Quitar todos
+                </button>
+              </div>
+            </div>
+
+            {subjects.length > 8 ? (
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                disabled={sending}
+                placeholder={byRestaurant ? "Buscar restaurante o marca" : "Buscar"}
+                aria-label="Buscar"
+                className={`${selectClass} mb-1.5`}
+              />
+            ) : null}
+
+            <div className="max-h-56 overflow-y-auto rounded-xl border border-white/[0.06] bg-[#0d0a14]/60 p-1">
+              {visible.length === 0 ? (
+                <p className="px-2 py-2 text-xs text-gray-500">
+                  {query ? "Sin resultados." : "No hay nada disponible para este informe."}
+                </p>
+              ) : (
+                sections.map(([section, items]) => {
+                  const ids = items.map((item) => item.id);
+                  const markedInSection = ids.filter((id) => selected.has(id)).length;
+                  return (
+                    <div key={section || "_"} className="py-0.5">
+                      {section ? (
+                        <SubjectCheckbox
+                          strong
+                          checked={markedInSection === ids.length}
+                          indeterminate={markedInSection > 0 && markedInSection < ids.length}
+                          disabled={sending}
+                          onChange={() => toggle(ids, markedInSection < ids.length)}
+                        >
+                          {section}
+                          <span className="ml-1.5 font-mono text-[11px] font-normal tabular-nums text-gray-500">
+                            {numberFormat.format(ids.length)}
+                          </span>
+                        </SubjectCheckbox>
+                      ) : null}
+                      <div className={section ? "pl-4" : undefined}>
+                        {items.map((item) => (
+                          <SubjectCheckbox
+                            key={item.id}
+                            checked={selected.has(item.id)}
+                            disabled={sending}
+                            onChange={() => toggle([item.id], !selected.has(item.id))}
+                          >
+                            {item.label}
+                          </SubjectCheckbox>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </>
       )}
 
       {type ? (
@@ -498,6 +650,24 @@ function ReportPanel({
         </fieldset>
       ) : null}
 
+      {sending && progress && progress.total > 1 ? (
+        <div className="mt-3" aria-live="polite">
+          <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
+            <div
+              className="h-full rounded-full bg-violet-400/70 transition-[width] duration-500"
+              style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }}
+            />
+          </div>
+          <p className="mt-1.5 truncate text-[11px] text-gray-500">
+            {progress.waitingSeconds !== null
+              ? `Límite de envíos por minuto: el siguiente sale en unos ${progress.waitingSeconds} s…`
+              : progress.current
+                ? `Generando y enviando ${progress.current}…`
+                : null}
+          </p>
+        </div>
+      ) : null}
+
       <div className="mt-3 flex items-center justify-end gap-2">
         <button
           type="button"
@@ -510,10 +680,10 @@ function ReportPanel({
         <button
           type="button"
           disabled={sending || !ready}
-          onClick={send}
+          onClick={() => void send()}
           className="rounded-xl border border-violet-400/30 bg-violet-500/25 px-4 py-2 text-[13px] font-medium text-white transition hover:bg-violet-500/35 disabled:cursor-not-allowed disabled:border-white/[0.06] disabled:bg-white/[0.03] disabled:text-gray-600"
         >
-          {sending ? "Enviando…" : "Enviar por WhatsApp"}
+          {buttonLabel}
         </button>
       </div>
     </div>
@@ -534,7 +704,9 @@ function Composer({
   const [reportOpen, setReportOpen] = useState(false);
   // Mismo id mientras se reintenta la MISMA operación; el servidor no reenvía lo ya enviado.
   const requestIdRef = useRef<string | null>(null);
-  const reportRequestRef = useRef<{ key: string; requestId: string } | null>(null);
+  // requestId de cada informe aún no enviado (clave = tipo + formato + periodo + restaurante/red).
+  const reportRequestIdsRef = useRef<Map<string, string>>(new Map());
+  const [reportProgress, setReportProgress] = useState<ReportBatchProgress | null>(null);
   const sendingRef = useRef(false);
 
   function updateDraft(value: string) {
@@ -587,21 +759,82 @@ function Composer({
     }
   }
 
-  async function submitReport(selection: ReportSelection) {
-    // La misma selección reutiliza el requestId (doble clic o reintento no duplican).
-    const key = JSON.stringify(selection);
-    if (reportRequestRef.current?.key !== key) {
-      reportRequestRef.current = { key, requestId: crypto.randomUUID() };
-    }
-
-    const ok = await post(`/api/conversations/${conversationId}/reports`, {
+  /** Un informe = una petición al servidor (que sigue validando, aplicando el scope y deduplicando). */
+  async function sendOneReport(
+    selection: ReportSelection,
+    requestId: string
+  ): Promise<ReportSendAttempt<ConversationMessage>> {
+    const response = await fetch(`/api/conversations/${conversationId}/reports`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...selection, requestId: reportRequestRef.current.requestId }),
+      body: JSON.stringify({ ...selection, requestId }),
     });
-    if (ok) {
-      reportRequestRef.current = null;
-      setReportOpen(false);
+    const data = (await response.json().catch(() => null)) as {
+      messages?: ConversationMessage[];
+      error?: string;
+      code?: string;
+    } | null;
+    if (response.ok) return { ok: true, messages: data?.messages ?? [] };
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    return {
+      ok: false,
+      status: response.status,
+      code: data?.code,
+      error: data?.error ?? "No se pudo enviar el informe",
+      retryAfterSeconds: Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+      messages: data?.messages,
+    };
+  }
+
+  /**
+   * Envía los informes marcados uno detrás de otro. Cada informe conserva su requestId mientras no se
+   * envíe: un doble clic o un reintento del lote no duplica lo que ya salió. Devuelve las claves enviadas.
+   */
+  async function submitReports(items: ReportBatchItem<ReportSelection>[]): Promise<string[]> {
+    if (sendingRef.current || items.length === 0) return [];
+    sendingRef.current = true;
+    setSending(true);
+    setError(null);
+    setReportProgress({ done: 0, total: items.length, current: items[0]!.label, waitingSeconds: null });
+
+    try {
+      const result = await sendReportBatch(items, {
+        send: sendOneReport,
+        requestIdFor: (key) => {
+          let requestId = reportRequestIdsRef.current.get(key);
+          if (!requestId) {
+            requestId = crypto.randomUUID();
+            reportRequestIdsRef.current.set(key, requestId);
+          }
+          return requestId;
+        },
+        onSent: (key, messages) => {
+          reportRequestIdsRef.current.delete(key);
+          if (messages.length) onSent(messages);
+        },
+        onPartial: (messages) => onSent(messages),
+        onProgress: setReportProgress,
+        wait: (ms) => new Promise((resolve) => window.setTimeout(resolve, ms)),
+      });
+
+      if (result.failed.length === 0) {
+        setReportOpen(false);
+      } else {
+        const total = items.length;
+        const failedNames = result.failed.map((item) => item.label).join(", ");
+        const summary =
+          total === 1
+            ? result.failed[0]!.error
+            : result.stoppedError
+              ? `Enviados ${result.sent.length} de ${total}. Se ha parado el envío: ${result.stoppedError}`
+              : `Enviados ${result.sent.length} de ${total}. No se enviaron: ${failedNames}. ${result.failed[0]!.error}`;
+        setError(summary);
+      }
+      return result.sent;
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
+      setReportProgress(null);
     }
   }
 
@@ -620,11 +853,12 @@ function Composer({
       {reportOpen ? (
         <ReportPanel
           sending={sending}
+          progress={reportProgress}
           onCancel={() => {
             setReportOpen(false);
             setError(null);
           }}
-          onSend={(selection) => void submitReport(selection)}
+          onSend={submitReports}
         />
       ) : null}
 

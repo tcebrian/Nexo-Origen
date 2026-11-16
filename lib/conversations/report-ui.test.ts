@@ -13,7 +13,7 @@ describe("selector de informes de la interfaz", () => {
     expect(view).toContain("options.types");
     expect(view).toContain("type.formats");
     expect(view).toContain("type.periods");
-    expect(view).toContain("options.groups");
+    expect(view).toContain("options?.groups");
     expect(view).toContain("options?.restaurants");
   });
 
@@ -35,6 +35,6 @@ describe("selector de informes de la interfaz", () => {
   });
 
   it("el sujeto (restaurante o red) y los formatos dependen del tipo elegido", () => {
-    expect(view).toContain('type.subject === "restaurant"');
+    expect(view).toContain('type?.subject === "restaurant"');
   });
 });
